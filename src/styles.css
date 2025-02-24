@@ -1,1 +1,19 @@
-/* You can add global styles to this file, and also import other style files */
+/* Add this if not already present */
+@import 'bootstrap/dist/css/bootstrap.min.css';
+
+/* Custom styles for admin layout */
+.sidebar {
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+.card {
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card-title {
+  color: #6c757d;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}

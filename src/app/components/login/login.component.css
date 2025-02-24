@@ -1,0 +1,339 @@
+/* Add a custom font from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Enhance button animation */
+.login-button {
+  transition: all 0.3s ease, transform 0.2s ease;
+}
+
+.login-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
+  }
+  
+  .login-card {
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  }
+  
+  .login-header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  
+  .login-header h2 {
+    color: #2d3748;
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+  
+  .login-header p {
+    color: #718096;
+    font-size: 16px;
+  }
+  
+  .form-field {
+    margin-bottom: 24px;
+  }
+  
+  .form-field label {
+    display: block;
+    color: #4a5568;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  
+  .input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  
+  .input-container i {
+    position: absolute;
+    left: 12px;
+    color: #a0aec0;
+  }
+  
+  .input-container input {
+    width: 100%;
+    padding: 12px 40px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+  }
+  
+  .input-container input:focus {
+    border-color: #667eea;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+  
+  .input-container input.error {
+    border-color: #fc8181;
+  }
+  
+  .toggle-password {
+    position: absolute;
+    right: 12px;
+    background: none;
+    border: none;
+    color: #a0aec0;
+    cursor: pointer;
+    padding: 0;
+  }
+  
+  .error-message {
+    color: #e53e3e;
+    font-size: 12px;
+    margin-top: 6px;
+    display: block;
+  }
+  
+  .alert-error {
+    background-color: #fff5f5;
+    color: #c53030;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+  }
+  
+  .alert-error i {
+    margin-right: 8px;
+  }
+  
+  .login-button {
+    width: 100%;
+    padding: 14px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .login-button:hover {
+    background: #5a67d8;
+  }
+  
+  .login-button:disabled {
+    background: #a0aec0;
+    cursor: not-allowed;
+  }
+  
+  .register-link {
+    text-align: center;
+    margin-top: 24px;
+    color: #718096;
+    font-size: 14px;
+  }
+  
+  .register-link a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  
+  .register-link a:hover {
+    text-decoration: underline;
+  }
+  
+  /* Spinner Animation */
+  .spinner {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+  }
+  
+  .spinner > div {
+    width: 8px;
+    height: 8px;
+    background-color: white;
+    border-radius: 100%;
+    display: inline-block;
+    animation: bounce 1.4s infinite ease-in-out both;
+  }
+  
+  .spinner .bounce1 {
+    animation-delay: -0.32s;
+  }
+  
+  .spinner .bounce2 {
+    animation-delay: -0.16s;
+  }
+  
+  @keyframes bounce {
+    0%, 80%, 100% { 
+      transform: scale(0);
+    } 40% { 
+      transform: scale(1.0);
+    }
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 480px) {
+    .login-card {
+      padding: 30px 20px;
+    }
+  
+    .login-header h2 {
+      font-size: 24px;
+    }
+  
+    .input-container input {
+      font-size: 14px;
+    }
+  }
+
+  .login-email-button {
+    width: 100%;
+    padding: 12px;
+    background-color: #ffffff;
+    color: #667eea;
+    border: 2px solid #667eea;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  
+  .login-email-button:hover {
+    background-color: #667eea;
+    color: white;
+  }
+  
+  .login-email-button i {
+    font-size: 18px;
+  }
+  
+  .divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 20px 0;
+  }
+  
+  .divider::before,
+  .divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  
+  .divider span {
+    padding: 0 10px;
+    color: #718096;
+    font-size: 14px;
+  }
+
+  /* Social Login Container */
+.social-login-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  
+  /* OAuth Buttons */
+  .oauth-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+  }
+  
+  .oauth-button:hover {
+    transform: translateY(-2px);
+  }
+  
+  .oauth-button:active {
+    transform: translateY(0);
+  }
+  
+  /* Google Button */
+  .oauth-button.google {
+    background-color: #ffffff;
+    color: #757575;
+    border: 1px solid #e0e0e0;
+  }
+  
+  .oauth-button.google:hover {
+    background-color: #f5f5f5;
+  }
+  
+  /* Facebook Button */
+  .oauth-button.facebook {
+    background-color: #1877f2;
+    color: #ffffff;
+  }
+  
+  .oauth-button.facebook:hover {
+    background-color: #166fe5;
+  }
+  
+  /* OAuth Logo */
+  .oauth-logo {
+    width: 20px;
+    height: 20px;
+  }
+  
+  /* Divider */
+  .divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 20px 0;
+    position: relative;
+  }
+  
+  .divider::before,
+  .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background-color: #e0e0e0;
+  }
+  
+  .divider-text {
+    margin: 0 12px;
+    color: #757575;
+    font-size: 14px;
+    font-weight: 500;
+  }

@@ -1,0 +1,132 @@
+<div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <nav class="col-md-2 d-none d-md-block bg-light sidebar">
+        <div class="position-sticky pt-3">
+          <ul class="nav flex-column">
+            <li class="nav-item">
+              <a class="nav-link active" routerLink="./overview">
+                Dashboard Overview
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" routerLink="./users">
+                User Management
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" routerLink="./roles">
+                Role Management
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" routerLink="./settings">
+                System Settings
+              </a>
+            </li>
+          </ul>
+        </div>
+      </nav>
+  
+      <!-- Main content -->
+      <main class="col-md-10 ms-sm-auto px-md-4">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+          <h1>Admin Dashboard</h1>
+        </div>
+  
+        <!-- Loading spinner -->
+        <div *ngIf="loading" class="text-center">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+  
+        <!-- Error message -->
+        <div *ngIf="error" class="alert alert-danger">
+          {{error}}
+        </div>
+  
+        <!-- Dashboard content -->
+        <div *ngIf="stats && !loading" class="row">
+          <!-- Total Users Card -->
+          <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+              <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                  <div class="col mr-2">
+                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                      Total Users
+                    </div>
+                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                      {{stats.totalUsers}}
+                    </div>
+                  </div>
+                  <div class="col-auto">
+                    <i class="fas fa-users fa-2x text-gray-300"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+          <!-- Users by Role -->
+          <div class="col-12 mt-4">
+            <div class="card shadow mb-4">
+              <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Users by Role</h6>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th>Role</th>
+                        <th>Count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let role of stats.usersByRole | keyvalue">
+                        <td>{{role.key}}</td>
+                        <td>{{role.value}}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+          <!-- Recent Registrations -->
+          <div class="col-12">
+            <div class="card shadow mb-4">
+              <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Recent Registrations</h6>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Registration Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let user of stats.recentRegistrations">
+                        <td>{{user.firstName}} {{user.lastName}}</td>
+                        <td>{{user.email}}</td>
+                        <td>{{user.roles?.join(', ')}}</td>
+                        <td>{{user.dateOfRegistration | date}}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>

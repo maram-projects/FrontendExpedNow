@@ -1,0 +1,30 @@
+/* src/app/components/client/client-dashboard/client-dashboard.component.css */
+
+.stats-card {
+    transition: transform 0.2s;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .stats-card:hover {
+    transform: translateY(-5px);
+  }
+  
+  .card-title {
+    color: #2c3e50;
+  }
+  
+  .stats-card .card-title {
+    font-size: 2rem;
+    color: #3498db;
+  }
+  
+  .btn-outline-primary {
+    border-color: #3498db;
+    color: #3498db;
+  }
+  
+  .btn-outline-primary:hover {
+    background-color: #3498db;
+    color: white;
+  }

@@ -1,0 +1,65 @@
+<!-- src/app/components/client/client-dashboard/client-dashboard.component.html -->
+
+<div class="container mt-4">
+    <div class="row">
+      <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h2>{{ userType | titlecase }} Dashboard</h2>
+          <button class="btn btn-primary">New Order</button>
+        </div>
+  
+        <!-- Stats Cards -->
+        <div class="row mb-4">
+          <div class="col-md-4">
+            <div class="card stats-card">
+              <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Total Orders</h6>
+                <h2 class="card-title mb-0">{{ stats.totalOrders }}</h2>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card stats-card">
+              <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Pending Orders</h6>
+                <h2 class="card-title mb-0">{{ stats.pendingOrders }}</h2>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card stats-card">
+              <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Completed Orders</h6>
+                <h2 class="card-title mb-0">{{ stats.completedOrders }}</h2>
+              </div>
+            </div>
+          </div>
+        </div>
+  
+        <!-- Additional Features -->
+        <div class="row">
+          <div class="col-md-6 mb-4">
+            <div class="card">
+              <div class="card-body">
+                <h5 class="card-title">Recent Orders</h5>
+                <p class="card-text" *ngIf="stats.pendingOrders === 0">No pending orders</p>
+                <!-- Add order list here -->
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 mb-4">
+            <div class="card">
+              <div class="card-body">
+                <h5 class="card-title">Quick Actions</h5>
+                <div class="d-grid gap-2">
+                  <button class="btn btn-outline-primary">Track Order</button>
+                  <button class="btn btn-outline-primary">View History</button>
+                  <button class="btn btn-outline-primary">Support</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
