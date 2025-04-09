@@ -1,6 +1,6 @@
 /* Add this if not already present */
 @import 'bootstrap/dist/css/bootstrap.min.css';
-
+@import '@fortawesome/fontawesome-free/css/all.min.css';
 /* Custom styles for admin layout */
 .sidebar {
   min-height: 100vh;
@@ -8,7 +8,7 @@
 }
 
 .card {
-  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  box-shadow: 0 0.125rem 0.25rem rgba(209, 242, 22, 0.075);
 }
 
 .card-title {
@@ -16,4 +16,15 @@
   font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
+}
+:root {
+  --primary-color: #4a6dff;
+  --primary-dark: #3a5be0;
+  --secondary-color: #f8f9fa;
+  --text-color: #333;
+  --border-color: #ddd;
+  --error-color: #dc3545;
+  --success-color: #28a745;
+  --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --transition: all 0.3s ease;
 }

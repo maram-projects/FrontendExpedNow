@@ -1,0 +1,365 @@
+/* Modern Dashboard Styles */
+:root {
+    --primary: #4361ee;
+    --primary-dark: #3f37c9;
+    --primary-light: #4895ef;
+    --success: #06d6a0;
+    --info: #4cc9f0;
+    --warning: #f72585;
+    --danger: #ef476f;
+    --light: #f8f9fa;
+    --dark: #212529;
+    --gray: #6c757d;
+    --gray-light: #e0e0e0;
+    --transition-speed: 0.3s;
+  }
+  
+  body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #f5f7ff;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
+  
+  /* Main Header Styling */
+  .d-flex.justify-content-between.border-bottom {
+    position: relative;
+    padding: 1.5rem 0;
+    margin-bottom: 2rem !important;
+    overflow: hidden;
+  }
+  
+  .d-flex.justify-content-between.border-bottom::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--info), var(--success), var(--primary));
+    background-size: 300% 100%;
+    animation: gradient-shift 5s ease infinite;
+  }
+  
+  @keyframes gradient-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  
+  h1 {
+    font-weight: 700;
+    color: var(--dark);
+    margin: 0;
+    position: relative;
+    z-index: 1;
+    text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.7);
+  }
+  
+  h1::after {
+    content: '';
+    position: absolute;
+    width: 40px;
+    height: 5px;
+    background-color: var(--primary);
+    bottom: -10px;
+    left: 0;
+    border-radius: 10px;
+    transition: width 0.3s ease;
+  }
+  
+  h1:hover::after {
+    width: 100%;
+  }
+  
+  /* Loading Spinner Enhancement */
+  .spinner-border {
+    width: 3rem;
+    height: 3rem;
+    color: var(--primary);
+    border-width: 0.25em;
+    animation: spin 1s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.2); }
+    100% { transform: rotate(360deg) scale(1); }
+  }
+  
+  .text-center {
+    margin: 3rem 0;
+  }
+  
+  /* Error Message Animation */
+  .alert-danger {
+    background-color: rgba(239, 71, 111, 0.1);
+    color: var(--danger);
+    border: none;
+    border-left: 4px solid var(--danger);
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(239, 71, 111, 0.1);
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+  }
+  
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+  }
+  
+  /* Dashboard Cards */
+  .card {
+    border: none !important;
+    border-radius: 15px !important;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05) !important;
+    transition: all var(--transition-speed) !important;
+    overflow: hidden;
+    margin-bottom: 24px !important;
+  }
+  
+  .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  .card-header {
+    background-color: white !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+    padding: 1.25rem 1.5rem !important;
+  }
+  
+  .card-body {
+    padding: 1.5rem !important;
+  }
+  
+  /* Total Users Card */
+  .border-left-primary {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .border-left-primary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 6px;
+    background: linear-gradient(to bottom, var(--primary), var(--primary-light));
+  }
+  
+  .text-primary {
+    color: var(--primary) !important;
+  }
+  
+  .text-xs {
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+  }
+  
+  .h5.font-weight-bold {
+    font-size: 1.8rem;
+    margin-top: 5px;
+    opacity: 0;
+    animation: countUp 1s ease-out forwards 0.5s;
+  }
+  
+  @keyframes countUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .col-auto i {
+    font-size: 2.5rem !important;
+    color: rgba(67, 97, 238, 0.1) !important;
+    transition: all var(--transition-speed);
+  }
+  
+  .card:hover .col-auto i {
+    transform: scale(1.2) rotate(10deg);
+    color: rgba(67, 97, 238, 0.2) !important;
+  }
+  
+  /* Chart Card */
+  .card-header h6 {
+    font-weight: 700 !important;
+    font-size: 1rem !important;
+    margin: 0 !important;
+    position: relative;
+    display: inline-block;
+  }
+  
+  .card-header h6::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background-color: var(--primary);
+    transition: width var(--transition-speed);
+  }
+  
+  .card:hover .card-header h6::after {
+    width: 100%;
+  }
+  
+  /* Chart Animations */
+  ngx-charts-pie-chart {
+    opacity: 0;
+    transform: scale(0.9);
+    animation: fadeInChart 1s ease-out forwards;
+  }
+  
+  @keyframes fadeInChart {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  /* Table Styling */
+  .table-responsive {
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  
+  .table {
+    margin-bottom: 0;
+  }
+  
+  .table thead th {
+    background-color: rgba(67, 97, 238, 0.03);
+    border-top: none !important;
+    border-bottom: 2px solid rgba(67, 97, 238, 0.1) !important;
+    color: var(--primary);
+    font-weight: 600;
+    padding: 1rem !important;
+  }
+  
+  .table tbody tr {
+    transition: all var(--transition-speed);
+  }
+  
+  .table tbody tr:hover {
+    background-color: rgba(67, 97, 238, 0.03);
+    transform: scale(1.01);
+  }
+  
+  .table tbody td {
+    padding: 1rem !important;
+    vertical-align: middle !important;
+    border-color: rgba(0, 0, 0, 0.03) !important;
+  }
+  
+  /* Animation for table rows */
+  .table tbody tr {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: fadeInRow 0.5s ease-out forwards;
+    animation-delay: calc(var(--row-index, 0) * 0.1s);
+  }
+  
+  @keyframes fadeInRow {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Add nice styling for row hover state */
+  .table tbody tr::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 0;
+    background-color: rgba(67, 97, 238, 0.05);
+    z-index: -1;
+    transition: width var(--transition-speed);
+  }
+  
+  .table tbody tr:hover::after {
+    width: 100%;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .card {
+      margin-bottom: 1rem !important;
+    }
+    
+    .table-responsive {
+      overflow-x: auto;
+    }
+    
+    h1 {
+      font-size: 1.8rem;
+    }
+  }
+  
+  /* Better row hover indication */
+  .table tbody tr {
+    position: relative;
+  }
+  
+  .table tbody tr td:first-child {
+    position: relative;
+  }
+  
+  .table tbody tr td:first-child::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 0;
+    background-color: var(--primary);
+    transition: width var(--transition-speed);
+  }
+  
+  .table tbody tr:hover td:first-child::before {
+    width: 4px;
+  }
+  
+  /* Make row animations work with Angular ngFor */
+  .table tbody tr:nth-child(1) { --row-index: 0; }
+  .table tbody tr:nth-child(2) { --row-index: 1; }
+  .table tbody tr:nth-child(3) { --row-index: 2; }
+  .table tbody tr:nth-child(4) { --row-index: 3; }
+  .table tbody tr:nth-child(5) { --row-index: 4; }
+  .table tbody tr:nth-child(6) { --row-index: 5; }
+  .table tbody tr:nth-child(7) { --row-index: 6; }
+  .table tbody tr:nth-child(8) { --row-index: 7; }
+  .table tbody tr:nth-child(9) { --row-index: 8; }
+  .table tbody tr:nth-child(10) { --row-index: 9; }
+  
+  /* Custom background effect for dashboard */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cpath fill='%234361ee' fill-opacity='0.03' d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5z'%3E%3C/path%3E%3C/svg%3E");
+    z-index: -1;
+    opacity: 0.5;
+  }

@@ -10,10 +10,14 @@ export interface User {
     roles?: string[];
   }
   
-  export interface AuthResponse {
-    token: string;
-    userType: string;
-    email: string;
-    message?: string;
-    error?: string;
-  }
+// user.model.ts
+export interface AuthResponse {
+  token: string;
+  userType: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  userId: string;  // Ensure this matches backend response
+  phone?: string;
+  address?: string;
+}

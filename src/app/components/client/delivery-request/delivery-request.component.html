@@ -1,0 +1,261 @@
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-lg-8 mx-auto">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h3 class="mb-0">Create Delivery Request</h3>
+          <small class="d-block mt-2 text-white-50 fun-message" [ngClass]="funMessageAnimationState">
+            {{ currentFunMessage }}
+          </small>
+        </div>
+        <div class="card-body">
+          <!-- Alerts Section -->
+          <div *ngIf="successMessage" class="alert alert-success alert-dismissible fade show" role="alert">
+            <div class="d-flex align-items-center">
+              <i class="fas fa-check-circle me-2"></i>
+              {{ successMessage }}
+            </div>
+            <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+          </div>
+          
+          <div *ngIf="errorMessage" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <div class="d-flex align-items-center">
+              <i class="fas fa-exclamation-triangle me-2"></i>
+              {{ errorMessage }}
+            </div>
+            <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+          </div>
+          
+          <div *ngIf="mapsError" class="alert alert-warning mb-3">
+            <div class="d-flex align-items-center">
+              <i class="fas fa-map-marked-alt me-2"></i>
+              <div>
+                <strong>Google Maps is not available.</strong> Please enter addresses manually.
+              </div>
+            </div>
+          </div>
+          
+          <div *ngIf="estimatedDistance && estimatedDuration" class="alert alert-info mb-3">
+            <div class="d-flex align-items-center">
+              <i class="fas fa-route me-2"></i>
+              <div>
+                <strong>Estimated Distance:</strong> {{ estimatedDistance }}<br>
+                <strong>Estimated Duration:</strong> {{ estimatedDuration }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Form Section -->
+          <form [formGroup]="deliveryForm" (ngSubmit)="onSubmit()">
+            <!-- Address Section -->
+            <div class="row mb-3">
+              <div class="col-md-6 form-group">
+                <label for="pickupAddress" class="form-label">📍 Pickup Address</label>
+                <div class="input-group">
+                  <input 
+                    type="text" 
+                    id="pickupAddress" 
+                    #pickupAddressInput
+                    formControlName="pickupAddress" 
+                    class="form-control" 
+                    placeholder="Where should we pick up your package?"
+                    [ngClass]="{'is-invalid': deliveryForm.get('pickupAddress')?.invalid && deliveryForm.get('pickupAddress')?.touched}"
+                  >
+                  <button 
+                    class="btn btn-outline-secondary" 
+                    type="button"
+                    (click)="openMapModal('pickup')"
+                    title="Select on map"
+                    [disabled]="mapsError"
+                  >
+                    <i class="fas fa-map-marker-alt"></i>
+                  </button>
+                  <div class="invalid-feedback">
+                    Oops! We need to know where to start!
+                  </div>
+                </div>
+              </div>
+              
+              <div class="col-md-6 form-group">
+                <label for="deliveryAddress" class="form-label">🏁 Delivery Address</label>
+                <div class="input-group">
+                  <input 
+                    type="text" 
+                    id="deliveryAddress" 
+                    #deliveryAddressInput
+                    formControlName="deliveryAddress" 
+                    class="form-control" 
+                    placeholder="Where's the final destination?"
+                    [ngClass]="{'is-invalid': deliveryForm.get('deliveryAddress')?.invalid && deliveryForm.get('deliveryAddress')?.touched}"
+                  >
+                  <button 
+                    class="btn btn-outline-secondary" 
+                    type="button"
+                    (click)="openMapModal('delivery')"
+                    title="Select on map"
+                    [disabled]="mapsError"
+                  >
+                    <i class="fas fa-map-marker-alt"></i>
+                  </button>
+                  <div class="invalid-feedback">
+                    Don't forget to tell us where to go!
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Package Details Section -->
+            <div class="row mb-3">
+              <div class="col-md-6 form-group">
+                <label for="packageDescription" class="form-label">📦 Package Details</label>
+                <textarea 
+                  id="packageDescription" 
+                  formControlName="packageDescription" 
+                  class="form-control" 
+                  placeholder="What's inside? (We promise not to peek!)"
+                  [ngClass]="{'is-invalid': deliveryForm.get('packageDescription')?.invalid && deliveryForm.get('packageDescription')?.touched}"
+                  rows="3"
+                ></textarea>
+                <div class="invalid-feedback">
+                  Tell us about your package - we're curious!
+                </div>
+              </div>
+              
+              <div class="col-md-6 form-group">
+                <label for="packageWeight" class="form-label">⚖️ Package Weight (kg)</label>
+                <input 
+                  type="number" 
+                  id="packageWeight" 
+                  formControlName="packageWeight" 
+                  class="form-control" 
+                  placeholder="No cheating on the weight!"
+                  [ngClass]="{'is-invalid': deliveryForm.get('packageWeight')?.invalid && deliveryForm.get('packageWeight')?.touched}"
+                  min="0.1"
+                  step="0.1"
+                >
+                <div class="invalid-feedback">
+                  <span *ngIf="deliveryForm.get('packageWeight')?.errors?.['max']">
+                    Maximum weight for this vehicle is {{ selectedVehicleMaxLoad }}kg
+                  </span>
+                  <span *ngIf="deliveryForm.get('packageWeight')?.errors?.['min']">
+                    Minimum weight is 0.1kg
+                  </span>
+                  <span *ngIf="deliveryForm.get('packageWeight')?.errors?.['required']">
+                    Package weight is required
+                  </span>
+                </div>
+                <small class="text-danger" *ngIf="selectedVehicleMaxLoad > 0">
+                  Maximum weight for this vehicle is {{ selectedVehicleMaxLoad }}kg
+                </small>
+              </div>
+            </div>
+
+            <!-- Vehicle & Date Section -->
+            <div class="row mb-3">
+              <div class="col-md-6 form-group">
+                <label for="vehicleId" class="form-label">🚚 Choose Your Ride</label>
+                <select 
+                  id="vehicleId" 
+                  formControlName="vehicleId" 
+                  class="form-select" 
+                  [ngClass]="{'is-invalid': deliveryForm.get('vehicleId')?.invalid && deliveryForm.get('vehicleId')?.touched}"
+                  [disabled]="isLoadingVehicles || !vehicles.length"
+                >
+                  <option value="">-- Select Your Delivery Steed --</option>
+                  <option *ngIf="isLoadingVehicles" disabled>Loading vehicles...</option>
+                  <option *ngIf="!isLoadingVehicles && !vehicles.length" disabled>
+                    No vehicles currently available
+                  </option>
+                  <option *ngFor="let vehicle of vehicles" [value]="vehicle.id">
+                    {{ vehicle.make }} {{ vehicle.model }} (Max Load: {{ vehicle.maxLoad }}kg)
+                  </option>
+                </select>
+                <div class="invalid-feedback">
+                  Our vehicles are waiting - pick one!
+                </div>
+              </div>
+              
+              <div class="col-md-6 form-group">
+                <label for="scheduledDate" class="form-label">📅 Delivery Date</label>
+                <input 
+                  type="date" 
+                  id="scheduledDate" 
+                  formControlName="scheduledDate" 
+                  class="form-control" 
+                  [ngClass]="{'is-invalid': deliveryForm.get('scheduledDate')?.invalid && deliveryForm.get('scheduledDate')?.touched}"
+                  [min]="minDate"
+                >
+                <div class="invalid-feedback">
+                  Please select a valid future date
+                </div>
+              </div>
+            </div>
+
+            <!-- Special Instructions -->
+            <div class="mb-3 form-group">
+              <label for="additionalInstructions" class="form-label">📝 Special Instructions (Optional)</label>
+              <textarea 
+                id="additionalInstructions" 
+                formControlName="additionalInstructions" 
+                class="form-control" 
+                rows="3"
+                placeholder="Any secret delivery instructions? 🕵️"
+              ></textarea>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+              <button type="button" class="btn btn-secondary me-md-2" routerLink="/client/dashboard">
+                <i class="fas fa-undo me-2"></i>Cancel
+              </button>
+              <button 
+                type="submit" 
+                class="btn btn-primary" 
+                [disabled]="isSubmitting"
+              >
+                <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <i class="fas fa-paper-plane me-2"></i>
+                {{ isSubmitting ? 'Processing...' : 'Send It!' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Map Modals -->
+  <div class="modal fade" id="pickupMapModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Select Pickup Location</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="map-container" style="height: 400px;"></div>
+          <div class="mt-3 text-muted">
+            <small>Search for address or click directly on the map</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="deliveryMapModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Select Delivery Location</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="map-container" style="height: 400px;"></div>
+          <div class="mt-3 text-muted">
+            <small>Search for address or click directly on the map</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -15,55 +15,91 @@ export class AuthService {
   private router = inject(Router);
 
   constructor(private http: HttpClient) {
-    this.loadStoredUser();
+    this.initializeUserSession();
   }
 
- 
-
-  private loadStoredUser(): void {
+  /**
+   * Ensures a clean user session upon service initialization.
+   */
+  private initializeUserSession(): void {
     const storedUser = localStorage.getItem('currentUser');
+    
     if (storedUser) {
-      const user = JSON.parse(storedUser);
-      this.currentUserSubject.next(user);
+      try {
+        const user: AuthResponse = JSON.parse(storedUser);
+        
+        // Ensure the user object is valid (e.g., token exists)
+        if (user?.token) {
+          this.currentUserSubject.next(user);
+        } else {
+          this.clearUserSession();
+        }
+      } catch (error) {
+        this.clearUserSession();
+      }
+    } else {
+      this.clearUserSession();
     }
   }
 
+  /**
+   * Logs in the user and stores authentication data.
+   */
   login(email: string, password: string): Observable<AuthResponse> {
-    // Log what we're sending
-    console.log('Login request payload:', { email, password });
-    
-    // Create a user object as expected by the backend
-    return this.http
-      .post<AuthResponse>(
-        `${this.apiUrl}/login`, 
-        { email, password },
-        { headers: new HttpHeaders({ 'Content-Type': 'application/json' }) }
-      )
-      .pipe(
-        tap((response) => {
-          console.log('Login response:', response);
-          if (response?.token) {
-            localStorage.setItem('currentUser', JSON.stringify(response));
-            this.currentUserSubject.next(response);
-            this.redirectBasedOnUserType(response.userType);
-          }
-        }),
-        catchError(this.handleError)
-      );
-  }
-  register(user: User, userType: string): Observable<AuthResponse> {
-    return this.http
-      .post<AuthResponse>(`${this.apiUrl}/register?userType=${userType}`, user)
-      .pipe(
-        tap((response) => {
-          // Changed: Don't store user or redirect to dashboard after registration
-          // Instead, just return the response and let the component handle redirection
-        }),
-        catchError(this.handleError)
-      );
+    return this.http.post<AuthResponse>(`${this.apiUrl}/login`, { email, password }).pipe(
+      tap((response) => {
+        if (response?.token && response?.userId) {
+          // Ensure all required fields exist
+          const authData: AuthResponse = {
+            token: response.token,
+            userType: response.userType?.toLowerCase() || '',
+            userId: response.userId?.toString() || '',
+            email: response.email,
+            firstName: response.firstName || '',
+            lastName: response.lastName || '',
+            phone: response.phone || '',
+            address: response.address || ''
+          };
+
+          localStorage.setItem('currentUser', JSON.stringify(authData));
+          this.currentUserSubject.next(authData);
+          this.redirectBasedOnUserType(authData.userType);
+        } else {
+          throw new Error('Invalid login response structure');
+        }
+      }),
+      catchError(this.handleError)
+    );
   }
 
-  public redirectBasedOnUserType(userType: string): void {
+  /**
+   * Registers a new user.
+   */
+  register(user: User, userType: string): Observable<AuthResponse> {
+    const payload = {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      password: user.password,
+      phone: user.phone,
+      address: user.address
+    };
+
+    return this.http.post<AuthResponse>(
+      `${this.apiUrl}/register?userType=${userType}`,
+      JSON.stringify(payload),
+      {
+        headers: new HttpHeaders({ 'Content-Type': 'application/json' })
+      }
+    ).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  /**
+   * Redirects users based on their user type.
+   */
+ public redirectBasedOnUserType(userType: string): void {
     switch (userType.toLowerCase()) {
       case 'individual':
       case 'enterprise':
@@ -81,42 +117,90 @@ export class AuthService {
     }
   }
 
+  /**
+   * Logs out the user and clears session data.
+   */
   logout(): void {
-    localStorage.removeItem('currentUser');
-    this.currentUserSubject.next(null);
+    this.clearUserSession();
     this.router.navigate(['/login']);
   }
 
+  /**
+   * Clears user session data from localStorage.
+   */
+  private clearUserSession(): void {
+    localStorage.removeItem('currentUser');
+    this.currentUserSubject.next(null);
+  }
+
+  /**
+   * Retrieves the currently logged-in user.
+   */
   getCurrentUser(): AuthResponse | null {
     return this.currentUserSubject.value;
   }
 
+  /**
+   * Checks if the current user is a client.
+   */
+  isClient(): boolean {
+    const user = this.getCurrentUser();
+    return !!user && ['individual', 'enterprise'].includes(user.userType);
+  }
+
+  isAdmin(): boolean {
+    const user = this.getCurrentUser();
+    return !!user && user.userType.toLowerCase() === 'admin';
+  }
+  
+
+  /**
+   * Checks if a user is logged in.
+   */
   isLoggedIn(): boolean {
     return !!this.getCurrentUser()?.token;
   }
 
+  /**
+   * Retrieves the authentication token.
+   */
   getToken(): string | null {
     return this.getCurrentUser()?.token || null;
   }
 
+  /**
+   * Handles API errors gracefully.
+   */
   private handleError(error: HttpErrorResponse) {
-    console.error('API Error Status:', error.status);
-    console.error('Error Body:', error.error);
-    
+    console.error('API Error:', error);
+
     let errorMessage = 'An error occurred';
-    
+
     if (error.error instanceof ErrorEvent) {
-      // Client-side error
       errorMessage = error.error.message;
     } else {
-      // Server-side error
       if (typeof error.error === 'object' && error.error !== null) {
         errorMessage = error.error.error || error.error.message || JSON.stringify(error.error);
       } else {
         errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
       }
     }
-    
+
     return throwError(() => new Error(errorMessage));
+  }
+
+  /**
+   * Updates user profile information.
+   */
+  updateProfile(user: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/profile`, user);
+  }
+
+  /**
+   * Checks if a user is authenticated by validating their token.
+   */
+  isAuthenticated(): boolean {
+    const token = this.getToken();
+    return !!token; // You can add token expiration validation here if needed
   }
 }

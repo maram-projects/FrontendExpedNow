@@ -1,1 +1,44 @@
-<p>user-management works!</p>
+<div class="container-fluid">
+    <h2>User Management</h2>
+    
+    <!-- Loading spinner -->
+    <div *ngIf="loading" class="text-center">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+  
+    <!-- Error message -->
+    <div *ngIf="error" class="alert alert-danger">
+      {{error}}
+    </div>
+  
+    <!-- Users table -->
+    <div class="table-responsive" *ngIf="users.length && !loading">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Roles</th>
+            <th>Registration Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of users">
+            <td>{{user.firstName}} {{user.lastName}}</td>
+            <td>{{user.email}}</td>
+            <td>{{user.phone}}</td>
+            <td>{{user.roles?.join(', ')}}</td>
+            <td>{{user.dateOfRegistration | date}}</td>
+            <td>
+              <button class="btn btn-sm btn-primary me-2">Edit</button>
+              <button class="btn btn-sm btn-danger" (click)="blockUser(user.id)">Block</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>

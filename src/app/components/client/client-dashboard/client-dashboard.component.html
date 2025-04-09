@@ -1,62 +1,135 @@
-<!-- src/app/components/client/client-dashboard/client-dashboard.component.html -->
-
+<!-- client-dashboard.component.html -->
 <div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2>Client Dashboard</h2>
+      <button (click)="goToDeliveryRequest()" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i> Create Delivery Request
+      </button>
+      
+    </div>
+    
     <div class="row">
-      <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-          <h2>{{ userType | titlecase }} Dashboard</h2>
-          <button class="btn btn-primary">New Order</button>
+      <!-- Profile Section -->
+      <div class="col-md-3">
+        <div class="card shadow-sm mb-4">
+          <div class="card-body">
+            <h5 class="card-title">Profile</h5>
+            <p class="card-text">Welcome, <span class="fw-bold text-capitalize">{{ userType }}</span>!</p>
+            <div class="d-grid gap-2">
+              <a routerLink="/profile" class="btn btn-outline-primary">View Profile</a>
+              <a routerLink="/profile/edit" class="btn btn-outline-secondary">Edit Profile</a>
+            </div>
+          </div>
         </div>
-  
+      </div>
+      
+      <!-- Main Dashboard Content -->
+      <div class="col-md-9">
         <!-- Stats Cards -->
         <div class="row mb-4">
           <div class="col-md-4">
-            <div class="card stats-card">
+            <div class="card bg-primary text-white shadow-sm">
               <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Total Orders</h6>
-                <h2 class="card-title mb-0">{{ stats.totalOrders }}</h2>
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="card-subtitle mb-2">Total Orders</h6>
+                    <h3 class="card-title mb-0">{{ stats.totalOrders }}</h3>
+                  </div>
+                  <i class="fas fa-shopping-bag fa-2x"></i>
+                </div>
               </div>
             </div>
           </div>
+          
           <div class="col-md-4">
-            <div class="card stats-card">
+            <div class="card bg-warning text-dark shadow-sm">
               <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Pending Orders</h6>
-                <h2 class="card-title mb-0">{{ stats.pendingOrders }}</h2>
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="card-subtitle mb-2">Pending Orders</h6>
+                    <h3 class="card-title mb-0">{{ stats.pendingOrders }}</h3>
+                  </div>
+                  <i class="fas fa-clock fa-2x"></i>
+                </div>
               </div>
             </div>
           </div>
+          
           <div class="col-md-4">
-            <div class="card stats-card">
+            <div class="card bg-success text-white shadow-sm">
               <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Completed Orders</h6>
-                <h2 class="card-title mb-0">{{ stats.completedOrders }}</h2>
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="card-subtitle mb-2">Completed Orders</h6>
+                    <h3 class="card-title mb-0">{{ stats.completedOrders }}</h3>
+                  </div>
+                  <i class="fas fa-check-circle fa-2x"></i>
+                </div>
               </div>
             </div>
           </div>
         </div>
-  
-        <!-- Additional Features -->
-        <div class="row">
-          <div class="col-md-6 mb-4">
-            <div class="card">
-              <div class="card-body">
-                <h5 class="card-title">Recent Orders</h5>
-                <p class="card-text" *ngIf="stats.pendingOrders === 0">No pending orders</p>
-                <!-- Add order list here -->
+        
+        <!-- Recent Deliveries -->
+        <div class="card shadow-sm">
+          <div class="card-header bg-light">
+            <h5 class="mb-0">Recent Delivery Requests</h5>
+          </div>
+          <div class="card-body">
+            <div *ngIf="isLoading" class="text-center p-4">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
               </div>
             </div>
-          </div>
-          <div class="col-md-6 mb-4">
-            <div class="card">
-              <div class="card-body">
-                <h5 class="card-title">Quick Actions</h5>
-                <div class="d-grid gap-2">
-                  <button class="btn btn-outline-primary">Track Order</button>
-                  <button class="btn btn-outline-primary">View History</button>
-                  <button class="btn btn-outline-primary">Support</button>
-                </div>
-              </div>
+            
+            <div *ngIf="!isLoading && recentDeliveries.length === 0" class="text-center p-4">
+              <p class="text-muted">No delivery requests found.</p>
+              <button (click)="goToDeliveryRequest()" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i> Create Delivery Request
+              </button>
+              
+            </div>
+            
+            <div *ngIf="!isLoading && recentDeliveries.length > 0" class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Delivery To</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let delivery of recentDeliveries">
+                    <td>#{{ delivery.id?.slice(0, 8) }}</td>
+                    <td>{{ delivery.deliveryAddress }}</td>
+                    <td>{{ delivery.scheduledDate | date:'mediumDate' }}</td>
+                    <td>
+                      <span class="badge"
+                            [ngClass]="{
+                              'bg-success': delivery.status === 'DELIVERED',
+                              'bg-primary': delivery.status === 'APPROVED',
+                              'bg-warning text-dark': delivery.status === 'PENDING',
+                              'bg-info': delivery.status === 'IN_TRANSIT',
+                              'bg-danger': delivery.status === 'CANCELLED'
+                            }">
+                        {{ delivery.status }}
+                      </span>
+                    </td>
+                    <td>
+                      <a [routerLink]="['/client/orders', delivery.id]" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-eye"></i>
+                      </a>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="text-center mt-3" *ngIf="recentDeliveries.length > 0">
+              <a routerLink="/client/orders" class="btn btn-outline-primary">View All Orders</a>
             </div>
           </div>
         </div>
