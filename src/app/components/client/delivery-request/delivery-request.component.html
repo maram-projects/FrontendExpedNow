@@ -134,9 +134,6 @@
                   step="0.1"
                 >
                 <div class="invalid-feedback">
-                  <span *ngIf="deliveryForm.get('packageWeight')?.errors?.['max']">
-                    Maximum weight for this vehicle is {{ selectedVehicleMaxLoad }}kg
-                  </span>
                   <span *ngIf="deliveryForm.get('packageWeight')?.errors?.['min']">
                     Minimum weight is 0.1kg
                   </span>
@@ -144,34 +141,26 @@
                     Package weight is required
                   </span>
                 </div>
-                <small class="text-danger" *ngIf="selectedVehicleMaxLoad > 0">
-                  Maximum weight for this vehicle is {{ selectedVehicleMaxLoad }}kg
-                </small>
               </div>
             </div>
 
-            <!-- Vehicle & Date Section -->
+            <!-- Package Type & Date Section -->
             <div class="row mb-3">
               <div class="col-md-6 form-group">
-                <label for="vehicleId" class="form-label">🚚 Choose Your Ride</label>
+                <label for="packageType" class="form-label">📦 Package Type</label>
                 <select 
-                  id="vehicleId" 
-                  formControlName="vehicleId" 
+                  id="packageType" 
+                  formControlName="packageType" 
                   class="form-select" 
-                  [ngClass]="{'is-invalid': deliveryForm.get('vehicleId')?.invalid && deliveryForm.get('vehicleId')?.touched}"
-                  [disabled]="isLoadingVehicles || !vehicles.length"
+                  [ngClass]="{'is-invalid': deliveryForm.get('packageType')?.invalid && deliveryForm.get('packageType')?.touched}"
                 >
-                  <option value="">-- Select Your Delivery Steed --</option>
-                  <option *ngIf="isLoadingVehicles" disabled>Loading vehicles...</option>
-                  <option *ngIf="!isLoadingVehicles && !vehicles.length" disabled>
-                    No vehicles currently available
-                  </option>
-                  <option *ngFor="let vehicle of vehicles" [value]="vehicle.id">
-                    {{ vehicle.make }} {{ vehicle.model }} (Max Load: {{ vehicle.maxLoad }}kg)
+                  <option value="">-- Select Package Type --</option>
+                  <option *ngFor="let type of packageTypes" [value]="type.value">
+                    {{ type.label }}
                   </option>
                 </select>
                 <div class="invalid-feedback">
-                  Our vehicles are waiting - pick one!
+                  Please select the package type
                 </div>
               </div>
               
@@ -199,7 +188,7 @@
                 formControlName="additionalInstructions" 
                 class="form-control" 
                 rows="3"
-                placeholder="Any secret delivery instructions? 🕵️"
+                placeholder="Any special delivery instructions? 🕵️"
               ></textarea>
             </div>
 

@@ -28,6 +28,13 @@ export class DeliveryRequestComponent implements OnInit, AfterViewInit, OnDestro
   @ViewChild('deliveryAddressInput') deliveryAddressInput!: ElementRef;
   
   deliveryForm: FormGroup;
+  packageTypes = [
+    { value: 'SMALL', label: 'Small Package ' },
+    { value: 'MEDIUM', label: 'Medium Package' },
+    { value: 'LARGE', label: 'Large Package' },
+    { value: 'FRAGILE', label: 'Fragile Package' },
+    { value: 'HEAVY', label: 'Heavy Package ' }
+  ];
   vehicles: Vehicle[] = [];
   today: Date = new Date();
   minDate: string;
@@ -77,8 +84,9 @@ export class DeliveryRequestComponent implements OnInit, AfterViewInit, OnDestro
     private mapService: MapService,
     private router: Router
   ) {
-    this.minDate = this.today.toISOString().split('T')[0];
-    
+    const today = new Date();
+    this.minDate = today.toISOString().split('T')[0];
+
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowFormatted = tomorrow.toISOString().split('T')[0];
@@ -88,9 +96,10 @@ export class DeliveryRequestComponent implements OnInit, AfterViewInit, OnDestro
       deliveryAddress: ['', Validators.required],
       packageDescription: ['', Validators.required],
       packageWeight: [null, [Validators.required, Validators.min(0.1)]],
-      vehicleId: [{value: '', disabled: true}, Validators.required],
-      scheduledDate: [tomorrowFormatted, Validators.required],
-      additionalInstructions: ['']
+      vehicleId: [''], // Make vehicleId optional by removing validators
+      scheduledDate: ['', Validators.required],
+      additionalInstructions: [''],
+      packageType: ['', Validators.required],
     });
     
     this.currentFunMessage = this.funMessages[Math.floor(Math.random() * this.funMessages.length)];
@@ -108,11 +117,10 @@ export class DeliveryRequestComponent implements OnInit, AfterViewInit, OnDestro
       }, 500);
     }, 5000);
 
-    // Listen for vehicle selection
+    // Listen for vehicle selection (optional)
     const vehicleSub = this.vehicleService.selectedVehicle$.subscribe(vehicle => {
       if (vehicle && vehicle.id) {
         this.selectedVehicleMaxLoad = vehicle.maxLoad;
-        this.deliveryForm.get('vehicleId')?.enable();
         this.deliveryForm.get('vehicleId')?.setValue(vehicle.id);
         
         // Update weight validators
@@ -129,16 +137,18 @@ export class DeliveryRequestComponent implements OnInit, AfterViewInit, OnDestro
     
     // Weight validation when vehicle changes
     const vehicleIdSub = this.deliveryForm.get('vehicleId')?.valueChanges.subscribe(vehicleId => {
-      const selectedVehicle = this.vehicles.find(v => v.id === vehicleId);
-      if (selectedVehicle) {
-        this.selectedVehicleMaxLoad = selectedVehicle.maxLoad;
-        const packageWeightControl = this.deliveryForm.get('packageWeight');
-        packageWeightControl?.setValidators([
-          Validators.required,
-          Validators.min(0.1),
-          Validators.max(selectedVehicle.maxLoad)
-        ]);
-        packageWeightControl?.updateValueAndValidity();
+      if (vehicleId) {
+        const selectedVehicle = this.vehicles.find(v => v.id === vehicleId);
+        if (selectedVehicle) {
+          this.selectedVehicleMaxLoad = selectedVehicle.maxLoad;
+          const packageWeightControl = this.deliveryForm.get('packageWeight');
+          packageWeightControl?.setValidators([
+            Validators.required,
+            Validators.min(0.1),
+            Validators.max(selectedVehicle.maxLoad)
+          ]);
+          packageWeightControl?.updateValueAndValidity();
+        }
       }
     });
     if (vehicleIdSub) this.subscriptions.push(vehicleIdSub);
@@ -195,7 +205,7 @@ export class DeliveryRequestComponent implements OnInit, AfterViewInit, OnDestro
             if (mapContainer) {
               this.mapService.initializeMap(mapContainer, coords);
             }
-                      this.mapService.setupMapInteraction(type);
+            this.mapService.setupMapInteraction(type);
         }
       });
 
@@ -269,8 +279,14 @@ export class DeliveryRequestComponent implements OnInit, AfterViewInit, OnDestro
 
     this.addDistanceInfoToInstructions(formValue);
     
-    const deliveryRequest = { ...formValue, clientId };
-    this.submitDeliveryRequest(deliveryRequest);
+    // Create delivery request object
+    const deliveryRequest = { 
+      ...formValue, 
+      clientId
+    };
+    
+    // Send the delivery request directly
+    this.sendDeliveryRequest(deliveryRequest);
   }
 
   private addDistanceInfoToInstructions(formValue: any): void {
@@ -282,10 +298,26 @@ export class DeliveryRequestComponent implements OnInit, AfterViewInit, OnDestro
     }
   }
 
-  private submitDeliveryRequest(deliveryRequest: any): void {
+  private sendDeliveryRequest(deliveryRequest: any): void {
+    // Add coordinates if available
+    if (this.pickupCoordinates) {
+      deliveryRequest.pickupLatitude = this.pickupCoordinates.lat;
+      deliveryRequest.pickupLongitude = this.pickupCoordinates.lng;
+    }
+    
+    if (this.deliveryCoordinates) {
+      deliveryRequest.deliveryLatitude = this.deliveryCoordinates.lat;
+      deliveryRequest.deliveryLongitude = this.deliveryCoordinates.lng;
+    }
+    
+    console.log('Sending delivery request:', deliveryRequest);
+    
     this.deliveryService.createDeliveryRequest(deliveryRequest).subscribe({
       next: () => this.handleSubmissionSuccess(),
-      error: (err) => this.handleSubmissionError(err.error?.message || 'Failed to create delivery request')
+      error: (err) => {
+        console.error('Delivery request failed:', err);
+        this.handleSubmissionError(err.message || 'Failed to create delivery request');
+      }
     });
   }
 
@@ -319,7 +351,6 @@ export class DeliveryRequestComponent implements OnInit, AfterViewInit, OnDestro
   private handleVehicleResponse(vehicles: Vehicle[]): void {
     this.vehicles = vehicles;
     this.isLoadingVehicles = false;
-    this.deliveryForm.get('vehicleId')?.[vehicles.length ? 'enable' : 'disable']();
     
     const currentVehicleId = this.deliveryForm.get('vehicleId')?.value;
     if (currentVehicleId && !vehicles.some(v => v.id === currentVehicleId)) {
@@ -331,6 +362,5 @@ export class DeliveryRequestComponent implements OnInit, AfterViewInit, OnDestro
     console.error('Error loading vehicles:', err);
     this.errorMessage = 'Failed to load available vehicles. Please try again later.';
     this.isLoadingVehicles = false;
-    this.deliveryForm.get('vehicleId')?.disable();
   }
 }

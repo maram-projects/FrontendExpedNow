@@ -103,7 +103,7 @@
                 </thead>
                 <tbody>
                   <tr *ngFor="let delivery of recentDeliveries">
-                    <td>#{{ delivery.id?.slice(0, 8) }}</td>
+                    <td>#{{ delivery.id.slice(0, 8) }}</td>
                     <td>{{ delivery.deliveryAddress }}</td>
                     <td>{{ delivery.scheduledDate | date:'mediumDate' }}</td>
                     <td>

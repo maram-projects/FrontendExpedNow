@@ -1,575 +1,259 @@
-/* Main Dashboard Container */
-.dashboard-container {
-  padding: 1.5rem;
-  background-color: #f8f9fa;
-  border-radius: 0.5rem;
-  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
+/* الألوان الرئيسية */
+:root {
+  --primary-color: #3498db;
+  --primary-dark: #2980b9;
+  --secondary-color: #2ecc71;
+  --danger-color: #e74c3c;
+  --light-bg: #f8f9fa;
+  --border-color: #e0e0e0;
+  --text-dark: #333;
+  --text-light: #777;
+  --shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
 }
 
-/* Status Cards Row */
-.row {
-  display: flex;
-  flex-wrap: wrap;
-  margin: 0 -0.75rem;
+/* التنسيقات العامة */
+.delivery-container {
+  font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
 }
 
-.col-md-4 {
-  flex: 0 0 33.33%;
-  padding: 0 0.75rem;
-  box-sizing: border-box;
-}
-
-@media (max-width: 768px) {
-  .col-md-4 {
-    flex: 0 0 100%;
-    margin-bottom: 1rem;
-  }
-}
-
-/* Status Cards */
-.card {
-  border: none;
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  height: 100%;
-}
-
-.card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
-}
-
-.status-card {
-  position: relative;
-  overflow: hidden;
-}
-
-.status-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(45deg, rgba(255, 255, 255, 0.15), transparent);
-  z-index: 1;
-}
-
-.status-card.pending {
-  background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
-  color: #fff;
-}
-
-.status-card.completed {
-  background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
-  color: #fff;
-}
-
-.status-card.total {
-  background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
-  color: #fff;
-}
-
-.card-body {
-  padding: 1.5rem;
-  position: relative;
-  z-index: 2;
-}
-
-.card-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-}
-
-.card-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.count {
-  font-size: 2.5rem;
-  font-weight: 700;
-}
-
-.card-content i {
-  font-size: 2.2rem;
-  opacity: 0.8;
-}
-
-/* Notifications Section */
-.notifications-section {
-  background-color: #fff;
-  border-radius: 0.5rem;
-  padding: 1.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  margin-bottom: 2rem;
-}
-
-.notifications-section h4 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-}
-
-.badge {
-  display: inline-block;
-  padding: 0.35em 0.65em;
-  font-size: 0.75em;
-  font-weight: 700;
-  line-height: 1;
+/* عنوان الصفحة */
+.delivery-container h2 {
+  color: var(--text-dark);
+  font-size: 28px;
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid var(--border-color);
   text-align: center;
-  white-space: nowrap;
-  vertical-align: baseline;
-  border-radius: 0.25rem;
-  margin-left: 0.5rem;
 }
 
-.bg-danger {
-  background-color: #dc3545;
-  color: #fff;
-}
-
-.notification-list {
-  max-height: 250px;
-  overflow-y: auto;
-}
-
-.notification-item {
-  padding: 0.75rem 1.25rem;
-  background-color: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.125);
-  border-radius: 0.25rem;
-  margin-bottom: 0.5rem;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.notification-item:hover {
-  background-color: #f8f9fa;
-}
-
-.notification-item.unread {
-  border-left: 4px solid #007bff;
-  background-color: rgba(0, 123, 255, 0.05);
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.4);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(0, 123, 255, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0);
-  }
-}
-
-/* Delivery List */
-.delivery-list {
-  background-color: #fff;
-  border-radius: 0.5rem;
-  padding: 1.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-}
-
-.delivery-list h4 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-}
-
-.no-deliveries {
+/* حالة التحميل */
+.loading {
   text-align: center;
-  padding: 3rem 1rem;
-  color: #6c757d;
+  padding: 40px 0;
+  color: var(--text-light);
+  font-size: 18px;
 }
 
-.no-deliveries i {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-  opacity: 0.3;
-}
-
-.list-group {
-  display: flex;
-  flex-direction: column;
-  padding-left: 0;
-  margin-bottom: 0;
-}
-
-.list-group-item {
-  position: relative;
+.loading::after {
+  content: "";
   display: block;
-  padding: 0;
-  background-color: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.125);
-  margin-bottom: 0.5rem;
-  border-radius: 0.5rem;
-  overflow: hidden;
-  transition: all 0.3s ease;
+  width: 50px;
+  height: 50px;
+  margin: 20px auto 0;
+  border: 5px solid var(--border-color);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: loader 1s linear infinite;
 }
 
-.list-group-item:hover {
+@keyframes loader {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* بطاقة توصيل */
+.delivery-card {
+  background-color: var(--light-bg);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.delivery-card:hover {
+  transform: translateY(-3px);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
 }
 
-.delivery-item {
-  display: flex;
-  flex-direction: column;
-}
-
+/* رأس بطاقة التوصيل */
 .delivery-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem 1.25rem;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.delivery-header h3 {
+  color: var(--primary-color);
+  font-size: 18px;
+  margin: 0;
 }
 
 .status-badge {
-  padding: 0.35em 0.65em;
-  font-size: 0.75em;
-  font-weight: 600;
-  border-radius: 0.25rem;
+  background: var(--primary-dark);
+  color: white;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: bold;
   text-transform: uppercase;
-  animation: fadeIn 0.5s ease;
+  letter-spacing: 0.5px;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+/* تفاصيل التوصيل */
+.delivery-details {
+  margin-bottom: 20px;
 }
 
-.status-badge.pending {
-  background-color: #ffc107;
-  color: #212529;
+.delivery-details p {
+  margin: 8px 0;
+  color: var(--text-dark);
+  line-height: 1.5;
 }
 
-.status-badge.approved {
-  background-color: #17a2b8;
-  color: #fff;
+.delivery-details strong {
+  font-weight: 600;
+  color: var(--text-dark);
+  display: inline-block;
+  width: 80px;
 }
 
-.status-badge.in_transit {
-  background-color: #6610f2;
-  color: #fff;
-}
-
-.status-badge.delivered {
-  background-color: #28a745;
-  color: #fff;
-}
-
-.status-badge.cancelled {
-  background-color: #dc3545;
-  color: #fff;
-}
-
-.delivery-body {
-  padding: 1.25rem;
-}
-
-.route-info {
-  margin-bottom: 1rem;
-}
-
-.route-step {
+/* أزرار الإجراءات */
+.delivery-actions {
   display: flex;
-  align-items: flex-start;
-  margin-bottom: 0.5rem;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-top: 15px;
+  border-top: 1px solid var(--border-color);
+}
+
+.delivery-actions button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.delivery-actions button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.accept-btn {
+  background-color: var(--secondary-color);
+  color: white;
+}
+
+.accept-btn:hover:not(:disabled) {
+  background-color: #27ae60;
+  box-shadow: 0 3px 8px rgba(46, 204, 113, 0.3);
+}
+
+.reject-btn {
+  background-color: white;
+  color: var(--danger-color);
+  border: 1px solid var(--danger-color) !important;
+}
+
+.reject-btn:hover:not(:disabled) {
+  background-color: var(--danger-color);
+  color: white;
+  box-shadow: 0 3px 8px rgba(231, 76, 60, 0.3);
+}
+
+/* حالة عدم وجود طلبات */
+.no-deliveries {
+  text-align: center;
+  padding: 40px 0;
+  color: var(--text-light);
+  font-size: 18px;
+  background: var(--light-bg);
+  border-radius: 8px;
+}
+
+.no-deliveries p {
+  margin: 0;
+}
+
+/* إشعارات النجاح والخطأ */
+.alert {
+  display: flex;
+  align-items: center;
+  padding: 12px 15px;
+  border-radius: 5px;
+  margin-bottom: 20px;
   position: relative;
 }
 
-.route-step:first-child::after {
-  content: '';
+.success-alert {
+  background-color: rgba(46, 204, 113, 0.15);
+  color: #27ae60;
+  border-left: 4px solid #2ecc71;
+}
+
+.error-alert {
+  background-color: rgba(231, 76, 60, 0.15);
+  color: #c0392b;
+  border-left: 4px solid #e74c3c;
+}
+
+.alert-icon {
+  font-weight: bold;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 14px;
+}
+
+.success-alert .alert-icon {
+  background-color: #2ecc71;
+  color: white;
+}
+
+.error-alert .alert-icon {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.close-btn {
   position: absolute;
-  top: 24px;
-  left: 9px;
-  height: calc(100% + 8px);
-  width: 2px;
-  background-color: #dee2e6;
-}
-
-.route-step i {
-  margin-right: 1rem;
-  font-size: 1.1rem;
-  width: 20px;
-  text-align: center;
-}
-
-.route-step i.start {
-  color: #dc3545;
-}
-
-.route-step i.end {
-  color: #28a745;
-}
-
-.delivery-meta {
-  display: flex;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  color: #6c757d;
-  font-size: 0.875rem;
-}
-
-.delivery-meta div {
-  margin-right: 1rem;
-  margin-bottom: 0.5rem;
-}
-
-.delivery-meta i {
-  margin-right: 0.5rem;
-}
-
-.delivery-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem 1.25rem;
-  background-color: #f8f9fa;
-  border-top: 1px solid rgba(0, 0, 0, 0.125);
-}
-
-.status-select {
-  max-width: 150px;
-}
-
-.form-select {
-  display: block;
-  width: 100%;
-  padding: 0.375rem 2.25rem 0.375rem 0.75rem;
-  font-size: 1rem;
-  font-weight: 400;
-  line-height: 1.5;
-  color: #212529;
-  background-color: #fff;
-  border: 1px solid #ced4da;
-  border-radius: 0.25rem;
-  appearance: none;
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-
-.btn {
-  display: inline-block;
-  font-weight: 400;
-  line-height: 1.5;
-  color: #212529;
-  text-align: center;
-  text-decoration: none;
-  vertical-align: middle;
+  right: 10px;
+  top: 10px;
+  background: none;
+  border: none;
+  font-size: 20px;
   cursor: pointer;
-  user-select: none;
-  background-color: transparent;
-  border: 1px solid transparent;
-  padding: 0.375rem 0.75rem;
-  font-size: 1rem;
-  border-radius: 0.25rem;
-  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, 
-              border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  color: inherit;
+  padding: 0 5px;
 }
 
-.btn-map {
-  background-color: #6c757d;
-  color: #fff;
-  transition: all 0.3s ease;
-}
-
-.btn-map:hover {
-  background-color: #5a6268;
-  transform: scale(1.05);
-}
-
-/* Availability Toggle */
-.availability-toggle {
-  display: flex;
-  align-items: center;
-  background-color: #fff;
-  border-radius: 0.5rem;
-  padding: 1rem 1.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  margin-top: 1.5rem;
-}
-
-.availability-toggle label {
-  margin-right: 1rem;
-  margin-bottom: 0;
-  font-weight: 500;
-}
-
-.form-check {
-  display: block;
-  min-height: 1.5rem;
-  padding-left: 1.5em;
-  margin-bottom: 0.125rem;
-}
-
-.form-switch {
-  padding-left: 2.5em;
-}
-
-.form-check-input {
-  width: 2em;
-  margin-left: -2.5em;
-  height: 1em;
-  background-color: #fff;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='rgba%280, 0, 0, 0.25%29'/%3e%3c/svg%3e");
-  background-position: left center;
-  border-radius: 2em;
-  transition: background-position 0.15s ease-in-out;
-  appearance: none;
-  border: 1px solid rgba(0, 0, 0, 0.25);
-}
-
-.form-check-input:checked {
-  background-color: #0d6efd;
-  border-color: #0d6efd;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
-  background-position: right center;
-}
-
-/* Location Info */
-.location-info {
-  margin-top: 1rem;
-  padding: 0.75rem;
-  background-color: #fff;
-  border-radius: 0.25rem;
-  border-left: 4px solid #17a2b8;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.text-muted {
-  color: #6c757d !important;
-}
-
-.mt-3 {
-  margin-top: 1rem !important;
-}
-
-.small {
-  font-size: 0.875em;
-}
-
-/* Loading Animations */
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-  100% {
-    background-position: 1000px 0;
-  }
-}
-
-.loading .card-content, 
-.loading .delivery-body {
-  background: linear-gradient(to right, #f6f7f8 8%, #edeef1 18%, #f6f7f8 33%);
-  background-size: 2000px 100%;
-  animation: shimmer 2s infinite linear;
-  min-height: 100px;
-}
-
-/* Responsive design adjustments */
+/* تحسينات للهواتف المحمولة */
 @media (max-width: 768px) {
-  .delivery-meta {
+  .delivery-container {
+    padding: 15px;
+  }
+  
+  .delivery-header {
     flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .status-badge {
+    margin-top: 10px;
   }
   
   .delivery-actions {
     flex-direction: column;
-    gap: 0.5rem;
   }
   
-  .status-select {
-    max-width: 100%;
-    margin-bottom: 0.5rem;
+  .delivery-actions button {
+    width: 100%;
   }
-}
-
-/* Appear animations for elements as they load */
-.dashboard-container {
-  animation: fadeInUp 0.8s ease both;
-}
-
-.status-card, .delivery-list, .notifications-section, .availability-toggle {
-  opacity: 0;
-  animation: fadeInUp 0.8s ease forwards;
-}
-
-.status-card:nth-child(1) {
-  animation-delay: 0.1s;
-}
-
-.status-card:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.status-card:nth-child(3) {
-  animation-delay: 0.3s;
-}
-
-.notifications-section {
-  animation-delay: 0.4s;
-}
-
-.delivery-list {
-  animation-delay: 0.5s;
-}
-
-.availability-toggle {
-  animation-delay: 0.6s;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 30px, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-/* Hover and focus states */
-.form-select:focus,
-.form-check-input:focus {
-  border-color: #86b7fe;
-  outline: 0;
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-
-.notification-item:hover {
-  transform: translateX(5px);
-}
-
-/* Status transitions */
-.status-badge {
-  position: relative;
-  overflow: hidden;
-}
-
-.status-badge::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.2);
-  transform: translateX(-100%);
-  transition: transform 0.5s ease;
-}
-
-.status-badge:hover::after {
-  transform: translateX(100%);
 }

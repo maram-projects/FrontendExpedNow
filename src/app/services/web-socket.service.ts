@@ -73,6 +73,8 @@ export class WebSocketService {
   }
 
   close() {
-    this.socket$?.complete();
+    if (this.socket$) {
+      this.socket$.complete();
+    }
   }
 }
