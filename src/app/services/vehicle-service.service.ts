@@ -166,5 +166,10 @@ export class VehicleService {
 
   setVehicleUnavailable(id: string): Observable<Vehicle> {
     return this.http.patch<Vehicle>(`${this.apiUrl}/${id}/set-unavailable`, {});
-}
+  }
+
+  // Assign vehicle to user
+  assignVehicleToUser(vehicleId: string, userId: string): Observable<Vehicle> {
+    return this.http.patch<Vehicle>(`${this.apiUrl}/${vehicleId}/assign`, { userId });
+  }
 }

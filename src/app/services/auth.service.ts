@@ -82,7 +82,9 @@ export class AuthService {
       email: user.email,
       password: user.password,
       phone: user.phone,
-      address: user.address
+      address: user.address,
+      vehicleType: user.vehicleType,
+      assignedVehicleId: user.assignedVehicleId   // Add this line to include vehicle ID
     };
 
     return this.http.post<AuthResponse>(
@@ -99,7 +101,7 @@ export class AuthService {
   /**
    * Redirects users based on their user type.
    */
- public redirectBasedOnUserType(userType: string): void {
+  public redirectBasedOnUserType(userType: string): void {
     switch (userType.toLowerCase()) {
       case 'individual':
       case 'enterprise':
@@ -153,7 +155,6 @@ export class AuthService {
     return !!user && user.userType.toLowerCase() === 'admin';
   }
   
-
   /**
    * Checks if a user is logged in.
    */
