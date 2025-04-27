@@ -71,6 +71,7 @@ export const routes: Routes = [
     data: { role: 'delivery' }, // Ensure only delivery users can access
     loadChildren: () => import('./components/delivery/delivery-dashboard/delivery.routes').then(m => m.DELIVERY_ROUTES)
   },
+ 
 
   // Profile routes
   {

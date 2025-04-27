@@ -1,0 +1,69 @@
+<div class="mission-container">
+  <h2>Your Delivery Missions</h2>
+  
+  @if (isLoading) {
+    <div class="loading">
+      <p>Loading your missions...</p>
+    </div>
+  }
+  
+  @if (!isLoading && missions.length === 0) {
+    <div class="no-missions">
+      <p>No active missions found</p>
+    </div>
+  }
+  
+  @if (!isLoading && missions.length > 0) {
+    <div class="mission-list">
+      @for (mission of missions; track mission.id) {
+        <div class="mission-card" [class.completed]="mission.status === 'COMPLETED'">
+          <div class="mission-header">
+              <h3>Mission #{{ mission.id.substring(0, 8) }}</h3>
+                          <span class="status-badge" [ngClass]="{
+              'pending': mission.status === 'PENDING',
+              'in-progress': mission.status === 'IN_PROGRESS',
+              'completed': mission.status === 'COMPLETED'
+            }">
+              {{ mission.status }}
+            </span>
+          </div>
+          
+          <div class="mission-details">
+            <p><strong>From:</strong> {{ mission.deliveryRequest?.pickupAddress || 'Address not available' }}</p>
+            <p><strong>To:</strong> {{ mission.deliveryRequest?.deliveryAddress || 'Address not available' }}</p>
+            <p><strong>Started:</strong> {{ mission.startTime | date:'medium' }}</p>
+            @if (mission.endTime) {
+              <p><strong>Completed:</strong> {{ mission.endTime | date:'medium' }}</p>
+            }
+          </div>
+          
+          <div class="mission-actions">
+            @if (mission.status === 'PENDING') {
+              <button (click)="startMission(mission.id)" class="btn-start">
+                Start Mission
+              </button>
+            }
+            
+            @if (mission.status === 'IN_PROGRESS') {
+              <button (click)="completeMission(mission.id)" class="btn-complete">
+                Mark as Completed
+              </button>
+            }
+            
+            <button (click)="openMissionDetails(mission.id)" class="btn-details">
+              View Details
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+  
+  <!-- Mission Details Dialog -->
+  <app-mission-details-dialog 
+    *ngIf="showMissionDialog" 
+    [missionId]="selectedMissionId!"
+    (close)="closeMissionDialog()"
+    (missionUpdated)="onMissionUpdated($event)">
+  </app-mission-details-dialog>
+</div>

@@ -1,61 +1,57 @@
-<div class="delivery-container">
-  <!-- عنوان الصفحة -->
-  <h2>Delivery Assignments</h2>
-  
-  <!-- رسائل النجاح والخطأ بدون *ngIf -->
-  <div [hidden]="!successMessage" class="alert success-alert">
-    <span class="alert-icon">✓</span>
-    <span>{{successMessage}}</span>
-    <button class="close-btn" (click)="clearSuccessMessage()">×</button>
-  </div>
-  
-  <div [hidden]="!errorMessage" class="alert error-alert">
-    <span class="alert-icon">!</span>
-    <span>{{errorMessage}}</span>
-    <button class="close-btn" (click)="clearErrorMessage()">×</button>
+<div class="delivery-wrapper">
+  <!-- Page Title -->
+  <h2 class="page-title">Delivery Assignments</h2>
+
+  <!-- Success and Error Notifications -->
+  <div *ngIf="successMessage" class="notification success">
+    <div class="notification-icon">✓</div>
+    <span>{{ successMessage }}</span>
+    <button class="close-button" (click)="clearSuccessMessage()">×</button>
   </div>
 
-  <!-- حالة التحميل -->
-  <div [hidden]="!isLoading" class="loading">
+  <div *ngIf="errorMessage" class="notification error">
+    <div class="notification-icon">!</div>
+    <span>{{ errorMessage }}</span>
+    <button class="close-button" (click)="clearErrorMessage()">×</button>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-state">
     <p>Loading your deliveries...</p>
+    <div class="spinner"></div>
   </div>
 
-  <!-- حالة وجود طلبات -->
-  <div [hidden]="isLoading || assignedDeliveries.length === 0" class="delivery-list">
-    <div *ngFor="let delivery of assignedDeliveries" class="delivery-card">
-      <div class="delivery-header">
-        <h3>Delivery #{{shortenId(delivery.id)}}</h3>
-        <span class="status-badge">{{delivery.status}}</span>
+  <!-- Deliveries List -->
+  <div *ngIf="!isLoading && assignedDeliveries.length > 0" class="delivery-grid">
+    <div *ngFor="let delivery of assignedDeliveries" class="card-delivery">
+      <div class="card-header">
+        <h3>Delivery #{{ shortenId(delivery.id) }}</h3>
+        <span class="badge">{{ delivery.status }}</span>
       </div>
 
-      <div class="delivery-details">
-        <p><strong>Pickup:</strong> {{delivery.pickupAddress}}</p>
-        <p><strong>Delivery:</strong> {{delivery.deliveryAddress}}</p>
-        <p><strong>Package:</strong> {{delivery.packageDescription}} ({{delivery.packageWeight}} kg)</p>
-        <p><strong>client:</strong> {{delivery.clientId}}</p>
+      <div class="card-body">
+        <p><strong>Pickup:</strong> {{ delivery.pickupAddress }}</p>
+        <p><strong>Delivery:</strong> {{ delivery.deliveryAddress }}</p>
+        <p><strong>Package:</strong> {{ delivery.packageDescription }} ({{ delivery.packageWeight }} kg)</p>
+        <p><strong>Client:</strong> {{ delivery.clientId }}</p>
       </div>
 
-      <div class="delivery-actions">
-        <button 
-          (click)="acceptDelivery(delivery.id)" 
-          class="accept-btn" 
-          [disabled]="isProcessing(delivery.id)">
-          <span [hidden]="!isProcessing(delivery.id)">Processing...</span>
-          <span [hidden]="isProcessing(delivery.id)">Accept</span>
+      <div class="card-actions">
+        <button (click)="acceptDelivery(delivery.id)" class="accept-button" [disabled]="isProcessing(delivery.id)">
+          <ng-container *ngIf="isProcessing(delivery.id); else acceptLabel">Processing...</ng-container>
+          <ng-template #acceptLabel>Accept</ng-template>
         </button>
-        <button 
-          (click)="rejectDelivery(delivery.id)" 
-          class="reject-btn" 
-          [disabled]="isProcessing(delivery.id)">
-          <span [hidden]="!isProcessing(delivery.id)">Processing...</span>
-          <span [hidden]="isProcessing(delivery.id)">Reject</span>
+
+        <button (click)="rejectDelivery(delivery.id)" class="reject-button" [disabled]="isProcessing(delivery.id)">
+          <ng-container *ngIf="isProcessing(delivery.id); else rejectLabel">Processing...</ng-container>
+          <ng-template #rejectLabel>Reject</ng-template>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- حالة عدم وجود طلبات -->
-  <div [hidden]="isLoading || assignedDeliveries.length > 0" class="no-deliveries">
+  <!-- No Deliveries -->
+  <div *ngIf="!isLoading && assignedDeliveries.length === 0" class="no-deliveries">
     <p>No deliveries are currently assigned to you. Check back later!</p>
   </div>
 </div>

@@ -4,6 +4,7 @@ import { Observable, throwError } from 'rxjs';
 import { catchError, filter, map, tap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth.service';
+import { Mission } from '../models/mission.model';
 
 // Current Angular interface (problematic)
 // Updated to match Java DeliveryResponseDTO
@@ -134,20 +135,32 @@ export class DeliveryService {
     return error.error?.message || 'Unknown error occurred';
   }
 
-  acceptDelivery(deliveryId: string): Observable<DeliveryRequest> {
+  acceptDelivery(deliveryId: string): Observable<{ delivery: DeliveryRequest, mission: Mission }> {
     const userId = this.authService.getCurrentUser()?.userId;
-    return this.http.post<DeliveryRequest>(
-      `${this.apiUrl}/${deliveryId}/accept?deliveryPersonId=${userId}`,
-      {},  // Empty body as query parameter is used
-      { headers: this.getAuthHeaders() }
+    
+    if (!userId) {
+        return throwError(() => new Error('User ID is missing!'));
+    }
+
+    // تأكد من أن البيانات مرسلة كـ JSON
+    const body = { deliveryPersonId: userId };
+    console.log('Request body:', body);
+
+    return this.http.post<{ delivery: DeliveryRequest, mission: Mission }>(
+        `${this.apiUrl}/${deliveryId}/accept`,
+        body,
+        { 
+            headers: this.getAuthHeaders(),
+            withCredentials: true // إذا كنت تستخدم cookies
+        }
     ).pipe(
-      catchError(error => {
-        console.error('Error accepting delivery:', error);
-        return throwError(() => new Error('Failed to accept delivery'));
-      })
+        catchError(error => {
+            console.error('Error accepting delivery:', error);
+            return throwError(() => new Error('Failed to accept delivery: ' + 
+                (error.error?.message || error.message)));
+        })
     );
-  }
-  
+}
   rejectDelivery(deliveryId: string): Observable<void> {
     const userId = this.authService.getCurrentUser()?.userId;
     return this.http.post<void>(

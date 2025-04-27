@@ -1,0 +1,290 @@
+/* Modern Classic & Fun CSS for Delivery Missions */
+
+/* Base Styles */
+.mission-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: 'Poppins', sans-serif;
+  background-color: #f8f9fa;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.mission-container h2 {
+  text-align: center;
+  color: #2d3748;
+  font-size: 2.2rem;
+  margin-bottom: 2rem;
+  position: relative;
+  padding-bottom: 0.8rem;
+}
+
+.mission-container h2:after {
+  content: "🚚";
+  font-size: 1.5rem;
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Loading State */
+.loading {
+  text-align: center;
+  padding: 3rem;
+  animation: pulse 1.5s infinite alternate;
+}
+
+.loading p {
+  font-size: 1.2rem;
+  color: #4a5568;
+}
+
+.loading:before {
+  content: "📦";
+  display: block;
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  animation: bounce 1s infinite alternate;
+}
+
+/* No Missions State */
+.no-missions {
+  text-align: center;
+  padding: 4rem 2rem;
+  background-color: #fff;
+  border-radius: 12px;
+  border: 2px dashed #cbd5e0;
+}
+
+.no-missions p {
+  font-size: 1.3rem;
+  color: #718096;
+}
+
+.no-missions p:before {
+  content: "🔍";
+  display: block;
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+/* Mission List */
+.mission-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+/* Mission Card */
+.mission-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border-left: 5px solid #3182ce;
+  position: relative;
+}
+
+.mission-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.12);
+}
+
+.mission-card.completed {
+  border-left-color: #48bb78;
+}
+
+.mission-card:before {
+  content: "🎯";
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  font-size: 1.5rem;
+  opacity: 0;
+  transition: all 0.3s ease;
+  transform: rotate(30deg);
+}
+
+.mission-card:hover:before {
+  opacity: 1;
+  top: 10px;
+  right: 10px;
+}
+
+.mission-card.completed:before {
+  content: "🎉";
+}
+
+/* Mission Header */
+.mission-header {
+  background-color: #f7fafc;
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.mission-header h3 {
+  margin: 0;
+  color: #2d3748;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+/* Status Badge */
+.status-badge {
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.pending {
+  background-color: #feebc8;
+  color: #c05621;
+}
+
+.status-badge.in-progress {
+  background-color: #bee3f8;
+  color: #2b6cb0;
+}
+
+.status-badge.completed {
+  background-color: #c6f6d5;
+  color: #2f855a;
+}
+
+/* Mission Details */
+.mission-details {
+  padding: 1.5rem;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.mission-details p {
+  margin: 0.7rem 0;
+  color: #4a5568;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.mission-details strong {
+  color: #2d3748;
+  font-weight: 600;
+  display: inline-block;
+  width: 85px;
+}
+
+/* Mission Actions */
+.mission-actions {
+  padding: 1.2rem 1.5rem;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Buttons */
+.mission-actions button,
+.mission-actions a {
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+  transition: all 0.2s ease;
+  border: none;
+  font-size: 0.9rem;
+}
+
+.btn-start {
+  background-color: #4299e1;
+  color: white;
+}
+
+.btn-start:hover {
+  background-color: #3182ce;
+  transform: scale(1.05);
+}
+
+.btn-start:before {
+  content: "🚀 ";
+}
+
+.btn-complete {
+  background-color: #48bb78;
+  color: white;
+}
+
+.btn-complete:hover {
+  background-color: #38a169;
+  transform: scale(1.05);
+}
+
+.btn-complete:before {
+  content: "✅ ";
+}
+
+.btn-details {
+  background-color: #edf2f7;
+  color: #4a5568;
+  border: 1px solid #e2e8f0;
+}
+
+.btn-details:hover {
+  background-color: #e2e8f0;
+  transform: scale(1.05);
+}
+
+.btn-details:before {
+  content: "👁️ ";
+}
+
+/* Animations */
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes bounce {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Responsive Adjustments */
+@media (min-width: 768px) {
+  .mission-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .mission-actions {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 767px) {
+  .mission-card {
+    border-left-width: 8px;
+  }
+  
+  .mission-actions button,
+  .mission-actions a {
+    flex: 1;
+  }
+}
+
+/* Font import - add to your global styles or component */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');

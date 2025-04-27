@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { DeliveryRequest, DeliveryService } from '../../../services/delivery-service.service';
 import { CommonModule } from '@angular/common';
-
+import { Router } from '@angular/router';
 @Component({
   selector: 'app-delivery-dashboard',
   standalone: true, // إذا كنت تستخدم standalone components
@@ -18,7 +18,8 @@ export class DeliveryDashboardComponent implements OnInit {
   // مجموعة لتتبع معرفات الطلبات قيد المعالجة
   processingItems: Set<string> = new Set<string>();
 
-  constructor(private deliveryService: DeliveryService) {}
+
+  constructor(private deliveryService: DeliveryService,private router: Router) {}
 
   ngOnInit(): void {
     this.loadAssignedDeliveries();
@@ -50,27 +51,30 @@ export class DeliveryDashboardComponent implements OnInit {
   }
 
   acceptDelivery(deliveryId: string): void {
-    // منع النقر المتكرر إذا كانت المعالجة جارية
-    if (this.isProcessing(deliveryId)) {
-      return;
-    }
+    if (this.isProcessing(deliveryId)) return;
     
     this.processingItems.add(deliveryId);
     
     this.deliveryService.acceptDelivery(deliveryId).subscribe({
-      next: () => {
-        this.successMessage = 'Delivery accepted successfully!';
-        console.log('Delivery accepted successfully');
-        this.loadAssignedDeliveries();
-      },
-      error: (err) => {
-        this.errorMessage = 'Failed to accept delivery. Please try again.';
-        console.error('Error accepting delivery:', err);
-        this.processingItems.delete(deliveryId);
-      }
+        next: (response: any) => {
+            console.log('API response:', response);
+            this.successMessage = 'تم قبول التسليم وإنشاء المهمة بنجاح';
+            setTimeout(() => {
+                this.router.navigate(['/delivery/missions']);
+            }, 1500);
+        },
+        error: (err) => {
+            console.error('API error:', err);
+            this.errorMessage = err.message || 'فشل في قبول التسليم';
+            if (err.status === 400) {
+                this.errorMessage = 'حالة الطلب غير صالحة للقبول';
+            }
+        },
+        complete: () => {
+            this.processingItems.delete(deliveryId);
+        }
     });
-  }
-
+}
   rejectDelivery(deliveryId: string): void {
     // منع النقر المتكرر إذا كانت المعالجة جارية
     if (this.isProcessing(deliveryId)) {

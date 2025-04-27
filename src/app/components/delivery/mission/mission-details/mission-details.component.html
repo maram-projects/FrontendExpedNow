@@ -1,0 +1,69 @@
+<div class="mission-dialog-overlay">
+    <div class="mission-dialog-container" *ngIf="mission">
+      <div class="dialog-header">
+        <h2>Mission Details <span class="mission-id">#{{ mission.id?.substring(0, 8) }}</span></h2>
+        <button class="close-button" (click)="closeDialog()">&times;</button>
+      </div>
+      
+      <div class="dialog-content">
+        <div class="status-banner" [ngClass]="mission.status?.toLowerCase()">
+          <div class="status-icon"></div>
+          <span>{{ mission.status }}</span>
+        </div>
+        
+        <div class="mission-card">
+          <div class="section">
+            <h3>📍 Location Information</h3>
+            <div class="info-row">
+              <div class="info-label">From:</div>
+              <div class="info-value">{{ mission.deliveryRequest?.pickupAddress || 'Address not available' }}</div>
+            </div>
+            <div class="info-row">
+              <div class="info-label">To:</div>
+              <div class="info-value">{{ mission.deliveryRequest?.deliveryAddress || 'Address not available' }}</div>
+            </div>
+          </div>
+          
+          <div class="section">
+            <h3>⏱️ Timing</h3>
+            <div class="info-row">
+              <div class="info-label">Started:</div>
+              <div class="info-value">{{ mission.startTime | date:'medium' }}</div>
+            </div>
+            <div class="info-row" *ngIf="mission.endTime">
+              <div class="info-label">Completed:</div>
+              <div class="info-value">{{ mission.endTime | date:'medium' }}</div>
+            </div>
+            <div class="info-row" *ngIf="mission.endTime">
+              <div class="info-label">Duration:</div>
+              <div class="info-value">{{ calculateDuration(mission.startTime, mission.endTime) }}</div>
+            </div>
+          </div>
+          
+          <div class="section" *ngIf="mission.notes">
+            <h3>📝 Notes</h3>
+            <div class="notes">{{ mission.notes }}</div>
+          </div>
+        </div>
+        
+        <div class="dialog-actions">
+          <ng-container *ngIf="mission.status === 'PENDING'">
+            <button (click)="startMission(mission.id)" class="btn-start">Start Mission</button>
+          </ng-container>
+          
+          <ng-container *ngIf="mission.status === 'IN_PROGRESS'">
+            <button (click)="completeMission(mission.id)" class="btn-complete">Mark as Completed</button>
+          </ng-container>
+          
+          <button (click)="closeDialog()" class="btn-close">Close</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="mission-dialog-container loading-dialog" *ngIf="!mission">
+      <div class="loading-content">
+        <div class="loading-icon"></div>
+        <p>Loading mission details...</p>
+      </div>
+    </div>
+  </div>

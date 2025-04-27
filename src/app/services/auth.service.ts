@@ -139,7 +139,12 @@ export class AuthService {
    * Retrieves the currently logged-in user.
    */
   getCurrentUser(): AuthResponse | null {
-    return this.currentUserSubject.value;
+    const user = this.currentUserSubject.value;
+    if (!user?.userId) {
+      console.warn('User ID is missing in user data');
+      return null;
+    }
+    return user;
   }
 
   /**
