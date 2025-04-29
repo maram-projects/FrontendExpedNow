@@ -28,8 +28,10 @@ export interface DeliveryRequest {
 export class DeliveryService {
   private apiUrl = `${environment.apiUrl}/api/deliveries`;
 
-  constructor(private http: HttpClient, private authService: AuthService) {}
-
+  constructor(
+    private http: HttpClient,
+    public authService: AuthService // Changed to public for component access
+  ) {}
 
   createDeliveryRequest(delivery: Omit<DeliveryRequest, 'id'>): Observable<DeliveryRequest> {
     const formattedDelivery = {
@@ -56,6 +58,50 @@ export class DeliveryService {
   debugDeliveryRequest(delivery: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/debug`, delivery, { headers: this.getAuthHeaders() });
   }
+
+  getAllDeliveries(): Observable<DeliveryRequest[]> {
+    console.log('Fetching all deliveries for debugging');
+    return this.http.get<DeliveryRequest[]>(
+      `${this.apiUrl}/all`, // Make sure this endpoint exists on your backend
+      { headers: this.getAuthHeaders() }
+    ).pipe(
+      tap(deliveries => console.log('All deliveries:', deliveries)),
+      catchError(error => {
+        console.error('Error fetching all deliveries:', error);
+        return throwError(() => new Error('Failed to fetch all deliveries'));
+      })
+    );
+  }
+
+  getPendingDeliveriesUnassigned(): Observable<DeliveryRequest[]> {
+    console.log('Fetching unassigned pending deliveries');
+    return this.http.get<DeliveryRequest[]>(
+      `${this.apiUrl}/pending-unassigned`, // Make sure this endpoint exists
+      { headers: this.getAuthHeaders() }
+    ).pipe(
+      tap(deliveries => console.log('Unassigned pending deliveries:', deliveries)),
+      catchError(error => {
+        console.error('Error fetching unassigned deliveries:', error);
+        return throwError(() => new Error('Failed to fetch unassigned deliveries'));
+      })
+    );
+  }
+
+  checkDeliveryPersonStatus(): Observable<any> {
+    const userId = this.authService.getCurrentUser()?.userId;
+    console.log('Checking delivery person status for user:', userId);
+    
+    return this.http.get<any>(
+      `${environment.apiUrl}/api/deliveriesperson/${userId}/status`,
+      { headers: this.getAuthHeaders() }
+    ).pipe(
+      tap(status => console.log('Delivery person status:', status)),
+      catchError(error => {
+        console.error('Error checking delivery person status:', error);
+        return throwError(() => new Error('Failed to check delivery person status'));
+      })
+    );
+  }  
 
   getClientDeliveries(clientId: string): Observable<DeliveryRequest[]> {
     return this.http.get<DeliveryRequest[]>(`${this.apiUrl}?clientId=${clientId}`, { headers: this.getAuthHeaders() })
@@ -100,8 +146,6 @@ export class DeliveryService {
       );
   }
 
-
-  
   updateLocation(latitude: number, longitude: number): Observable<any> {
     return this.http.post(
       `${environment.apiUrl}/api/deliveriesperson/location`,
@@ -122,9 +166,6 @@ export class DeliveryService {
     );
   }
 
- 
-   
-
   private handleError(error: any): Observable<never> {
     console.error('An error occurred:', error);
     if (error.status === 0) {
@@ -132,7 +173,7 @@ export class DeliveryService {
     } else if (error.status === 500) {
       return throwError(() => new Error('Server error - check backend logs'));
     }
-    return error.error?.message || 'Unknown error occurred';
+    return throwError(() => new Error(error.error?.message || 'Unknown error occurred'));
   }
 
   acceptDelivery(deliveryId: string): Observable<{ delivery: DeliveryRequest, mission: Mission }> {
@@ -142,7 +183,7 @@ export class DeliveryService {
         return throwError(() => new Error('User ID is missing!'));
     }
 
-    // تأكد من أن البيانات مرسلة كـ JSON
+    // Make sure data is sent as JSON
     const body = { deliveryPersonId: userId };
     console.log('Request body:', body);
 
@@ -151,7 +192,7 @@ export class DeliveryService {
         body,
         { 
             headers: this.getAuthHeaders(),
-            withCredentials: true // إذا كنت تستخدم cookies
+            withCredentials: true // If using cookies
         }
     ).pipe(
         catchError(error => {
@@ -160,7 +201,8 @@ export class DeliveryService {
                 (error.error?.message || error.message)));
         })
     );
-}
+  }
+
   rejectDelivery(deliveryId: string): Observable<void> {
     const userId = this.authService.getCurrentUser()?.userId;
     return this.http.post<void>(
@@ -195,19 +237,35 @@ export class DeliveryService {
   }
 
   getAssignedPendingDeliveries(): Observable<DeliveryRequest[]> {
+    const userId = this.authService.getCurrentUser()?.userId;
+    console.log('Fetching assigned pending deliveries for user:', userId);
+    
+    // You might need to include the userId as a query parameter if backend requires it
+    const url = `${this.apiUrl}/assigned-pending?userId=${userId}`;
+    console.log('Request URL:', url);
+    
     return this.http.get<DeliveryRequest[]>(
-      `${this.apiUrl}/assigned-pending`,
-      { headers: this.getAuthHeaders() }
+      url,
+      { 
+        headers: this.getAuthHeaders(),
+        observe: 'response' // Get full response with headers
+      }
     ).pipe(
-      tap(response => console.log('API Response:', response)),
+      tap(response => {
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
+        console.log('Raw response body:', response.body);
+      }),
+      map(response => response.body || []),
+      tap(deliveries => {
+        console.log('Assigned pending deliveries count:', deliveries.length);
+        console.log('Assigned pending deliveries:', deliveries);
+      }),
       catchError(error => {
-        console.error('Error:', error);
-        return throwError(() => error);
+        console.error('Error fetching assigned pending deliveries:', error);
+        console.error('Request URL was:', url);
+        return throwError(() => new Error('Failed to load assigned pending deliveries'));
       })
     );
   }
-}
-
-function DeliveryResponseDTO(String: StringConstructor, id: any, String1: StringConstructor, pickupAddress: any, String2: StringConstructor, deliveryAddress: any, String3: StringConstructor, packageDescription: any, double: any, packageWeight: any, String4: StringConstructor, vehicleId: any, Date: DateConstructor, scheduledDate: any, String5: StringConstructor, additionalInstructions: any, String6: StringConstructor, status: string, Date1: DateConstructor, createdAt: any, String7: StringConstructor, clientId: any) {
-  throw new Error('Function not implemented.');
 }
