@@ -1,0 +1,51 @@
+.account-card {
+    transition: all 0.3s ease;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    border: none;
+  }
+  
+  .account-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.12);
+  }
+  
+  .account-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: rgba(13, 110, 253, 0.1);
+    margin-bottom: 20px;
+  }
+  
+  .account-card .btn {
+    border-radius: 30px;
+    padding: 10px 25px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+  
+  .account-card .btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(13, 110, 253, 0.3);
+  }
+  
+  .account-card ul li {
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+  }
+  
+  .professional-note {
+    border-left: 4px solid #0d6efd;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 767px) {
+    .account-card {
+      margin-bottom: 30px;
+    }
+  }

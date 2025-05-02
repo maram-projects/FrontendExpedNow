@@ -5,20 +5,16 @@ import { MissionDetailsComponent } from '../mission/mission-details/mission-deta
 
 export const DELIVERY_ROUTES: Routes = [
   { 
-    path: '', 
-    redirectTo: 'dashboard', 
-    pathMatch: 'full' 
-  },
-  {
     path: 'dashboard',
     component: DeliveryDashboardComponent
   },
-  {
+  { 
     path: 'missions',
-    component: MissionDashboardComponent
+    children: [
+      { path: '', component: MissionDashboardComponent },
+      { path: ':id', component: MissionDetailsComponent }
+    ]
   },
-  {
-    path: 'missions/:id',
-    component: MissionDetailsComponent
-  }
+  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+  { path: '**', redirectTo: 'dashboard' }
 ];

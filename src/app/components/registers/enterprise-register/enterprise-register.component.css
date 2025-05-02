@@ -1,0 +1,587 @@
+/* Modern Registration Form Styling with Animations - Business Version */
+
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* Global Styles */
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: #f0f4f8;
+  color: #334155;
+}
+
+.container {
+  padding-top: 2rem;
+  padding-bottom: 4rem;
+}
+
+/* Card Styling with Animation */
+.card {
+  border: none;
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  margin-bottom: 2rem;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+}
+
+.card-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background: linear-gradient(to right, #ffffff, #f8fafc);
+}
+
+.card-body {
+  padding: 2rem;
+}
+
+/* Section Title Styling */
+.section-title {
+  margin-bottom: 1.5rem;
+  position: relative;
+  animation: fadeInRight 0.6s ease forwards;
+}
+
+.section-icon {
+  font-size: 1.6rem;
+  color: #3b82f6;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(59, 130, 246, 0.1);
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.section-title:hover .section-icon {
+  transform: rotate(15deg) scale(1.1);
+  background: rgba(59, 130, 246, 0.15);
+}
+
+/* Form Controls */
+.form-label {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: #475569;
+  transition: color 0.3s ease;
+  display: block;
+}
+
+.form-control, .input-group-text, .form-select {
+  font-size: 0.95rem;
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  transition: all 0.3s ease;
+  background-color: #ffffff;
+}
+
+.form-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%233b82f6' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 16px 12px;
+  appearance: none;
+}
+
+.form-control:focus, .form-select:focus {
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+  border-color: #3b82f6;
+}
+
+.input-group .form-control {
+  border-left: none;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.input-group-text {
+  background-color: #f8fafc;
+  color: #64748b;
+  border-right: none;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.input-group .btn {
+  border-color: #e2e8f0;
+  border-radius: 0 10px 10px 0;
+}
+
+textarea.form-control {
+  resize: none;
+}
+
+/* Form Field Animation */
+.form-control, .form-select {
+  transform-origin: left top;
+  animation: formFieldAppear 0.5s ease forwards;
+  opacity: 0;
+}
+
+@keyframes formFieldAppear {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Staggered animation for form fields - Left column */
+.col-md-6:first-child .mb-3:nth-child(2) .form-control { animation-delay: 0.1s; }
+.col-md-6:first-child .mb-3:nth-child(3) .form-control { animation-delay: 0.2s; }
+.col-md-6:first-child .mb-3:nth-child(4) .form-control { animation-delay: 0.3s; }
+.col-md-6:first-child .mb-3:nth-child(5) .form-control { animation-delay: 0.4s; }
+.col-md-6:first-child .mb-3:nth-child(6) .form-control { animation-delay: 0.5s; }
+
+/* Staggered animation for form fields - Right column */
+.col-md-6:last-child .mb-3:nth-child(2) .form-control, 
+.col-md-6:last-child .mb-3:nth-child(2) .form-select { animation-delay: 0.15s; }
+.col-md-6:last-child .mb-3:nth-child(3) .form-control, 
+.col-md-6:last-child .mb-3:nth-child(3) .form-select { animation-delay: 0.25s; }
+.col-md-6:last-child .mb-3:nth-child(4) .form-control { animation-delay: 0.35s; }
+.col-md-6:last-child .mb-3:nth-child(5) .form-control { animation-delay: 0.45s; }
+.col-md-6:last-child .mb-3:nth-child(6) .form-control { animation-delay: 0.55s; }
+
+/* Columns Animation */
+.col-md-6:first-child {
+  animation: fadeInLeft 0.6s ease forwards;
+}
+
+.col-md-6:last-child {
+  animation: fadeInRight 0.6s ease forwards;
+  animation-delay: 0.2s;
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Button Styling */
+.btn-primary, .btn-inscription {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border: none;
+  font-weight: 500;
+  padding: 0.8rem 1.5rem;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-inscription {
+  width: 100%;
+  margin-top: 1.5rem;
+  font-size: 1.1rem;
+  padding: 1rem 2rem;
+  position: relative;
+  z-index: 1;
+  animation: fadeInUp 0.8s ease forwards;
+  animation-delay: 0.7s;
+  opacity: 0;
+}
+
+.btn-primary:hover, .btn-inscription:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 15px rgba(59, 130, 246, 0.4);
+}
+
+.btn-primary:active, .btn-inscription:active {
+  transform: translateY(0);
+}
+
+/* Button Click Animation */
+.btn-primary::after, .btn-inscription::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  border-radius: 100%;
+  transform: scale(1, 1) translate(-50%, -50%);
+  transform-origin: 50% 50%;
+}
+
+.btn-primary:focus:not(:active)::after, .btn-inscription:focus:not(:active)::after {
+  animation: ripple 1s ease-out;
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0, 0);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(20, 20);
+    opacity: 0;
+  }
+}
+
+/* Form Check Animation */
+.form-check {
+  animation: fadeInUp 0.5s ease forwards;
+  animation-delay: 0.7s;
+  opacity: 0;
+}
+
+.form-check-input {
+  width: 18px;
+  height: 18px;
+  margin-top: 0.2rem;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  border: 1.5px solid #cbd5e1;
+}
+
+.form-check-input:checked {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+  animation: checkPulse 0.5s;
+}
+
+@keyframes checkPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Links styling */
+a {
+  text-decoration: none;
+  font-weight: 500;
+  color: #3b82f6;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+a::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -2px;
+  left: 0;
+  background-color: #3b82f6;
+  transition: width 0.3s ease;
+}
+
+a:hover::after {
+  width: 100%;
+}
+
+/* Back Button Animation */
+.btn-outline-secondary {
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  border-color: #e2e8f0;
+}
+
+.btn-outline-secondary:hover {
+  background-color: #f8fafc;
+  transform: translateX(-3px);
+}
+
+/* Error Messages Animation */
+.invalid-feedback, .alert-danger {
+  opacity: 0;
+  animation: fadeIn 0.3s ease forwards;
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: #ef4444;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading Animation for Button */
+.spinner-border {
+  animation: spin 1s linear infinite;
+  margin-right: 0.5rem;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Fade In Up Animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Terms Section */
+.terms-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+  animation: fadeIn 0.8s ease forwards;
+  animation-delay: 0.6s;
+  opacity: 0;
+}
+
+/* Fade In Animation for Card */
+.card {
+  animation: fadeIn 0.8s ease forwards;
+}
+
+/* Modified is-invalid styling */
+.form-control.is-invalid, .form-select.is-invalid {
+  border-color: #ef4444;
+  background-image: none;
+}
+
+.form-control.is-invalid:focus, .form-select.is-invalid:focus {
+  box-shadow: 0 0 0 0.25rem rgba(239, 68, 68, 0.25);
+}
+
+/* Success state styling */
+.form-control.is-valid {
+  border-color: #10b981;
+  background-image: none;
+}
+
+.form-control.is-valid:focus {
+  box-shadow: 0 0 0 0.25rem rgba(16, 185, 129, 0.25);
+}
+
+/* Field Focus Label Animation */
+.form-label {
+  position: relative;
+}
+
+.form-control:focus + .form-label,
+.form-control:not(:placeholder-shown) + .form-label {
+  color: #3b82f6;
+}
+
+/* Information Icon with Tooltip */
+.info-icon {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: #e2e8f0;
+  color: #64748b;
+  text-align: center;
+  line-height: 18px;
+  font-size: 12px;
+  margin-left: 0.5rem;
+  cursor: help;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.info-icon:hover {
+  background-color: #3b82f6;
+  color: #ffffff;
+}
+
+/* Media Queries for Responsiveness */
+@media (max-width: 768px) {
+  .card-body {
+    padding: 1.5rem;
+  }
+  
+  .section-icon {
+    font-size: 1.2rem;
+    width: 35px;
+    height: 35px;
+  }
+  
+  .col-md-6:first-child,
+  .col-md-6:last-child {
+    animation: fadeIn 0.6s ease forwards;
+  }
+  
+  .btn-inscription {
+    padding: 0.8rem 1.2rem;
+  }
+}
+
+/* Terms & Conditions Section */
+.terms-container {
+  margin-top: 2rem;
+  text-align: center;
+  animation: fadeInUp 0.5s ease forwards;
+  animation-delay: 0.8s;
+  opacity: 0;
+}
+
+.form-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+/* Final Section with Submit Button */
+.submit-section {
+  margin-top: 2rem;
+  animation: fadeInUp 0.5s ease forwards;
+  animation-delay: 0.9s;
+  opacity: 0;
+}
+
+/* Dark Mode Support (Optional) */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #0f172a;
+    color: #f1f5f9;
+  }
+  
+  .card {
+    background-color: #1e293b;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  }
+  
+  .card-header {
+    background: linear-gradient(to right, #1e293b, #0f172a) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  .form-control, .form-select, .input-group-text {
+    background-color: #0f172a;
+    border-color: #334155;
+    color: #f1f5f9;
+  }
+  
+  .input-group-text {
+    background-color: #1e293b;
+  }
+  
+  .form-check-label, .form-label {
+    color: #e2e8f0;
+  }
+  
+  .text-muted {
+    color: #94a3b8 !important;
+  }
+  
+  .form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+  }
+  
+  .btn-outline-secondary {
+    color: #e2e8f0;
+    border-color: #475569;
+  }
+  
+  .btn-outline-secondary:hover {
+    background-color: #334155;
+  }
+  
+  .terms-section {
+    border-top-color: #334155;
+  }
+}
+
+/* Inscription Button Animation */
+.btn-inscription {
+  overflow: hidden;
+}
+
+.btn-inscription::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.7s;
+  z-index: -1;
+}
+
+.btn-inscription:hover::before {
+  left: 100%;
+  transition: left 0.7s;
+}
+
+/* Success Alert Styling */
+.alert-success {
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  animation: fadeIn 0.5s ease forwards;
+}
+
+.alert-success i {
+  font-size: 1.5rem;
+  margin-right: 0.75rem;
+}

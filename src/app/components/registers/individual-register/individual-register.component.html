@@ -1,0 +1,197 @@
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card shadow-sm">
+        <div class="card-header bg-white">
+          <div class="d-flex align-items-center">
+            <a routerLink="/register" class="btn btn-sm btn-outline-secondary me-3">
+              <i class="fas fa-arrow-left"></i>
+            </a>
+            <h2 class="mb-0">Inscription Client Particulier</h2>
+          </div>
+        </div>
+        <div class="card-body">
+          <form [formGroup]="individualForm" (ngSubmit)="onSubmit()">
+            <!-- Personal Information Section -->
+            <div class="section-title d-flex align-items-center mb-4">
+              <div class="section-icon me-3">
+                <i class="fas fa-user-circle text-primary"></i>
+              </div>
+              <h3 class="h5 mb-0">Informations personnelles</h3>
+            </div>
+            
+            <!-- Name Row -->
+            <div class="row mb-3">
+              <!-- First Name -->
+              <div class="col-md-6 mb-3 mb-md-0">
+                <label for="firstName" class="form-label">Prénom</label>
+                <input 
+                  type="text" 
+                  id="firstName"
+                  formControlName="firstName" 
+                  class="form-control"
+                  [class.is-invalid]="submitted && f['firstName'].errors"
+                >
+                <div class="invalid-feedback" *ngIf="submitted && f['firstName'].errors">
+                  <span *ngIf="f['firstName'].errors['required']">Le prénom est requis</span>
+                </div>
+              </div>
+              
+              <!-- Last Name -->
+              <div class="col-md-6">
+                <label for="lastName" class="form-label">Nom</label>
+                <input 
+                  type="text" 
+                  id="lastName"
+                  formControlName="lastName" 
+                  class="form-control"
+                  [class.is-invalid]="submitted && f['lastName'].errors"
+                >
+                <div class="invalid-feedback" *ngIf="submitted && f['lastName'].errors">
+                  <span *ngIf="f['lastName'].errors['required']">Le nom est requis</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Email -->
+            <div class="mb-3">
+              <label for="email" class="form-label">Email</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                <input 
+                  type="email" 
+                  id="email"
+                  formControlName="email" 
+                  class="form-control"
+                  [class.is-invalid]="submitted && f['email'].errors"
+                >
+                <div class="invalid-feedback" *ngIf="submitted && f['email'].errors">
+                  <span *ngIf="f['email'].errors['required']">L'email est requis</span>
+                  <span *ngIf="f['email'].errors['email']">Veuillez entrer un email valide</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Password -->
+            <div class="mb-3">
+              <label for="password" class="form-label">Mot de passe</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                <input 
+                  [type]="showPassword ? 'text' : 'password'" 
+                  id="password"
+                  formControlName="password" 
+                  class="form-control"
+                  [class.is-invalid]="submitted && f['password'].errors"
+                >
+                <button 
+                  type="button" 
+                  class="btn btn-outline-secondary"
+                  (click)="togglePasswordVisibility()"
+                >
+                  <i [class]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                </button>
+                <div class="invalid-feedback" *ngIf="submitted && f['password'].errors">
+                  <span *ngIf="f['password'].errors['required']">Le mot de passe est requis</span>
+                  <span *ngIf="f['password'].errors['minlength']">Le mot de passe doit contenir au moins 6 caractères</span>
+                </div>
+              </div>
+              <small class="form-text text-muted mt-1">
+                Le mot de passe doit contenir au moins 6 caractères
+              </small>
+            </div>
+
+            <!-- Contact Information Section -->
+            <div class="section-title d-flex align-items-center mb-4 mt-5">
+              <div class="section-icon me-3">
+                <i class="fas fa-address-card text-primary"></i>
+              </div>
+              <h3 class="h5 mb-0">Coordonnées</h3>
+            </div>
+            
+            <!-- Phone -->
+            <div class="mb-3">
+              <label for="phone" class="form-label">Téléphone</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                <input 
+                  type="tel" 
+                  id="phone"
+                  formControlName="phone" 
+                  class="form-control"
+                  placeholder="+216 XX XXX XXX"
+                  [class.is-invalid]="submitted && f['phone'].errors"
+                >
+                <div class="invalid-feedback" *ngIf="submitted && f['phone'].errors">
+                  <span *ngIf="f['phone'].errors['required']">Le numéro de téléphone est requis</span>
+                  <span *ngIf="f['phone'].errors['pattern']">Format de téléphone invalide</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Address -->
+            <div class="mb-4">
+              <label for="address" class="form-label">Adresse</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
+                <input 
+                  type="text" 
+                  id="address"
+                  formControlName="address" 
+                  class="form-control"
+                  [class.is-invalid]="submitted && f['address'].errors"
+                >
+                <div class="invalid-feedback" *ngIf="submitted && f['address'].errors">
+                  <span *ngIf="f['address'].errors['required']">L'adresse est requise</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Terms and Conditions -->
+            <div class="mb-3">
+              <div class="form-check">
+                <input 
+                  class="form-check-input" 
+                  type="checkbox" 
+                  id="termsCheck" 
+                  formControlName="termsAccepted"
+                  [class.is-invalid]="submitted && f['termsAccepted'].errors"
+                >
+                <label class="form-check-label" for="termsCheck">
+                  J'accepte les <a href="#" class="text-primary">conditions d'utilisation</a> et la <a href="#" class="text-primary">politique de confidentialité</a>
+                </label>
+                <div class="invalid-feedback" *ngIf="submitted && f['termsAccepted'].errors">
+                  <span *ngIf="f['termsAccepted'].errors['required']">Vous devez accepter les conditions pour continuer</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Error Message -->
+            <div class="alert alert-danger" *ngIf="error">
+              <i class="fas fa-exclamation-circle me-2"></i>
+              {{error}}
+            </div>
+
+            <!-- Submit Button -->
+            <div class="d-grid gap-2">
+              <button 
+                type="submit" 
+                class="btn btn-primary btn-lg"
+                [disabled]="loading"
+              >
+                <span *ngIf="loading" class="spinner-border spinner-border-sm me-2" role="status">
+                  <span class="visually-hidden">Chargement...</span>
+                </span>
+                {{loading ? 'Inscription en cours...' : 'Finaliser l\'inscription'}}
+              </button>
+              
+              <p class="text-center mt-3">
+                Vous avez déjà un compte ? <a routerLink="/login" class="text-primary fw-bold">Connectez-vous</a>
+              </p>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -110,7 +110,7 @@
             <!-- Vehicle Type - only shown for temporary users -->
             <div class="mb-3" *ngIf="registerForm.get('userType')?.value === 'temporary'">
               <label class="form-label">Authorized Vehicle Type</label>
-              <select class="form-control" formControlName="authorizedVehicleType">
+              <select formControlName="vehicleType">
                 <option *ngFor="let type of vehicleTypes" [value]="type.value">{{type.display}}</option>
               </select>
             </div>

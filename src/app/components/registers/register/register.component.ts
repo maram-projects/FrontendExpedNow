@@ -1,37 +1,35 @@
-import { Component, OnInit } from '@angular/core';
+// components/register/register.component.ts
+import { Component } from '@angular/core';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import { User, USER_TYPES, VEHICLE_TYPES } from '../../../models/user.model';
+import { AuthService } from '../../../services/auth.service';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
-import { AuthService } from '../../services/auth.service';
-import { User } from '../../models/user.model';
 
 @Component({
   selector: 'app-register',
   templateUrl: './register.component.html',
   styleUrls: ['./register.component.css'],
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    RouterLink
+  ]
 })
-export class RegisterComponent implements OnInit {
+export class RegisterComponent {
   registerForm: FormGroup;
   error: string = '';
   loading: boolean = false;
-
-  userTypes = ['individual', 'enterprise', 'temporary'];
-  
-  // Updated to match Java enum values
-  vehicleTypes = [
-    { value: 'MOTORCYCLE', display: 'Moto' },
-    { value: 'CAR', display: 'Voiture' },
-    { value: 'TRUCK', display: 'Camion' }
-  ];
+  userTypes = [USER_TYPES.INDIVIDUAL, USER_TYPES.ENTERPRISE, USER_TYPES.TEMPORARY];
+  vehicleTypes = VEHICLE_TYPES;
 
   constructor(
-    private formBuilder: FormBuilder,
+    private fb: FormBuilder,
     private authService: AuthService,
     private router: Router
   ) {
-    this.registerForm = this.formBuilder.group({
+    this.registerForm = this.fb.group({
       firstName: ['', [Validators.required]],
       lastName: ['', [Validators.required]],
       email: ['', [Validators.required, Validators.email]],
@@ -39,21 +37,14 @@ export class RegisterComponent implements OnInit {
       phone: ['', [Validators.required]],
       address: ['', [Validators.required]],
       userType: ['individual', [Validators.required]],
-      authorizedVehicleType: [''] // optional
+      vehicleType: ['']
     });
-  }
 
-  ngOnInit(): void {
-    // Removed 'professional' from public registration options
-    // Only admins can add professional users through admin panel
-    
-    // Update vehicleType validation based on user type selection
     this.registerForm.get('userType')?.valueChanges.subscribe(userType => {
-      const vehicleTypeControl = this.registerForm.get('authorizedVehicleType');
+      const vehicleTypeControl = this.registerForm.get('vehicleType');
       
-      if (userType === 'temporary') {
+      if (userType === USER_TYPES.TEMPORARY) {
         vehicleTypeControl?.setValidators([Validators.required]);
-        // Set default value for temporary delivery persons
         vehicleTypeControl?.setValue('MOTORCYCLE');
       } else {
         vehicleTypeControl?.clearValidators();
@@ -67,18 +58,17 @@ export class RegisterComponent implements OnInit {
   onSubmit(): void {
     this.error = '';
     this.loading = true;
-  
+    
     if (this.registerForm.valid) {
       const formData = this.registerForm.value;
       const userType = formData.userType;
-  
-      // Extra safety check to prevent professional delivery registration
+      
       if (userType === 'professional') {
         this.loading = false;
         this.error = 'Seul l\'administrateur peut ajouter un livreur professionnel.';
         return;
       }
-  
+      
       const userData: User = {
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -86,13 +76,12 @@ export class RegisterComponent implements OnInit {
         password: formData.password,
         phone: formData.phone,
         address: formData.address,
-        vehicleType: formData.authorizedVehicleType || null, // This will now be one of the enum values
+        vehicleType: formData.vehicleType || null
       };
-  
+      
       this.authService.register(userData, userType).subscribe({
         next: () => {
-          this.loading = false;
-          this.router.navigate(['/login']);
+          this.handleRegistrationSuccess(userType);
         },
         error: (err) => {
           this.loading = false;
@@ -103,5 +92,23 @@ export class RegisterComponent implements OnInit {
       this.loading = false;
       this.error = 'Please fill all required fields correctly.';
     }
+  }
+
+  private handleRegistrationSuccess(userType: string): void {
+    this.loading = false;
+    
+    const messages = {
+      [USER_TYPES.INDIVIDUAL]: 'Votre compte client particulier a été créé avec succès!',
+      [USER_TYPES.ENTERPRISE]: 'Votre compte entreprise a été créé avec succès!',
+      [USER_TYPES.TEMPORARY]: 'Votre compte livreur temporaire a été créé! Un administrateur validera votre compte sous 24h.'
+    };
+
+    this.router.navigate(['/login'], { 
+      state: {
+        registrationSuccess: true,
+        message: messages[userType as keyof typeof messages] || 'Inscription réussie!'
+      },
+      queryParams: { registered: userType }
+    });
   }
 }

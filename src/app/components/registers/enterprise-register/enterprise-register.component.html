@@ -1,0 +1,300 @@
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-10">
+      <div class="card shadow-sm">
+        <div class="card-header bg-white">
+          <div class="d-flex align-items-center">
+            <a routerLink="/register" class="btn btn-sm btn-outline-secondary me-3">
+              <i class="fas fa-arrow-left"></i>
+            </a>
+            <h2 class="mb-0">Inscription Client Entreprise</h2>
+          </div>
+        </div>
+        <div class="card-body">
+          <form [formGroup]="enterpriseForm" (ngSubmit)="onSubmit()">
+            <div class="row">
+              <!-- Personal Information Section -->
+              <div class="col-md-6">
+                <div class="section-title d-flex align-items-center mb-4">
+                  <div class="section-icon me-3">
+                    <i class="fas fa-user-circle text-primary"></i>
+                  </div>
+                  <h3 class="h5 mb-0">Contact Principal</h3>
+                </div>
+                
+                <!-- First Name -->
+                <div class="mb-3">
+                  <label for="firstName" class="form-label">Prénom</label>
+                  <input 
+                    type="text" 
+                    id="firstName"
+                    formControlName="firstName" 
+                    class="form-control"
+                    [class.is-invalid]="submitted && f['firstName'].errors"
+                  >
+                  <div class="invalid-feedback" *ngIf="submitted && f['firstName'].errors">
+                    <span *ngIf="f['firstName'].errors['required']">Le prénom est requis</span>
+                  </div>
+                </div>
+                
+                <!-- Last Name -->
+                <div class="mb-3">
+                  <label for="lastName" class="form-label">Nom</label>
+                  <input 
+                    type="text" 
+                    id="lastName"
+                    formControlName="lastName" 
+                    class="form-control"
+                    [class.is-invalid]="submitted && f['lastName'].errors"
+                  >
+                  <div class="invalid-feedback" *ngIf="submitted && f['lastName'].errors">
+                    <span *ngIf="f['lastName'].errors['required']">Le nom est requis</span>
+                  </div>
+                </div>
+                
+                <!-- Email -->
+                <div class="mb-3">
+                  <label for="email" class="form-label">Email Professionnel</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                    <input 
+                      type="email" 
+                      id="email"
+                      formControlName="email" 
+                      class="form-control"
+                      [class.is-invalid]="submitted && f['email'].errors"
+                    >
+                    <div class="invalid-feedback" *ngIf="submitted && f['email'].errors">
+                      <span *ngIf="f['email'].errors['required']">L'email est requis</span>
+                      <span *ngIf="f['email'].errors['email']">Veuillez entrer un email valide</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Password -->
+                <div class="mb-3">
+                  <label for="password" class="form-label">Mot de passe</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                    <input 
+                      [type]="showPassword ? 'text' : 'password'" 
+                      id="password"
+                      formControlName="password" 
+                      class="form-control"
+                      [class.is-invalid]="submitted && f['password'].errors"
+                    >
+                    <button 
+                      type="button" 
+                      class="btn btn-outline-secondary"
+                      (click)="togglePasswordVisibility()"
+                    >
+                      <i [class]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                    </button>
+                    <div class="invalid-feedback" *ngIf="submitted && f['password'].errors">
+                      <span *ngIf="f['password'].errors['required']">Le mot de passe est requis</span>
+                      <span *ngIf="f['password'].errors['minlength']">Le mot de passe doit contenir au moins 6 caractères</span>
+                    </div>
+                  </div>
+                  <small class="form-text text-muted mt-1">
+                    Le mot de passe doit contenir au moins 6 caractères
+                  </small>
+                </div>
+                
+                <!-- Phone -->
+                <div class="mb-3">
+                  <label for="phone" class="form-label">Téléphone du Contact</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                    <input 
+                      type="tel" 
+                      id="phone"
+                      formControlName="phone" 
+                      class="form-control"
+                      placeholder="+216 XX XXX XXX"
+                      [class.is-invalid]="submitted && f['phone'].errors"
+                    >
+                    <div class="invalid-feedback" *ngIf="submitted && f['phone'].errors">
+                      <span *ngIf="f['phone'].errors['required']">Le numéro de téléphone est requis</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Address -->
+                <div class="mb-3">
+                  <label for="address" class="form-label">Adresse Personnelle</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
+                    <input 
+                      type="text" 
+                      id="address"
+                      formControlName="address" 
+                      class="form-control"
+                      [class.is-invalid]="submitted && f['address'].errors"
+                    >
+                    <div class="invalid-feedback" *ngIf="submitted && f['address'].errors">
+                      <span *ngIf="f['address'].errors['required']">L'adresse personnelle est requise</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Business Information Section -->
+              <div class="col-md-6">
+                <div class="section-title d-flex align-items-center mb-4">
+                  <div class="section-icon me-3">
+                    <i class="fas fa-building text-primary"></i>
+                  </div>
+                  <h3 class="h5 mb-0">Informations de l'Entreprise</h3>
+                </div>
+                
+                <!-- Company Name -->
+                <div class="mb-3">
+                  <label for="companyName" class="form-label">Nom de l'Entreprise</label>
+                  <input 
+                    type="text" 
+                    id="companyName"
+                    formControlName="companyName" 
+                    class="form-control"
+                    [class.is-invalid]="submitted && f['companyName'].errors"
+                  >
+                  <div class="invalid-feedback" *ngIf="submitted && f['companyName'].errors">
+                    <span *ngIf="f['companyName'].errors['required']">Le nom de l'entreprise est requis</span>
+                  </div>
+                </div>
+                
+                <!-- Business Type -->
+                <div class="mb-3">
+                  <label for="businessType" class="form-label">Type d'Entreprise</label>
+                  <select 
+                    id="businessType"
+                    formControlName="businessType" 
+                    class="form-select"
+                    [class.is-invalid]="submitted && f['businessType'].errors"
+                  >
+                    <option value="" disabled selected>Sélectionnez un type</option>
+                    <option *ngFor="let type of businessTypes" [value]="type.value">{{type.display}}</option>
+                  </select>
+                  <div class="invalid-feedback" *ngIf="submitted && f['businessType'].errors">
+                    <span *ngIf="f['businessType'].errors['required']">Le type d'entreprise est requis</span>
+                  </div>
+                </div>
+                
+                <!-- VAT Number -->
+                <div class="mb-3">
+                  <label for="vatNumber" class="form-label">Numéro TVA</label>
+                  <input 
+                    type="text" 
+                    id="vatNumber"
+                    formControlName="vatNumber" 
+                    class="form-control"
+                    placeholder="Ex: TN12345678"
+                    [class.is-invalid]="submitted && f['vatNumber'].errors"
+                  >
+                  <div class="invalid-feedback" *ngIf="submitted && f['vatNumber'].errors">
+                    <span *ngIf="f['vatNumber'].errors['required']">Le numéro TVA est requis</span>
+                    <span *ngIf="f['vatNumber'].errors['pattern']">Format TVA invalide</span>
+                  </div>
+                </div>
+                
+                <!-- Business Phone -->
+                <div class="mb-3">
+                  <label for="businessPhone" class="form-label">Téléphone de l'Entreprise</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                    <input 
+                      type="tel" 
+                      id="businessPhone"
+                      formControlName="businessPhone" 
+                      class="form-control"
+                      placeholder="+216 XX XXX XXX"
+                      [class.is-invalid]="submitted && f['businessPhone'].errors"
+                    >
+                    <div class="invalid-feedback" *ngIf="submitted && f['businessPhone'].errors">
+                      <span *ngIf="f['businessPhone'].errors['required']">Le téléphone de l'entreprise est requis</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Business Address -->
+                <div class="mb-3">
+                  <label for="businessAddress" class="form-label">Adresse de l'Entreprise</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
+                    <textarea
+                      id="businessAddress"
+                      formControlName="businessAddress" 
+                      class="form-control"
+                      rows="2"
+                      [class.is-invalid]="submitted && f['businessAddress'].errors"
+                    ></textarea>
+                    <div class="invalid-feedback" *ngIf="submitted && f['businessAddress'].errors">
+                      <span *ngIf="f['businessAddress'].errors['required']">L'adresse de l'entreprise est requise</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Delivery Radius -->
+                <div class="mb-3">
+                  <label for="deliveryRadius" class="form-label">Rayon de Livraison (km)</label>
+                  <input 
+                    type="number" 
+                    id="deliveryRadius"
+                    formControlName="deliveryRadius" 
+                    class="form-control"
+                    step="0.1"
+                    [class.is-invalid]="submitted && f['deliveryRadius'].errors"
+                  >
+                  <div class="invalid-feedback" *ngIf="submitted && f['deliveryRadius'].errors">
+                    <span *ngIf="f['deliveryRadius'].errors['required']">Le rayon de livraison est requis</span>
+                    <span *ngIf="f['deliveryRadius'].errors['min']">Le rayon doit être positif</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Terms and Conditions -->
+            <div class="mb-3">
+              <div class="form-check">
+                <input 
+                  class="form-check-input" 
+                  type="checkbox" 
+                  id="termsCheck" 
+                  formControlName="termsAccepted"
+                  [class.is-invalid]="submitted && f['termsAccepted'].errors"
+                >
+                <label class="form-check-label" for="termsCheck">
+                  J'accepte les <a href="#" class="text-primary">conditions d'utilisation</a> et la <a href="#" class="text-primary">politique de confidentialité</a>
+                </label>
+                <div class="invalid-feedback" *ngIf="submitted && f['termsAccepted'].errors">
+                  <span *ngIf="f['termsAccepted'].errors['required']">Vous devez accepter les conditions pour continuer</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Error Message -->
+            <div class="alert alert-danger" *ngIf="error">
+              <i class="fas fa-exclamation-circle me-2"></i>
+              {{error}}
+            </div>
+
+            <!-- Submit Button -->
+            <div class="d-grid gap-2">
+              <button 
+                type="submit" 
+                class="btn btn-primary btn-lg"
+                [disabled]="loading"
+              >
+                <span *ngIf="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
+                {{loading ? 'Inscription en cours...' : 'S\'inscrire'}}
+              </button>
+              
+              <p class="text-center mt-3">
+                Vous avez déjà un compte ? <a routerLink="/login" class="text-primary fw-bold">Connectez-vous</a>
+              </p>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

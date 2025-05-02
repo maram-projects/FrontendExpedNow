@@ -1,7 +1,6 @@
 import { Routes } from '@angular/router';
-import { RegisterComponent } from './components/register/register.component';
+import { RegisterLandingComponent } from './components/registers/register-landing/register-landing.component';
 import { LoginComponent } from './components/login/login.component';
-import { AdminDashboardComponentComponent } from './components/admin-dashboard/admin-dashboard-component/admin-dashboard-component.component';
 import { AdminLayoutComponent } from './components/admin-dashboard/admin-layout/admin-layout.component';
 import { adminGuard } from './guards/admin.guard';
 import { authGuard } from './guards/auth.guard';
@@ -12,49 +11,32 @@ import { VehicleFormComponent } from './components/admin-dashboard/vehicle-form/
 import { UserManagementComponent } from './components/admin-dashboard/user-management/user-management.component';
 import { RoleManagementComponent } from './components/admin-dashboard/role-management/role-management.component';
 import { SettingsComponent } from './components/admin-dashboard/settings/settings.component';
-
+import { IndividualRegisterComponent } from './components/registers/individual-register/individual-register.component';
+import { EnterpriseRegisterComponent } from './components/registers/enterprise-register/enterprise-register.component';
+import { TemporaryRegisterComponent } from './components/registers/temporary-register/temporary-register.component';
+import { HomeComponent } from './components/home/home/home.component';
+import { homeGuard } from './guards/home.guard';
+import { AdminDashboardComponentComponent } from './components/admin-dashboard/admin-dashboard-component/admin-dashboard-component.component';
+import { ReactiveFormsModule } from '@angular/forms'; 
 export const routes: Routes = [
-  { path: 'register', component: RegisterComponent },
-  { path: 'login', component: LoginComponent },
-  
-  // Admin routes
+  // Public routes
   {
-    path: 'admin',
-    canActivate: [authGuard, adminGuard], // Ensure only admins can access
-    component: AdminLayoutComponent, // Use AdminLayoutComponent as the parent container
+    path: '',
+    component: HomeComponent,
+    canActivate: [homeGuard]
+  },
+  {
+    path: 'register',
+    component: RegisterLandingComponent,
     children: [
-      {
-        path: 'dashboard',
-        component: AdminDashboardComponentComponent
-      },
-      {
-        path: 'users',
-        component: UserManagementComponent 
-      },
-      {
-        path: 'roles',
-        component: RoleManagementComponent
-      },
-      {
-        path: 'settings',
-        component: SettingsComponent
-      },
-      {
-        path: 'vehicles',
-        component: VehicleListComponent
-      },
-      {
-        path: 'vehicles/new',
-        component: VehicleFormComponent
-      },
-      {
-        path: 'vehicles/:id/edit',
-        component: VehicleFormComponent
-      },
-      { path: '', redirectTo: 'dashboard', pathMatch: 'full' } // Redirect empty admin path to dashboard
+      { path: 'individual', component: IndividualRegisterComponent },
+      { path: 'enterprise', component: EnterpriseRegisterComponent },
+      { path: 'temporary', component: TemporaryRegisterComponent },
+      { path: '', redirectTo: 'individual', pathMatch: 'full' }
     ]
   },
-  
+  { path: 'login', component: LoginComponent },
+
   // Client routes
   {
     path: 'client',
@@ -62,31 +44,44 @@ export const routes: Routes = [
     data: { role: 'client' },
     loadChildren: () => import('./components/client/client.routes').then(m => m.CLIENT_ROUTES)
   },
-  
-  
+
   // Delivery routes
   {
     path: 'delivery',
     canActivate: [authGuard, roleGuard],
-    data: { role: 'delivery' }, // Ensure only delivery users can access
+    data: { role: 'delivery' },
     loadChildren: () => import('./components/delivery/delivery-dashboard/delivery.routes').then(m => m.DELIVERY_ROUTES)
   },
- 
+
+  // Admin routes
+  {
+    path: 'admin',
+    canActivate: [authGuard, adminGuard],
+    component: AdminLayoutComponent,
+    children: [
+      { path: 'dashboard', component: AdminDashboardComponentComponent },
+      { path: 'users', component: UserManagementComponent },
+      { path: 'roles', component: RoleManagementComponent },
+      { path: 'settings', component: SettingsComponent },
+      { path: 'vehicles', component: VehicleListComponent },
+      { path: 'vehicles/new', component: VehicleFormComponent },
+      { path: 'vehicles/:id/edit', component: VehicleFormComponent },
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
+    ]
+  },
 
   // Profile routes
   {
     path: 'profile',
-    canActivate: [authGuard], // Ensure only authenticated users can access
+    canActivate: [authGuard],
     children: [
-      {
-        path: 'edit',
-        component: EditProfileComponent // Add the EditProfileComponent route
-      },
-      { path: '', redirectTo: 'edit', pathMatch: 'full' } // Redirect empty profile path to edit profile
+      { path: 'edit', component: EditProfileComponent },
+      { path: '', redirectTo: 'edit', pathMatch: 'full' }
     ]
   },
-  
-  // Default routes
-  { path: '', redirectTo: '/login', pathMatch: 'full' }, // Redirect to login by default
-  { path: '**', redirectTo: '/login' } // Redirect to login for unknown routes
+
+  // Redirects
+  { path: 'home', redirectTo: '', pathMatch: 'full' },
+  { path: '', redirectTo: '', pathMatch: 'full' },
+  { path: '**', redirectTo: '' }
 ];

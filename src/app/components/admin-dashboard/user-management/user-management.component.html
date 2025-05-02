@@ -38,6 +38,7 @@
           <th>Phone</th>
           <th>Roles</th>
           <th>Registration Date</th>
+          <th>Vehicle Status</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -52,12 +53,26 @@
             </span>
           </td>
           <td class="user-date">{{user.dateOfRegistration | date}}</td>
+          <td class="vehicle-status">
+            <span *ngIf="hasAssignedVehicle(user)" class="status-badge has-vehicle">
+              <i class="fas fa-car"></i> Has Vehicle
+            </span>
+            <span *ngIf="!hasAssignedVehicle(user)" class="status-badge no-vehicle">
+              <i class="fas fa-car-crash"></i> No Vehicle
+            </span>
+          </td>
           <td class="user-actions">
             <button class="btn-edit" (click)="showEditUserForm(user)">
               <i class="fa fa-pencil"></i> Edit
             </button>
             <button class="btn-block" (click)="blockUser(user.id)">
               <i class="fa fa-ban"></i> Block
+            </button>
+            <!-- New Create Vehicle Button -->
+            <button *ngIf="!hasAssignedVehicle(user)" 
+                    class="btn-create-vehicle" 
+                    (click)="showCreateVehicleForm(user)">
+              <i class="fa fa-car"></i> Create Vehicle
             </button>
           </td>
         </tr>
@@ -165,6 +180,80 @@
             <button type="submit" class="btn-submit" [disabled]="userForm.invalid || formSubmitting">
               <span *ngIf="formSubmitting" class="spinner"></span>
               {{ formMode === 'add' ? 'Add Delivery Person' : 'Save Changes' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Vehicle Creation Form Modal -->
+  <div *ngIf="showVehicleForm && userForVehicle" class="vehicle-form-container">
+    <div class="form-card">
+      <div class="form-header">
+        <h3>🚗 Create Vehicle for {{userForVehicle.firstName}} {{userForVehicle.lastName}}</h3>
+        <button type="button" class="btn-close" (click)="closeVehicleForm()">×</button>
+      </div>
+      <div class="form-body">
+        <form [formGroup]="vehicleForm" (ngSubmit)="onVehicleFormSubmit()">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="make">Make</label>
+              <input type="text" id="make" formControlName="make" [ngClass]="{'invalid': vehicleForm.get('make')?.invalid && vehicleForm.get('make')?.touched}">
+              <div class="error-message" *ngIf="vehicleForm.get('make')?.invalid && vehicleForm.get('make')?.touched">
+                Make is required
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="model">Model</label>
+              <input type="text" id="model" formControlName="model" [ngClass]="{'invalid': vehicleForm.get('model')?.invalid && vehicleForm.get('model')?.touched}">
+              <div class="error-message" *ngIf="vehicleForm.get('model')?.invalid && vehicleForm.get('model')?.touched">
+                Model is required
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="year">Year</label>
+              <input type="number" id="year" formControlName="year" [ngClass]="{'invalid': vehicleForm.get('year')?.invalid && vehicleForm.get('year')?.touched}">
+              <div class="error-message" *ngIf="vehicleForm.get('year')?.invalid && vehicleForm.get('year')?.touched">
+                Valid year is required
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="licensePlate">License Plate</label>
+              <input type="text" id="licensePlate" formControlName="licensePlate" [ngClass]="{'invalid': vehicleForm.get('licensePlate')?.invalid && vehicleForm.get('licensePlate')?.touched}">
+              <div class="error-message" *ngIf="vehicleForm.get('licensePlate')?.invalid && vehicleForm.get('licensePlate')?.touched">
+                License plate is required
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="vehicleType">Vehicle Type</label>
+              <select id="vehicleTypeCreate" formControlName="vehicleType" class="select-field">
+                <option *ngFor="let type of vehicleTypes" [value]="type.value">
+                  {{ type.value === 'MOTORCYCLE' ? '🏍️ ' : type.value === 'CAR' ? '🚗 ' : '🚚 ' }}
+                  {{ type.display }}
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="maxLoad">Max Load (kg)</label>
+              <input type="number" id="maxLoad" formControlName="maxLoad" [ngClass]="{'invalid': vehicleForm.get('maxLoad')?.invalid && vehicleForm.get('maxLoad')?.touched}">
+              <div class="error-message" *ngIf="vehicleForm.get('maxLoad')?.invalid && vehicleForm.get('maxLoad')?.touched">
+                Valid max load is required
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-actions">
+            <button type="button" class="btn-cancel" (click)="closeVehicleForm()">Cancel</button>
+            <button type="submit" class="btn-submit" [disabled]="vehicleForm.invalid || vehicleSubmitting">
+              <span *ngIf="vehicleSubmitting" class="spinner"></span>
+              Create & Assign Vehicle
             </button>
           </div>
         </form>

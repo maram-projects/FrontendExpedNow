@@ -1,8 +1,9 @@
+// services/auth.service.ts
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
-import { User, AuthResponse } from '../models/user.model';
+import { User, AuthResponse, USER_TYPES } from '../models/user.model';
 import { Router } from '@angular/router';
 
 @Injectable({
@@ -18,17 +19,12 @@ export class AuthService {
     this.initializeUserSession();
   }
 
-  /**
-   * Ensures a clean user session upon service initialization.
-   */
   private initializeUserSession(): void {
     const storedUser = localStorage.getItem('currentUser');
     
     if (storedUser) {
       try {
         const user: AuthResponse = JSON.parse(storedUser);
-        
-        // Ensure the user object is valid (e.g., token exists)
         if (user?.token) {
           this.currentUserSubject.next(user);
         } else {
@@ -42,23 +38,23 @@ export class AuthService {
     }
   }
 
-  /**
-   * Logs in the user and stores authentication data.
-   */
   login(email: string, password: string): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, { email, password }).pipe(
       tap((response) => {
         if (response?.token && response?.userId) {
-          // Ensure all required fields exist
           const authData: AuthResponse = {
             token: response.token,
             userType: response.userType?.toLowerCase() || '',
-            userId: response.userId?.toString() || '',
+            userId: response.userId,
             email: response.email,
-            firstName: response.firstName || '',
-            lastName: response.lastName || '',
-            phone: response.phone || '',
-            address: response.address || ''
+            firstName: response.firstName,
+            lastName: response.lastName,
+            phone: response.phone,
+            address: response.address,
+            companyName: response.companyName,
+            vehicleType: response.vehicleType,
+            assignedVehicleId: response.assignedVehicleId,
+            
           };
 
           localStorage.setItem('currentUser', JSON.stringify(authData));
@@ -72,116 +68,94 @@ export class AuthService {
     );
   }
 
-  /**
-   * Registers a new user.
-   */
   register(user: User, userType: string): Observable<AuthResponse> {
-    const payload = {
+    const payload = this.buildRegistrationPayload(user, userType);
+    return this.http.post<AuthResponse>(
+      `${this.apiUrl}/register?userType=${userType}`,
+      payload,
+      { headers: new HttpHeaders({ 'Content-Type': 'application/json' }) }
+    ).pipe(catchError(this.handleError));
+  }
+
+  private buildRegistrationPayload(user: User, userType: string): any {
+    // Don't manually set roles in payload - backend will handle it based on userType parameter
+    const basePayload = {
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
       password: user.password,
       phone: user.phone,
-      address: user.address,
-      vehicleType: user.vehicleType,
-      assignedVehicleId: user.assignedVehicleId   // Add this line to include vehicle ID
+      address: user.address
     };
 
-    return this.http.post<AuthResponse>(
-      `${this.apiUrl}/register?userType=${userType}`,
-      JSON.stringify(payload),
-      {
-        headers: new HttpHeaders({ 'Content-Type': 'application/json' })
-      }
-    ).pipe(
-      catchError(this.handleError)
-    );
-  }
-
-  /**
-   * Redirects users based on their user type.
-   */
-  public redirectBasedOnUserType(userType: string): void {
-    switch (userType.toLowerCase()) {
-      case 'individual':
-      case 'enterprise':
-        this.router.navigate(['/client/dashboard']);
-        break;
-      case 'temporary':
-      case 'professional':
-        this.router.navigate(['/delivery/dashboard']);
-        break;
-      case 'admin':
-        this.router.navigate(['/admin/dashboard']);
-        break;
-      default:
-        this.router.navigate(['/login']);
+    switch(userType) {
+      case USER_TYPES.ENTERPRISE:
+        return {
+          ...basePayload,
+          companyName: user.companyName,
+          businessType: user.businessType,
+          vatNumber: user.vatNumber,
+          businessPhone: user.businessPhone,
+          businessAddress: user.businessAddress,
+          deliveryRadius: user.deliveryRadius
+        };
+      case USER_TYPES.TEMPORARY:
+      case USER_TYPES.PROFESSIONAL:
+        return {
+          ...basePayload,
+          vehicleType: user.vehicleType,
+          vehicleBrand: user.vehicleBrand,
+          vehicleModel: user.vehicleModel,
+          vehiclePlateNumber: user.vehiclePlateNumber,
+          vehicleColor: user.vehicleColor,
+          vehicleYear: user.vehicleYear,
+          vehicleCapacityKg: user.vehicleCapacityKg,
+          vehicleVolumeM3: user.vehicleVolumeM3,
+          vehicleHasFridge: user.vehicleHasFridge,
+          driverLicenseNumber: user.driverLicenseNumber,
+          driverLicenseCategory: user.driverLicenseCategory,
+          preferredZones: user.preferredZones
+        };
+      default: // INDIVIDUAL
+        return basePayload;
     }
   }
 
-  /**
-   * Logs out the user and clears session data.
-   */
   logout(): void {
     this.clearUserSession();
     this.router.navigate(['/login']);
   }
 
-  /**
-   * Clears user session data from localStorage.
-   */
   private clearUserSession(): void {
     localStorage.removeItem('currentUser');
     this.currentUserSubject.next(null);
   }
 
-  /**
-   * Retrieves the currently logged-in user.
-   */
   getCurrentUser(): AuthResponse | null {
-    const user = this.currentUserSubject.value;
-    if (!user?.userId) {
-      console.warn('User ID is missing in user data');
-      return null;
-    }
-    return user;
+    const user = localStorage.getItem('currentUser');
+    return user ? JSON.parse(user) as AuthResponse : null;
   }
 
-  /**
-   * Checks if the current user is a client.
-   */
   isClient(): boolean {
     const user = this.getCurrentUser();
-    return !!user && ['individual', 'enterprise'].includes(user.userType);
+    return !!user && [USER_TYPES.INDIVIDUAL, USER_TYPES.ENTERPRISE].includes(user.userType);
   }
 
   isAdmin(): boolean {
     const user = this.getCurrentUser();
-    return !!user && user.userType.toLowerCase() === 'admin';
+    return !!user && user.userType.toLowerCase() === USER_TYPES.ADMIN;
   }
   
-  /**
-   * Checks if a user is logged in.
-   */
   isLoggedIn(): boolean {
     return !!this.getCurrentUser()?.token;
   }
 
-  /**
-   * Retrieves the authentication token.
-   */
   getToken(): string | null {
     return this.getCurrentUser()?.token || null;
   }
 
-  /**
-   * Handles API errors gracefully.
-   */
   private handleError(error: HttpErrorResponse) {
-    console.error('API Error:', error);
-
     let errorMessage = 'An error occurred';
-
     if (error.error instanceof ErrorEvent) {
       errorMessage = error.error.message;
     } else {
@@ -191,22 +165,32 @@ export class AuthService {
         errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
       }
     }
-
     return throwError(() => new Error(errorMessage));
   }
 
-  /**
-   * Updates user profile information.
-   */
-  updateProfile(user: any): Observable<any> {
-    return this.http.put(`${this.apiUrl}/profile`, user);
+  updateProfile(user: User): Observable<User> {
+    return this.http.put<User>(`${this.apiUrl}/profile`, user);
   }
 
-  /**
-   * Checks if a user is authenticated by validating their token.
-   */
   isAuthenticated(): boolean {
-    const token = this.getToken();
-    return !!token; // You can add token expiration validation here if needed
+    return !!this.getToken();
+  }
+
+  getUserType(): string | null {
+    const user = this.getCurrentUser();
+    return user?.userType || null;
+  }
+
+  redirectBasedOnUserType(userType: string): void {
+    const routes = {
+      [USER_TYPES.INDIVIDUAL]: '/client/dashboard',
+      [USER_TYPES.ENTERPRISE]: '/client/dashboard',
+      [USER_TYPES.TEMPORARY]: '/delivery/dashboard',
+      [USER_TYPES.PROFESSIONAL]: '/delivery/dashboard',
+      [USER_TYPES.ADMIN]: '/admin/dashboard'
+    };
+
+    const route = routes[userType.toLowerCase() as keyof typeof routes] || '/login';
+    this.router.navigate([route]);
   }
 }

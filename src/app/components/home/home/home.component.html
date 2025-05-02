@@ -1,1 +1,259 @@
-<p>home works!</p>
+
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col-lg-6">
+          <h1 class="display-4 fw-bold">Livraison rapide et fiable</h1>
+          <p class="lead my-4">
+            Votre plateforme de livraison de confiance pour tous vos besoins logistiques. Service rapide, sécurisé et abordable.
+          </p>
+          <div class="hero-buttons">
+            <div class="dropdown">
+              <button class="btn btn-primary btn-lg dropdown-toggle" type="button" 
+                      id="registerDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                S'inscrire
+              </button>
+              <ul class="dropdown-menu" aria-labelledby="registerDropdown">
+                <!-- Corrected routerLinks -->
+                <li><a class="dropdown-item" routerLink="/register/individual">Client Particulier</a></li>
+                <li><a class="dropdown-item" routerLink="/register/enterprise">Client Entreprise</a></li>
+                <li><a class="dropdown-item" routerLink="/register/temporary">Livreur Temporaire</a></li>
+              </ul>
+            </div>
+            <a routerLink="/login" class="btn btn-outline-dark btn-lg">Se connecter</a>
+          </div>
+        </div>
+        <div class="col-lg-6 d-none d-lg-block">
+          <img src="/assets/images/delivery-hero.svg" alt="Livraison illustration" class="img-fluid">
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Rest of your home page content... -->
+  
+  <!-- Services Section -->
+  <section class="services-section py-5 bg-light">
+    <div class="container">
+      <h2 class="text-center mb-5">Nos services</h2>
+      <div class="row g-4">
+        <div class="col-md-4">
+          <div class="service-card card h-100">
+            <div class="card-body text-center">
+              <div class="service-icon mb-3">
+                <i class="fas fa-truck fa-3x text-primary"></i>
+              </div>
+              <h3 class="card-title">Livraison express</h3>
+              <p class="card-text">Livraison rapide en moins de 2 heures dans votre zone locale.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="service-card card h-100">
+            <div class="card-body text-center">
+              <div class="service-icon mb-3">
+                <i class="fas fa-store fa-3x text-primary"></i>
+              </div>
+              <h3 class="card-title">Service pour entreprises</h3>
+              <p class="card-text">Solutions logistiques personnalisées pour les entreprises de toutes tailles.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="service-card card h-100">
+            <div class="card-body text-center">
+              <div class="service-icon mb-3">
+                <i class="fas fa-box fa-3x text-primary"></i>
+              </div>
+              <h3 class="card-title">Colis et paquets</h3>
+              <p class="card-text">Envoi sécurisé de tous types de colis avec suivi en temps réel.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- How It Works Section -->
+  <section class="how-it-works-section py-5">
+    <div class="container">
+      <h2 class="text-center mb-5">Comment ça marche</h2>
+      <div class="row">
+        <div class="col-md-3">
+          <div class="step text-center">
+            <div class="step-number">1</div>
+            <h4>Inscrivez-vous</h4>
+            <p>Créez votre compte en quelques clics</p>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="step text-center">
+            <div class="step-number">2</div>
+            <h4>Planifiez</h4>
+            <p>Entrez les détails de votre livraison</p>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="step text-center">
+            <div class="step-number">3</div>
+            <h4>Suivez</h4>
+            <p>Suivez votre livraison en temps réel</p>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="step text-center">
+            <div class="step-number">4</div>
+            <h4>Recevez</h4>
+            <p>Livraison à votre porte en un temps record</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Join Us Section -->
+  <section class="join-us-section py-5 bg-primary text-white">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col-lg-7">
+          <h2 class="mb-4">Rejoignez notre équipe de livreurs</h2>
+          <p class="lead">Devenez un livreur et profitez d'horaires flexibles et de revenus compétitifs.</p>
+          <ul class="list-unstyled">
+            <li class="mb-2"><i class="fas fa-check-circle me-2"></i> Soyez votre propre patron</li>
+            <li class="mb-2"><i class="fas fa-check-circle me-2"></i> Choisissez vos horaires</li>
+            <li class="mb-2"><i class="fas fa-check-circle me-2"></i> Recevez des paiements hebdomadaires</li>
+          </ul>
+          <a routerLink="/register/temporary" class="btn btn-light mt-3">Devenir livreur</a>
+        </div>
+        <div class="col-lg-5 d-none d-lg-block">
+          <img src="/assets/images/delivery-person.svg" alt="Livreur" class="img-fluid">
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Testimonials Section -->
+  <section class="testimonials-section py-5">
+    <div class="container">
+      <h2 class="text-center mb-5">Ce que disent nos clients</h2>
+      <div class="row">
+        <div class="col-md-4 mb-4">
+          <div class="testimonial-card card h-100">
+            <div class="card-body">
+              <div class="testimonial-rating mb-3">
+                <i class="fas fa-star text-warning"></i>
+                <i class="fas fa-star text-warning"></i>
+                <i class="fas fa-star text-warning"></i>
+                <i class="fas fa-star text-warning"></i>
+                <i class="fas fa-star text-warning"></i>
+              </div>
+              <p class="card-text">"Service impeccable! Ma livraison est arrivée plus tôt que prévu et en parfait état."</p>
+            </div>
+            <div class="card-footer bg-white border-0">
+              <div class="d-flex align-items-center">
+                <div class="testimonial-avatar me-3">
+                  <img src="/assets/images/avatar-1.svg" alt="Client" class="rounded-circle" width="50">
+                </div>
+                <div>
+                  <h5 class="mb-0">Sarah L.</h5>
+                  <small class="text-muted">Client particulier</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 mb-4">
+          <div class="testimonial-card card h-100">
+            <div class="card-body">
+              <div class="testimonial-rating mb-3">
+                <i class="fas fa-star text-warning"></i>
+                <i class="fas fa-star text-warning"></i>
+                <i class="fas fa-star text-warning"></i>
+                <i class="fas fa-star text-warning"></i>
+                <i class="fas fa-star text-warning"></i>
+              </div>
+              <p class="card-text">"En tant qu'entreprise, nous avons besoin d'un service fiable et ils n'ont jamais déçu. Excellent rapport qualité-prix."</p>
+            </div>
+            <div class="card-footer bg-white border-0">
+              <div class="d-flex align-items-center">
+                <div class="testimonial-avatar me-3">
+                  <img src="/assets/images/avatar-2.svg" alt="Client" class="rounded-circle" width="50">
+                </div>
+                <div>
+                  <h5 class="mb-0">Mohammed H.</h5>
+                  <small class="text-muted">Propriétaire de restaurant</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 mb-4">
+          <div class="testimonial-card card h-100">
+            <div class="card-body">
+              <div class="testimonial-rating mb-3">
+                <i class="fas fa-star text-warning"></i>
+                <i class="fas fa-star text-warning"></i>
+                <i class="fas fa-star text-warning"></i>
+                <i class="fas fa-star text-warning"></i>
+                <i class="fas fa-star-half-alt text-warning"></i>
+              </div>
+              <p class="card-text">"Le suivi en temps réel est génial! J'apprécie la transparence et la rapidité du service."</p>
+            </div>
+            <div class="card-footer bg-white border-0">
+              <div class="d-flex align-items-center">
+                <div class="testimonial-avatar me-3">
+                  <img src="/assets/images/avatar-3.svg" alt="Client" class="rounded-circle" width="50">
+                </div>
+                <div>
+                  <h5 class="mb-0">Leila B.</h5>
+                  <small class="text-muted">Client régulier</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- App Download Section -->
+  <section class="app-download-section py-5 bg-light">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col-lg-6">
+          <h2 class="mb-4">Téléchargez notre application</h2>
+          <p class="lead">Obtenez une expérience encore meilleure avec notre application mobile. Suivez vos livraisons, gérez vos commandes et bien plus encore!</p>
+          <div class="app-buttons mt-4">
+            <a href="#" class="btn btn-dark btn-lg me-3 mb-3">
+              <i class="fab fa-apple me-2"></i> App Store
+            </a>
+            <a href="#" class="btn btn-dark btn-lg mb-3">
+              <i class="fab fa-google-play me-2"></i> Google Play
+            </a>
+          </div>
+        </div>
+        <div class="col-lg-6 d-none d-lg-block text-center">
+          <img src="/assets/images/app-mockup.svg" alt="Application mobile" class="img-fluid">
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Contact Section -->
+  <section class="contact-section py-5">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-6 mx-auto text-center">
+          <h2 class="mb-4">Besoin d'aide?</h2>
+          <p class="lead mb-5">Notre équipe de support est disponible 24/7 pour répondre à toutes vos questions.</p>
+          <button class="btn btn-primary btn-lg me-3 mb-3">
+            <i class="fas fa-headset me-2"></i> Support client
+          </button>
+          <button class="btn btn-outline-primary btn-lg mb-3">
+            <i class="fas fa-envelope me-2"></i> Contactez-nous
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>

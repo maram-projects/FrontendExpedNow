@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { AdminService } from '../../../services/admin-service.service';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Vehicle } from '../../../models/Vehicle.model';
+import { Vehicle, VehicleType } from '../../../models/Vehicle.model';
 import { VehicleService } from '../../../services/vehicle-service.service';
 import { AuthService } from '../../../services/auth.service';
 import { UserService } from '../../../services/user.service';
@@ -38,6 +38,12 @@ export class UserManagementComponent implements OnInit {
     { value: 'TRUCK', display: 'Camion' }
   ];
 
+  // Vehicle form properties
+  vehicleForm: FormGroup;
+  showVehicleForm = false;
+  userForVehicle: any = null;
+  vehicleSubmitting = false;
+
   constructor(
     private adminService: AdminService,
     private authService: AuthService,
@@ -46,6 +52,7 @@ export class UserManagementComponent implements OnInit {
     private vehicleService: VehicleService
   ) {
     this.userForm = this.createUserForm();
+    this.vehicleForm = this.createVehicleForm();
   }
 
   ngOnInit() {
@@ -61,6 +68,17 @@ export class UserManagementComponent implements OnInit {
       phone: ['', [Validators.required]],
       address: ['', [Validators.required]],
       userType: ['professional', [Validators.required]],
+      vehicleType: ['MOTORCYCLE', [Validators.required]]
+    });
+  }
+
+  createVehicleForm(): FormGroup {
+    return this.formBuilder.group({
+      make: ['', [Validators.required]],
+      model: ['', [Validators.required]],
+      year: ['', [Validators.required, Validators.min(1900), Validators.max(new Date().getFullYear())]],
+      licensePlate: ['', [Validators.required]],
+      maxLoad: [100, [Validators.required, Validators.min(0)]],
       vehicleType: ['MOTORCYCLE', [Validators.required]]
     });
   }
@@ -146,6 +164,92 @@ export class UserManagementComponent implements OnInit {
     });
   }
 
+  // Show vehicle creation form for a specific user
+  showCreateVehicleForm(user: any): void {
+    this.userForVehicle = user;
+    this.showVehicleForm = true;
+    
+    // Initialize form with default values matching user's role/type
+    const userType = this.getUserType(user.roles);
+    let defaultVehicleType = 'MOTORCYCLE';
+    
+    if (userType === 'professional') {
+      defaultVehicleType = 'CAR';
+    }
+    
+    this.vehicleForm.patchValue({
+      vehicleType: user.vehicleType || defaultVehicleType
+    });
+  }
+
+  closeVehicleForm(): void {
+    this.showVehicleForm = false;
+    this.userForVehicle = null;
+    this.vehicleForm.reset({
+      vehicleType: 'MOTORCYCLE',
+      maxLoad: 100
+    });
+  }
+
+  onVehicleFormSubmit(): void {
+    if (this.vehicleForm.invalid || !this.userForVehicle) {
+      return;
+    }
+    
+    this.vehicleSubmitting = true;
+    
+    // Create new vehicle object
+    const newVehicle: Vehicle = {
+      make: this.vehicleForm.value.make,
+      model: this.vehicleForm.value.model,
+      year: this.vehicleForm.value.year,
+      licensePlate: this.vehicleForm.value.licensePlate,
+      vehicleType: this.vehicleForm.value.vehicleType,
+      maxLoad: this.vehicleForm.value.maxLoad,
+      available: true
+    };
+    
+    // First create the vehicle
+    this.vehicleService.createVehicle(newVehicle, null).subscribe({
+      next: (createdVehicle) => {
+        // Then assign it to the user
+        if (createdVehicle.id && this.userForVehicle.id) {
+          const vehicleId: string = createdVehicle.id;
+          const userId: string = this.userForVehicle.id;
+          // Add a delay before assignment to ensure the vehicle is fully created
+          setTimeout(() => {
+            this.vehicleService.assignVehicleToUser(vehicleId, userId).subscribe({
+              next: (updatedVehicle) => {
+                alert(`Vehicle successfully created and assigned to ${this.userForVehicle.firstName} ${this.userForVehicle.lastName}!`);
+                this.vehicleSubmitting = false;
+                this.closeVehicleForm();
+                // Refresh delivery personnel list to show updated assignment
+                this.loadDeliveryPersonnel();
+              },
+              error: (err) => {
+                console.error('Error assigning vehicle to user:', err);
+                this.vehicleSubmitting = false;
+                alert(`Vehicle created but could not be assigned: ${err.message}`);
+                // Still close the form and refresh the list
+                this.closeVehicleForm();
+                this.loadDeliveryPersonnel();
+              }
+            });
+          }, 500); // 500ms delay to ensure backend processing completes
+        } else {
+          this.vehicleSubmitting = false;
+          alert('Vehicle created successfully!');
+          this.closeVehicleForm();
+          this.loadDeliveryPersonnel();
+        }
+      },
+      error: (err) => {
+        console.error('Error creating vehicle:', err);
+        this.vehicleSubmitting = false;
+        alert('Failed to create vehicle. Please try again.');
+      }
+    });
+  }
   getUserType(roles: string[]): string {
     if (!roles || roles.length === 0) return 'professional';
     
@@ -180,7 +284,7 @@ export class UserManagementComponent implements OnInit {
       phone: formData.phone,
       address: formData.address,
       vehicleType: formData.vehicleType,
-      assignedVehicleId: this.selectedVehicleId // Make sure we're using the correct property name
+      assignedVehicleId: this.selectedVehicleId
     };
 
     // Only include password for new users
@@ -219,5 +323,10 @@ export class UserManagementComponent implements OnInit {
 
   onVehicleSelected(event: any) {
     this.selectedVehicleId = event.target.value;
+  }
+
+  // Check if a user has a vehicle assigned
+  hasAssignedVehicle(user: any): boolean {
+    return user.assignedVehicleId != null;
   }
 }

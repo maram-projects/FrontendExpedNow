@@ -1,0 +1,92 @@
+<div class="container py-5">
+    <div class="row justify-content-center mb-5">
+      <div class="col-md-8 text-center">
+        <h1 class="display-5 fw-bold mb-3">Choisissez votre type de compte</h1>
+        <p class="lead text-muted">Sélectionnez le type de compte qui correspond à vos besoins</p>
+      </div>
+    </div>
+  
+    <!-- Router outlet for nested registration forms -->
+    <router-outlet></router-outlet>
+  
+    <div class="row justify-content-center" *ngIf="!isNestedRoute()">
+      <!-- Individual Client Card -->
+      <div class="col-md-4 mb-4">
+        <div class="account-card card h-100 text-center">
+          <div class="card-body py-5">
+            <div class="account-icon">
+              <i class="fas fa-user fa-2x text-primary"></i>
+            </div>
+            <h3 class="card-title mb-3">Client Particulier</h3>
+            <p class="card-text mb-4">Idéal pour les personnes qui ont besoin de services de livraison occasionnels.</p>
+            <ul class="list-unstyled text-start mx-auto mb-4" style="max-width: 220px;">
+              <li><i class="fas fa-check text-success me-2"></i> Livraison à domicile</li>
+              <li><i class="fas fa-check text-success me-2"></i> Suivi en temps réel</li>
+              <li><i class="fas fa-check text-success me-2"></i> Paiement sécurisé</li>
+            </ul>
+            <a routerLink="individual" class="btn btn-primary">S'inscrire</a>
+          </div>
+        </div>
+      </div>
+  
+      <!-- Enterprise Client Card -->
+      <div class="col-md-4 mb-4">
+        <div class="account-card card h-100 text-center">
+          <div class="card-body py-5">
+            <div class="account-icon">
+              <i class="fas fa-building fa-2x text-primary"></i>
+            </div>
+            <h3 class="card-title mb-3">Client Entreprise</h3>
+            <p class="card-text mb-4">Solution complète pour les entreprises avec des besoins de livraison réguliers.</p>
+            <ul class="list-unstyled text-start mx-auto mb-4" style="max-width: 220px;">
+              <li><i class="fas fa-check text-success me-2"></i> Tarifs préférentiels</li>
+              <li><i class="fas fa-check text-success me-2"></i> Service dédié</li>
+              <li><i class="fas fa-check text-success me-2"></i> Rapports détaillés</li>
+            </ul>
+            <a routerLink="enterprise" class="btn btn-primary">S'inscrire</a>
+          </div>
+        </div>
+      </div>
+  
+      <!-- Temporary Delivery Person Card -->
+      <div class="col-md-4 mb-4">
+        <div class="account-card card h-100 text-center">
+          <div class="card-body py-5">
+            <div class="account-icon">
+              <i class="fas fa-motorcycle fa-2x text-primary"></i>
+            </div>
+            <h3 class="card-title mb-3">Livreur Temporaire</h3>
+            <p class="card-text mb-4">Devenez livreur et gagnez un revenu supplémentaire à votre rythme.</p>
+            <ul class="list-unstyled text-start mx-auto mb-4" style="max-width: 220px;">
+              <li><i class="fas fa-check text-success me-2"></i> Horaires flexibles</li>
+              <li><i class="fas fa-check text-success me-2"></i> Paiements hebdomadaires</li>
+              <li><i class="fas fa-check text-success me-2"></i> Bonus d'activité</li>
+            </ul>
+            <a routerLink="temporary" class="btn btn-primary">S'inscrire</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="row mt-4" *ngIf="!isNestedRoute()">
+      <div class="col-md-8 mx-auto">
+        <div class="alert alert-info professional-note p-4">
+          <div class="d-flex">
+            <div class="me-3">
+              <i class="fas fa-info-circle fa-2x text-primary"></i>
+            </div>
+            <div>
+              <h4 class="h5">Vous êtes un livreur professionnel ?</h4>
+              <p class="mb-0">Les livreurs professionnels sont ajoutés uniquement par l'administrateur. Veuillez contacter notre équipe pour plus d'informations.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="row mt-5" *ngIf="!isNestedRoute()">
+      <div class="col-12 text-center">
+        <p>Vous avez déjà un compte ? <a routerLink="/login" class="text-primary fw-bold">Connectez-vous</a></p>
+      </div>
+    </div>
+  </div>

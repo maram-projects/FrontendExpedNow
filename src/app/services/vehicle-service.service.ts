@@ -170,6 +170,14 @@ export class VehicleService {
 
   // Assign vehicle to user
   assignVehicleToUser(vehicleId: string, userId: string): Observable<Vehicle> {
-    return this.http.patch<Vehicle>(`${this.apiUrl}/${vehicleId}/assign`, { userId });
+    return this.http.patch<Vehicle>(`${this.apiUrl}/${vehicleId}/assign`, { userId })
+      .pipe(
+        catchError(error => {
+          console.error('Detailed error when assigning vehicle:', error);
+          // Check if there's a specific error message from the server
+          const errorMessage = error.error?.message || 'Failed to assign vehicle to user';
+          throw new Error(errorMessage);
+        })
+      );
   }
 }
