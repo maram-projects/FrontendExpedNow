@@ -193,4 +193,16 @@ export class AuthService {
     const route = routes[userType.toLowerCase() as keyof typeof routes] || '/login';
     this.router.navigate([route]);
   }
+
+  updateLocalUserData(userData: any): void {
+    const currentUser = this.getCurrentUser();
+    if (currentUser) {
+      // Update the current user data with new information
+      const updatedUser = { ...currentUser, ...userData };
+      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+      this.currentUserSubject.next(updatedUser);
+    }
+
+
+  }
 }

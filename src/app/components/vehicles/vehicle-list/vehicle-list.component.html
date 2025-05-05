@@ -1,0 +1,100 @@
+<!-- vehicle-list.component.html -->
+<div class="vehicle-list-container">
+  <div class="list-header">
+    <h2>Fleet Management</h2>
+    <div class="header-actions">
+      <button class="refresh-btn" (click)="refreshVehicles()">
+        <i class="refresh-icon">↻</i> Refresh
+      </button>
+      <button class="add-btn" routerLink="/admin/vehicles/create">
+        <button class="add-btn" routerLink="/admin/vehicles/create">
+          <i class="add-icon">+</i> Add Vehicle
+        </button>      </button>
+    </div>
+  </div>
+
+  <div class="loading-container" *ngIf="loading">
+    <div class="loading-spinner"></div>
+    <p>Loading vehicles...</p>
+  </div>
+
+  <div class="error-container" *ngIf="error">
+    <p class="error-message">{{ error }}</p>
+    <button (click)="loadVehicles()" class="retry-btn">Try Again</button>
+  </div>
+
+  <div class="vehicles-grid" *ngIf="!loading && !error && vehicles.length > 0">
+    <div class="vehicle-card" *ngFor="let vehicle of vehicles" [routerLink]="['/admin/vehicles', vehicle.id]">
+            <div class="card-header">
+        <h3>{{ vehicle.make }} {{ vehicle.model }}</h3>
+        <div class="vehicle-status" [ngClass]="getVehicleStatusClass(vehicle.available)">
+          {{ getVehicleStatusText(vehicle.available) }}
+        </div>
+      </div>
+
+      <div class="vehicle-photo-container">
+        <img 
+  [src]="vehicle.photoPath | vehiclePhoto" 
+  alt="{{ vehicle.make }} {{ vehicle.model }}"
+  class="vehicle-photo"
+>
+        <div *ngIf="!vehicle.photoPath" class="no-photo">
+          No Photo Available
+        </div>
+      </div>
+
+      <div class="vehicle-details">
+        <div class="detail-item">
+          <span class="detail-label">Type:</span>
+          <span class="detail-value">{{ vehicle.vehicleType }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Year:</span>
+          <span class="detail-value">{{ vehicle.year }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">License:</span>
+          <span class="detail-value">{{ vehicle.licensePlate }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Max Load:</span>
+          <span class="detail-value">{{ vehicle.maxLoad }} kg</span>
+        </div>
+      </div>
+
+      <div class="vehicle-statistics" *ngIf="vehicle.id && vehicleStats.get(vehicle.id)">
+        <h4>Usage Statistics</h4>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-value">{{ vehicleStats.get(vehicle.id)?.totalTrips || 0 }}</div>
+            <div class="stat-label">Total Trips</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">{{ vehicleStats.get(vehicle.id)?.totalDistance || 0 }} km</div>
+            <div class="stat-label">Distance</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">{{ vehicleStats.get(vehicle.id)?.utilizationRate || 0 }}%</div>
+            <div class="stat-label">Utilization</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">{{ getLastUsedText(vehicle.id) }}</div>
+            <div class="stat-label">Last Used</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-actions">
+        <button class="edit-btn" [routerLink]="['/admin/vehicles/edit', vehicle.id]">Edit</button>
+        <button class="delete-btn" (click)="deleteVehicle(vehicle.id!, $event)">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="empty-state" *ngIf="!loading && !error && vehicles.length === 0">
+    <div class="empty-icon">🚗</div>
+    <h3>No Vehicles Found</h3>
+    <p>Your fleet is currently empty. Add a vehicle to get started.</p>
+    <button class="add-btn" routerLink="/admin/vehicles/create">Add Your First Vehicle</button>
+    </div>
+</div>

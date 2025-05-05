@@ -1,0 +1,112 @@
+<!-- vehicle-detail.component.html -->
+<div class="vehicle-detail-container">
+  <div class="detail-header">
+    <h2>Vehicle Details</h2>
+    <div class="header-actions">
+      <button class="back-button" routerLink="/admin/vehicles">
+        <i class="back-icon">←</i> Back to Vehicles
+      </button>
+    </div>
+  </div>
+
+  <div class="loading-container" *ngIf="loading">
+    <div class="loading-spinner"></div>
+    <p>Loading vehicle details...</p>
+  </div>
+
+  <div class="error-container" *ngIf="error">
+    <p class="error-message">{{ error }}</p>
+    <button routerLink="/admin/vehicles" class="back-btn">Return to Vehicles</button>
+  </div>
+
+  <div class="vehicle-detail-content" *ngIf="!loading && !error && vehicle">
+    <div class="vehicle-detail-card">
+      <div class="card-header">
+        <h3>{{ vehicle.make }} {{ vehicle.model }} ({{ vehicle.year }})</h3>
+        <div class="vehicle-status" [ngClass]="getVehicleStatusClass()">
+          {{ getVehicleStatusText() }}
+        </div>
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-photo">
+          <img 
+            [src]="vehicle.photoPath | vehiclePhoto" 
+            alt="{{ vehicle.make }} {{ vehicle.model }}"
+            class="vehicle-photo"
+          >
+          <div *ngIf="!vehicle.photoPath" class="no-photo">
+            No Photo Available
+          </div>
+        </div>
+
+        <div class="detail-info">
+          <h4>Vehicle Information</h4>
+          
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">Make:</span>
+              <span class="info-value">{{ vehicle.make }}</span>
+            </div>
+            
+            <div class="info-item">
+              <span class="info-label">Model:</span>
+              <span class="info-value">{{ vehicle.model }}</span>
+            </div>
+            
+            <div class="info-item">
+              <span class="info-label">Year:</span>
+              <span class="info-value">{{ vehicle.year }}</span>
+            </div>
+            
+            <div class="info-item">
+              <span class="info-label">License Plate:</span>
+              <span class="info-value">{{ vehicle.licensePlate }}</span>
+            </div>
+            
+            <div class="info-item">
+              <span class="info-label">Vehicle Type:</span>
+              <span class="info-value">{{ vehicle.vehicleType }}</span>
+            </div>
+            
+            <div class="info-item">
+              <span class="info-label">Maximum Load:</span>
+              <span class="info-value">{{ vehicle.maxLoad }} kg</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="vehicle-statistics" *ngIf="vehicleStats">
+        <h4>Usage Statistics</h4>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-value">{{ vehicleStats.totalTrips || 0 }}</div>
+            <div class="stat-label">Total Trips</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">{{ vehicleStats.totalDistance || 0 }} km</div>
+            <div class="stat-label">Distance</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">{{ vehicleStats.utilizationRate || 0 }}%</div>
+            <div class="stat-label">Utilization</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">{{ getLastUsedText() }}</div>
+            <div class="stat-label">Last Used</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Maintenance history section removed because the property doesn't exist in VehicleStatistics model -->
+      <!-- Add this section later if you add maintenance history to your model -->
+
+
+      <div class="card-actions">
+        <button class="edit-btn" [routerLink]="['/admin/vehicles/edit', vehicle.id]">Edit Vehicle</button>
+        <button class="delete-btn" (click)="deleteVehicle()">Delete Vehicle</button>
+      </div>
+    </div>
+  </div>
+</div>

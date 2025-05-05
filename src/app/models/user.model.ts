@@ -1,3 +1,5 @@
+import { Vehicle } from "./Vehicle.model";
+
 // models/user.model.ts
 export interface User {
   id?: string;
@@ -30,7 +32,7 @@ export interface User {
   vehiclePhotoUrl?: string;
   vehicleInsuranceExpiry?: Date;
   vehicleInspectionExpiry?: Date;
-  assignedVehicleId?: string;
+  
   
   // Professional fields
   driverLicenseNumber?: string;
@@ -56,6 +58,9 @@ export interface User {
   successScore?: number;
   totalDeliveries?: number;
   averageDeliveryTime?: number;
+
+  assignedVehicleId?: string;
+  assignedVehicle?: Vehicle;
   
   // Roles
   roles?: string[];

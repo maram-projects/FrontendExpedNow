@@ -19,6 +19,7 @@ export class VehicleFormComponent implements OnInit {
   vehicleId?: string;
   photoFile: File | null = null;
   photoPreview: string | ArrayBuffer | null = null;
+  isSubmitting = false; // Add this flag to prevent duplicate submissions
   
   constructor(
     private fb: FormBuilder,
@@ -51,15 +52,36 @@ export class VehicleFormComponent implements OnInit {
       year: [null, [Validators.required, Validators.min(1900), Validators.max(new Date().getFullYear() + 1)]],
       licensePlate: ['', [Validators.required]],
       vehicleType: [VehicleType.CAR, [Validators.required]],
-      maxLoad: [null, [Validators.required, Validators.min(0)]] // Add maxLoad field with validation
+      maxLoad: [null, [Validators.required, Validators.min(0)]]
     });
   }
 
   loadVehicleData(id: string): void {
-    this.vehicleService.getVehicleById(id).subscribe(vehicle => {
-      this.vehicleForm.patchValue(vehicle);
-      if (vehicle.photoPath) {
-        this.photoPreview = `http://localhost:8080/uploads/vehicle-photos/${vehicle.photoPath}`;
+    this.vehicleService.getVehicleById(id).subscribe({
+      next: (vehicle) => {
+        // Update form values
+        this.vehicleForm.patchValue({
+          make: vehicle.make,
+          model: vehicle.model,
+          year: vehicle.year,
+          licensePlate: vehicle.licensePlate,
+          vehicleType: vehicle.vehicleType,
+          maxLoad: vehicle.maxLoad
+        });
+        
+        // Set photo preview if exists
+        if (vehicle.photoPath) {
+          // Check if path is a full URL or just a filename
+          if (vehicle.photoPath.startsWith('http')) {
+            this.photoPreview = vehicle.photoPath;
+          } else {
+            this.photoPreview = `http://localhost:8080/uploads/vehicle-photos/${vehicle.photoPath}`;
+          }
+        }
+      },
+      error: (err) => {
+        console.error('Error loading vehicle:', err);
+        // Show error notification to user
       }
     });
   }
@@ -81,20 +103,60 @@ export class VehicleFormComponent implements OnInit {
 
   onSubmit(): void {
     if (this.vehicleForm.invalid) {
+      // Mark all fields as touched to show validation errors
+      Object.keys(this.vehicleForm.controls).forEach(key => {
+        const control = this.vehicleForm.get(key);
+        control?.markAsTouched();
+      });
       return;
     }
     
-    const vehicleData: Vehicle = this.vehicleForm.value;
+    // Prevent duplicate submissions
+    if (this.isSubmitting) {
+      console.log('Form submission already in progress');
+      return;
+    }
+    
+    this.isSubmitting = true;
+    
+    // Create vehicle object from form values
+    const vehicleData: Vehicle = {
+      ...this.vehicleForm.value,
+      available: true // Default to available
+    };
     
     if (this.isEditMode && this.vehicleId) {
+      vehicleData.id = this.vehicleId;
       this.vehicleService.updateVehicle(this.vehicleId, vehicleData, this.photoFile)
-        .subscribe(() => {
-          this.router.navigate(['/vehicles']);
+        .subscribe({
+          next: () => {
+            // Navigate back to vehicle list
+            this.router.navigate(['/admin/vehicles']);
+          },
+          error: (err) => {
+            console.error('Error updating vehicle:', err);
+            // Show error notification to user
+            this.isSubmitting = false; // Reset submission flag on error
+          },
+          complete: () => {
+            this.isSubmitting = false; // Reset submission flag on completion
+          }
         });
     } else {
       this.vehicleService.createVehicle(vehicleData, this.photoFile)
-        .subscribe(() => {
-          this.router.navigate(['/vehicles']);
+        .subscribe({
+          next: () => {
+            // Navigate back to vehicle list
+            this.router.navigate(['/admin/vehicles']);
+          },
+          error: (err) => {
+            console.error('Error creating vehicle:', err);
+            // Show error notification to user
+            this.isSubmitting = false; // Reset submission flag on error
+          },
+          complete: () => {
+            this.isSubmitting = false; // Reset submission flag on completion
+          }
         });
     }
   }

@@ -1,7 +1,7 @@
 // admin-service.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
-import { catchError, Observable, throwError } from 'rxjs';
+import { catchError, map, Observable, throwError } from 'rxjs';
 import { DashboardStats } from '../models/dashboard.model';
 import { User } from '../models/user.model';
 import { Router } from '@angular/router';
@@ -40,11 +40,14 @@ export class AdminService {
   
   getAllUsers(): Observable<User[]> {
     return this.http.get<User[]>(`${this.apiUrl}/users`).pipe(
-      catchError((error) => {
-        console.error('Error fetching users:', error);
-        return throwError(() => error);
-      })
-    );
+      map((users: any[]) => users.map(user => ({
+        ...user,
+        assignedVehicle: user.assignedVehicle ? {
+          ...user.assignedVehicle,
+          vehicleType: user.assignedVehicle.vehicleType?.toLowerCase()
+        } : null
+      }))
+    ));
   }
   
   createVehicle(vehicle: any): Observable<any> {
@@ -64,4 +67,6 @@ export class AdminService {
       })
     );
   }
+
+  
 }

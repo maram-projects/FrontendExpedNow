@@ -6,6 +6,7 @@ import { Vehicle, VehicleType } from '../../../models/Vehicle.model';
 import { VehicleService } from '../../../services/vehicle-service.service';
 import { AuthService } from '../../../services/auth.service';
 import { UserService } from '../../../services/user.service';
+import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 
 @Component({
   selector: 'app-user-management',
@@ -18,31 +19,34 @@ export class UserManagementComponent implements OnInit {
   users: any[] = [];
   loading = true;
   error = '';
-  
+
   // Form related properties
   userForm: FormGroup;
   formMode = ''; // 'add' or 'edit'
   selectedUserId: string | null = null;
   formSubmitting = false;
-  
+
   // Vehicle assignment
   availableVehicles: Vehicle[] = [];
   selectedVehicleId: string | null = null;
-  
+
   // User types for delivery personnel
   userTypes = ['professional', 'temporary'];
-  
+
   vehicleTypes = [
     { value: 'MOTORCYCLE', display: 'Moto' },
     { value: 'CAR', display: 'Voiture' },
     { value: 'TRUCK', display: 'Camion' }
   ];
 
-  // Vehicle form properties
-  vehicleForm: FormGroup;
-  showVehicleForm = false;
+  // Vehicle selection properties
+  showVehicleSelectionForm = false;
   userForVehicle: any = null;
   vehicleSubmitting = false;
+
+  // User details dialog properties
+  showDetailsDialog = false;
+  selectedUser: any = null;
 
   constructor(
     private adminService: AdminService,
@@ -52,10 +56,11 @@ export class UserManagementComponent implements OnInit {
     private vehicleService: VehicleService
   ) {
     this.userForm = this.createUserForm();
-    this.vehicleForm = this.createVehicleForm();
   }
 
   ngOnInit() {
+    // Clear vehicle cache on component initialization to ensure fresh data
+    this.vehicleService.clearCache();
     this.loadDeliveryPersonnel();
   }
 
@@ -72,43 +77,113 @@ export class UserManagementComponent implements OnInit {
     });
   }
 
-  createVehicleForm(): FormGroup {
-    return this.formBuilder.group({
-      make: ['', [Validators.required]],
-      model: ['', [Validators.required]],
-      year: ['', [Validators.required, Validators.min(1900), Validators.max(new Date().getFullYear())]],
-      licensePlate: ['', [Validators.required]],
-      maxLoad: [100, [Validators.required, Validators.min(0)]],
-      vehicleType: ['MOTORCYCLE', [Validators.required]]
-    });
-  }
-
   loadDeliveryPersonnel() {
     this.loading = true;
-    this.adminService.getAllUsers().subscribe({
-      next: (data) => {
-        // Filter only delivery personnel (professional or temporary)
-        this.users = data.filter((user: any) => 
-          user.roles && (
-            user.roles.includes('ROLE_PROFESSIONAL') || 
-            user.roles.includes('ROLE_TEMPORARY')
-          )
+    this.error = '';
+    
+    this.adminService.getAllUsers().pipe(
+      switchMap(users => {
+        this.users = users.filter((user: any) => 
+          user.roles?.includes('ROLE_PROFESSIONAL') || 
+          user.roles?.includes('ROLE_TEMPORARY')
         );
+        
+        const vehicleObservables = this.users
+          .filter(user => user.assignedVehicleId)
+          .map(user => 
+            this.vehicleService.getVehicleById(user.assignedVehicleId).pipe(
+              catchError(() => of(null)), // Handle errors without breaking the stream
+              map(vehicle => ({ user, vehicle })))
+          );
+        
+        return vehicleObservables.length ? forkJoin(vehicleObservables) : of([]);
+      })
+    ).subscribe({
+      next: (results: any[]) => {
+        results.forEach(({ user, vehicle }) => {
+          if (vehicle) {
+            user.assignedVehicle = vehicle;
+          }
+        });
         this.loading = false;
       },
       error: (err) => {
         this.error = 'Failed to load delivery personnel';
         this.loading = false;
+        console.error('Error loading users:', err);
+      }
+    });
+  }
+
+  loadAllAssignedVehicles() {
+    const usersWithVehicles = this.users.filter(user => user.assignedVehicleId);
+    
+    if (usersWithVehicles.length === 0) {
+      this.loading = false;
+      return;
+    }
+    
+    let loadedCount = 0;
+    
+    // For each user with an assigned vehicle, load vehicle details
+    usersWithVehicles.forEach(user => {
+      // Force vehicle to load by clearing cache for this specific vehicle
+      this.vehicleService.removeFromCache(user.assignedVehicleId);
+      
+      this.vehicleService.getVehicleById(user.assignedVehicleId).subscribe({
+        next: (vehicle) => {
+          // Find the user in the array and update their vehicle info
+          const index = this.users.findIndex(u => u.id === user.id);
+          if (index !== -1) {
+            this.users[index].assignedVehicle = vehicle;
+          }
+          
+          // Update user if it's currently selected
+          if (this.selectedUser && this.selectedUser.id === user.id) {
+            this.selectedUser.assignedVehicle = vehicle;
+          }
+          
+          loadedCount++;
+          if (loadedCount === usersWithVehicles.length) {
+            this.loading = false;
+          }
+        },
+        error: (err) => {
+          console.error(`Error loading vehicle for user ${user.id}:`, err);
+          loadedCount++;
+          if (loadedCount === usersWithVehicles.length) {
+            this.loading = false;
+          }
+        }
+      });
+    });
+  }
+
+  loadVehicleDetails(user: any) {
+    if (!user.assignedVehicleId) return;
+
+    // Force refresh from server by removing from cache
+    this.vehicleService.removeFromCache(user.assignedVehicleId);
+    
+    this.vehicleService.getVehicleById(user.assignedVehicleId).subscribe({
+      next: (vehicle) => {
+        user.assignedVehicle = vehicle;
+      },
+      error: (err) => {
+        console.error(`Error loading vehicle details for user ${user.id}:`, err);
       }
     });
   }
 
   loadAvailableVehicles(): void {
+    // Clear cache to ensure we get fresh data
+    this.vehicleService.clearCache();
+    
     this.vehicleService.getAvailableVehicles().subscribe({
       next: (vehicles) => {
         this.availableVehicles = vehicles;
         if (vehicles.length > 0) {
-          this.selectedVehicleId = vehicles[0].id || null;
+          this.selectedVehicleId = null; // Don't pre-select, let user choose
         }
       },
       error: (err) => {
@@ -137,7 +212,7 @@ export class UserManagementComponent implements OnInit {
     this.selectedUserId = null;
     this.resetForm();
     this.loadAvailableVehicles();
-    
+
     // Set validators for password field
     this.userForm.get('password')?.setValidators([Validators.required, Validators.minLength(6)]);
     this.userForm.get('password')?.updateValueAndValidity();
@@ -146,13 +221,13 @@ export class UserManagementComponent implements OnInit {
   showEditUserForm(user: any): void {
     this.formMode = 'edit';
     this.selectedUserId = user.id;
-    
+
     // Remove validators for password field when editing
     this.userForm.get('password')?.clearValidators();
     this.userForm.get('password')?.updateValueAndValidity();
-    
+
     const userType = this.getUserType(user.roles);
-    
+
     this.userForm.patchValue({
       firstName: user.firstName,
       lastName: user.lastName,
@@ -162,101 +237,139 @@ export class UserManagementComponent implements OnInit {
       userType: userType,
       vehicleType: user.vehicleType || 'MOTORCYCLE'
     });
+
+    // Load available vehicles for this user
+    this.loadAvailableVehicles();
   }
 
-  // Show vehicle creation form for a specific user
-  showCreateVehicleForm(user: any): void {
+  // Show vehicle selection form for a specific user
+  showSelectVehicleForm(user: any): void {
     this.userForVehicle = user;
-    this.showVehicleForm = true;
-    
-    // Initialize form with default values matching user's role/type
-    const userType = this.getUserType(user.roles);
-    let defaultVehicleType = 'MOTORCYCLE';
-    
-    if (userType === 'professional') {
-      defaultVehicleType = 'CAR';
-    }
-    
-    this.vehicleForm.patchValue({
-      vehicleType: user.vehicleType || defaultVehicleType
-    });
+    this.selectedVehicleId = null;
+    this.showVehicleSelectionForm = true;
+    this.loadAvailableVehicles();
   }
 
-  closeVehicleForm(): void {
-    this.showVehicleForm = false;
+  closeVehicleSelectionForm(): void {
+    this.showVehicleSelectionForm = false;
     this.userForVehicle = null;
-    this.vehicleForm.reset({
-      vehicleType: 'MOTORCYCLE',
-      maxLoad: 100
-    });
+    this.selectedVehicleId = null;
   }
 
-  onVehicleFormSubmit(): void {
-    if (this.vehicleForm.invalid || !this.userForVehicle) {
-      return;
+  selectVehicle(vehicleId: string): void {
+    this.selectedVehicleId = vehicleId;
+  }
+
+  assignSelectedVehicle() {
+    if (this.selectedVehicleId && this.userForVehicle?.id) {
+      this.vehicleSubmitting = true;
+      
+      // We'll use the auth service's method for assignment
+      this.userService.assignVehicleToUser(this.userForVehicle.id, this.selectedVehicleId)
+        .subscribe({
+          next: () => {
+            // Clear the vehicle cache to ensure fresh data
+            this.vehicleService.clearCache();
+            
+            // Update the user in the local array
+            const userIndex = this.users.findIndex(u => u.id === this.userForVehicle.id);
+            if (userIndex !== -1) {
+              // Update the assignedVehicleId in the user object
+              this.users[userIndex].assignedVehicleId = this.selectedVehicleId;
+              
+              // Force reload the vehicle details
+              this.vehicleService.getVehicleById(this.selectedVehicleId!).subscribe({
+                next: (vehicle) => {
+                  this.users[userIndex].assignedVehicle = vehicle;
+                  
+                  // Update the selected user if it's currently being viewed
+                  if (this.selectedUser && this.selectedUser.id === this.userForVehicle.id) {
+                    this.selectedUser.assignedVehicleId = this.selectedVehicleId;
+                    this.selectedUser.assignedVehicle = vehicle;
+                  }
+                  
+                  alert('Vehicle assigned successfully!');
+                  this.closeVehicleSelectionForm();
+                  this.vehicleSubmitting = false;
+                },
+                error: (err) => {
+                  console.error('Failed to load vehicle details:', err);
+                  alert('Vehicle assigned but details could not be loaded. Please refresh the page.');
+                  this.closeVehicleSelectionForm();
+                  this.vehicleSubmitting = false;
+                }
+              });
+            } else {
+              alert('Vehicle assigned successfully!');
+              this.closeVehicleSelectionForm();
+              this.vehicleSubmitting = false;
+              // Reload all data to ensure consistency
+              this.loadDeliveryPersonnel();
+            }
+          },
+          error: (err) => {
+            console.error('Assignment failed:', err);
+            alert('Failed to assign vehicle. Please try again.');
+            this.vehicleSubmitting = false;
+          }
+        });
+    }
+  }
+
+  // Show user details dialog
+  showUserDetails(user: any): void {
+    // Always force a fresh load of vehicle info when viewing details
+    if (user.assignedVehicleId) {
+      this.loadVehicleDetails(user);
     }
     
-    this.vehicleSubmitting = true;
-    
-    // Create new vehicle object
-    const newVehicle: Vehicle = {
-      make: this.vehicleForm.value.make,
-      model: this.vehicleForm.value.model,
-      year: this.vehicleForm.value.year,
-      licensePlate: this.vehicleForm.value.licensePlate,
-      vehicleType: this.vehicleForm.value.vehicleType,
-      maxLoad: this.vehicleForm.value.maxLoad,
-      available: true
-    };
-    
-    // First create the vehicle
-    this.vehicleService.createVehicle(newVehicle, null).subscribe({
-      next: (createdVehicle) => {
-        // Then assign it to the user
-        if (createdVehicle.id && this.userForVehicle.id) {
-          const vehicleId: string = createdVehicle.id;
-          const userId: string = this.userForVehicle.id;
-          // Add a delay before assignment to ensure the vehicle is fully created
-          setTimeout(() => {
-            this.vehicleService.assignVehicleToUser(vehicleId, userId).subscribe({
-              next: (updatedVehicle) => {
-                alert(`Vehicle successfully created and assigned to ${this.userForVehicle.firstName} ${this.userForVehicle.lastName}!`);
-                this.vehicleSubmitting = false;
-                this.closeVehicleForm();
-                // Refresh delivery personnel list to show updated assignment
-                this.loadDeliveryPersonnel();
-              },
-              error: (err) => {
-                console.error('Error assigning vehicle to user:', err);
-                this.vehicleSubmitting = false;
-                alert(`Vehicle created but could not be assigned: ${err.message}`);
-                // Still close the form and refresh the list
-                this.closeVehicleForm();
-                this.loadDeliveryPersonnel();
-              }
-            });
-          }, 500); // 500ms delay to ensure backend processing completes
-        } else {
-          this.vehicleSubmitting = false;
-          alert('Vehicle created successfully!');
-          this.closeVehicleForm();
-          this.loadDeliveryPersonnel();
-        }
-      },
-      error: (err) => {
-        console.error('Error creating vehicle:', err);
-        this.vehicleSubmitting = false;
-        alert('Failed to create vehicle. Please try again.');
-      }
-    });
+    this.selectedUser = { ...user };
+    this.showDetailsDialog = true;
   }
+
+  closeDetailsDialog(): void {
+    this.showDetailsDialog = false;
+    this.selectedUser = null;
+  }
+
+  // Helper functions for vehicle display
+  getVehicleIcon(vehicleType: string): string {
+    switch (vehicleType) {
+      case 'MOTORCYCLE':
+        return 'fa-motorcycle';
+      case 'TRUCK':
+        return 'fa-truck';
+      case 'CAR':
+      default:
+        return 'fa-car';
+    }
+  }
+
+  getVehicleTypeName(vehicleType: string): string {
+    switch (vehicleType) {
+      case 'MOTORCYCLE':
+        return 'Motorcycle';
+      case 'TRUCK':
+        return 'Truck';
+      case 'CAR':
+        return 'Car';
+      default:
+        return vehicleType;
+    }
+  }
+
   getUserType(roles: string[]): string {
     if (!roles || roles.length === 0) return 'professional';
-    
+
     if (roles.includes('ROLE_PROFESSIONAL')) return 'professional';
     if (roles.includes('ROLE_TEMPORARY')) return 'temporary';
-    
+
     return 'professional';
+  }
+
+  // Check if user is professional delivery person
+  isProfessional(user: any): boolean {
+    return user.roles && user.roles.includes('ROLE_PROFESSIONAL');
   }
 
   resetForm(): void {
@@ -273,10 +386,10 @@ export class UserManagementComponent implements OnInit {
       });
       return;
     }
-
+  
     this.formSubmitting = true;
     const formData = this.userForm.value;
-    
+  
     const userData: any = {
       firstName: formData.firstName,
       lastName: formData.lastName,
@@ -284,15 +397,17 @@ export class UserManagementComponent implements OnInit {
       phone: formData.phone,
       address: formData.address,
       vehicleType: formData.vehicleType,
-      assignedVehicleId: this.selectedVehicleId
-    };
-
+      assignedVehicleId: this.selectedVehicleId,
+      userType: formData.userType
+        };
+  
     // Only include password for new users
     if (this.formMode === 'add') {
       userData.password = formData.password;
     }
-
+  
     if (this.formMode === 'add') {
+      // FIX: Remove the second parameter since the register method only expects one
       this.authService.register(userData, formData.userType).subscribe({
         next: () => {
           alert('Delivery person added successfully!');

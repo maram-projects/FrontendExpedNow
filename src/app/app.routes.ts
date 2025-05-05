@@ -6,8 +6,9 @@ import { adminGuard } from './guards/admin.guard';
 import { authGuard } from './guards/auth.guard';
 import { roleGuard } from './guards/role.guard';
 import { EditProfileComponent } from './components/profile/edit-profile/edit-profile.component';
-import { VehicleListComponent } from './components/admin-dashboard/vehicle-list/vehicle-list.component';
-import { VehicleFormComponent } from './components/admin-dashboard/vehicle-form/vehicle-form.component';
+import { VehicleListComponent } from './components/vehicles/vehicle-list/vehicle-list.component';
+import { VehicleFormComponent } from './components/vehicles/vehicle-form/vehicle-form.component';
+import { VehicleDetailComponent } from './components/vehicles/vehicle-detail/vehicle-detail.component';
 import { UserManagementComponent } from './components/admin-dashboard/user-management/user-management.component';
 import { RoleManagementComponent } from './components/admin-dashboard/role-management/role-management.component';
 import { SettingsComponent } from './components/admin-dashboard/settings/settings.component';
@@ -18,6 +19,7 @@ import { HomeComponent } from './components/home/home/home.component';
 import { homeGuard } from './guards/home.guard';
 import { AdminDashboardComponentComponent } from './components/admin-dashboard/admin-dashboard-component/admin-dashboard-component.component';
 import { ReactiveFormsModule } from '@angular/forms'; 
+
 export const routes: Routes = [
   // Public routes
   {
@@ -63,9 +65,11 @@ export const routes: Routes = [
       { path: 'users', component: UserManagementComponent },
       { path: 'roles', component: RoleManagementComponent },
       { path: 'settings', component: SettingsComponent },
+      // Vehicle management routes
       { path: 'vehicles', component: VehicleListComponent },
-      { path: 'vehicles/new', component: VehicleFormComponent },
-      { path: 'vehicles/:id/edit', component: VehicleFormComponent },
+      { path: 'vehicles/create', component: VehicleFormComponent },
+      { path: 'vehicles/edit/:id', component: VehicleFormComponent },
+      { path: 'vehicles/:id', component: VehicleDetailComponent },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   },

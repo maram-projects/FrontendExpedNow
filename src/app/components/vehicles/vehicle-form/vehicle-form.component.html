@@ -1,0 +1,126 @@
+<!-- vehicle-form.component.html -->
+<div class="vehicle-form-container">
+  <div class="form-header">
+    <h2>{{ isEditMode ? 'Edit Vehicle' : 'Add New Vehicle' }}</h2>
+    <button class="back-button" routerLink="/admin/vehicles">Back to Vehicles</button>
+  </div>
+
+  <form [formGroup]="vehicleForm" (ngSubmit)="onSubmit()">
+    <div class="form-group">
+      <label for="make">Make/Brand</label>
+      <input 
+        type="text" 
+        id="make" 
+        formControlName="make" 
+        placeholder="Enter vehicle make" 
+        class="form-control"
+        [ngClass]="{'invalid': vehicleForm.get('make')?.invalid && vehicleForm.get('make')?.touched}"
+      >
+      <div class="error-message" *ngIf="vehicleForm.get('make')?.invalid && vehicleForm.get('make')?.touched">
+        Make is required
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="model">Model</label>
+      <input 
+        type="text" 
+        id="model" 
+        formControlName="model" 
+        placeholder="Enter vehicle model" 
+        class="form-control"
+        [ngClass]="{'invalid': vehicleForm.get('model')?.invalid && vehicleForm.get('model')?.touched}"
+      >
+      <div class="error-message" *ngIf="vehicleForm.get('model')?.invalid && vehicleForm.get('model')?.touched">
+        Model is required
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="year">Year</label>
+      <input 
+        type="number" 
+        id="year" 
+        formControlName="year" 
+        placeholder="Enter vehicle year" 
+        class="form-control"
+        [ngClass]="{'invalid': vehicleForm.get('year')?.invalid && vehicleForm.get('year')?.touched}"
+      >
+      <div class="error-message" *ngIf="vehicleForm.get('year')?.invalid && vehicleForm.get('year')?.touched">
+        <span *ngIf="vehicleForm.get('year')?.errors?.['required']">Year is required</span>
+        <span *ngIf="vehicleForm.get('year')?.errors?.['min']">Year must be at least 1900</span>
+        <span *ngIf="vehicleForm.get('year')?.errors?.['max']">Year cannot be in the future</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="licensePlate">License Plate</label>
+      <input 
+        type="text" 
+        id="licensePlate" 
+        formControlName="licensePlate" 
+        placeholder="Enter license plate" 
+        class="form-control"
+        [ngClass]="{'invalid': vehicleForm.get('licensePlate')?.invalid && vehicleForm.get('licensePlate')?.touched}"
+      >
+      <div class="error-message" *ngIf="vehicleForm.get('licensePlate')?.invalid && vehicleForm.get('licensePlate')?.touched">
+        License plate is required
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="vehicleType">Vehicle Type</label>
+      <select 
+        id="vehicleType" 
+        formControlName="vehicleType" 
+        class="form-control"
+        [ngClass]="{'invalid': vehicleForm.get('vehicleType')?.invalid && vehicleForm.get('vehicleType')?.touched}"
+      >
+        <option *ngFor="let type of vehicleTypes" [value]="type">{{type}}</option>
+      </select>
+      <div class="error-message" *ngIf="vehicleForm.get('vehicleType')?.invalid && vehicleForm.get('vehicleType')?.touched">
+        Vehicle type is required
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="maxLoad">Maximum Load (kg)</label>
+      <input 
+        type="number" 
+        id="maxLoad" 
+        formControlName="maxLoad" 
+        placeholder="Enter maximum load capacity" 
+        class="form-control"
+        [ngClass]="{'invalid': vehicleForm.get('maxLoad')?.invalid && vehicleForm.get('maxLoad')?.touched}"
+      >
+      <div class="error-message" *ngIf="vehicleForm.get('maxLoad')?.invalid && vehicleForm.get('maxLoad')?.touched">
+        <span *ngIf="vehicleForm.get('maxLoad')?.errors?.['required']">Maximum load is required</span>
+        <span *ngIf="vehicleForm.get('maxLoad')?.errors?.['min']">Maximum load must be greater than 0</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="photo">Vehicle Photo</label>
+      <div class="photo-upload-container">
+        <input 
+          type="file" 
+          id="photo" 
+          accept="image/*" 
+          (change)="onFileChange($event)" 
+          class="file-input"
+        >
+        <div class="photo-preview" *ngIf="photoPreview">
+          <img [src]="photoPreview" alt="Vehicle Photo Preview">
+          <button type="button" class="remove-photo-btn" (click)="removePhoto()">Remove</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="submit-btn" [disabled]="vehicleForm.invalid || isSubmitting">
+        {{ isSubmitting ? 'Processing...' : (isEditMode ? 'Update' : 'Create') + ' Vehicle' }}
+      </button>
+      <button type="button" class="cancel-btn" routerLink="/admin/vehicles" [disabled]="isSubmitting">Cancel</button>
+    </div>
+  </form>
+</div>
