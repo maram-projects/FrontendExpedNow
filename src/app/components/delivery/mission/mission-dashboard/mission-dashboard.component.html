@@ -7,25 +7,36 @@
     </div>
   }
   
+  <!-- View Toggle Controls -->
+  <div class="view-controls">
+    <button [class.active]="viewMode === 'cards'" (click)="viewMode = 'cards'">
+      <span class="icon">⊞</span> Card View
+    </button>
+    <button [class.active]="viewMode === 'table'" (click)="viewMode = 'table'">
+      <span class="icon">☰</span> Table View
+    </button>
+  </div>
+  
   @if (!isLoading && missions.length === 0) {
     <div class="no-missions">
       <p>No active missions found</p>
     </div>
   }
   
-  @if (!isLoading && missions.length > 0) {
+  <!-- Card View -->
+  @if (!isLoading && missions.length > 0 && viewMode === 'cards') {
     <div class="mission-list">
       @for (mission of missions; track mission.id) {
         <div class="mission-card" [class.completed]="mission.status === 'COMPLETED'">
           <div class="mission-header">
               <h3>Mission #{{ mission.id.substring(0, 8) }}</h3>
-                          <span class="status-badge" [ngClass]="{
-              'pending': mission.status === 'PENDING',
-              'in-progress': mission.status === 'IN_PROGRESS',
-              'completed': mission.status === 'COMPLETED'
-            }">
-              {{ mission.status }}
-            </span>
+              <span class="status-badge" [ngClass]="{
+                'pending': mission.status === 'PENDING',
+                'in-progress': mission.status === 'IN_PROGRESS',
+                'completed': mission.status === 'COMPLETED'
+              }">
+                {{ mission.status }}
+              </span>
           </div>
           
           <div class="mission-details">
@@ -56,6 +67,64 @@
           </div>
         </div>
       }
+    </div>
+  }
+  
+  <!-- Table View -->
+  @if (!isLoading && missions.length > 0 && viewMode === 'table') {
+    <div class="mission-table-container">
+      <table class="mission-table">
+        <thead>
+          <tr>
+            <th>Mission ID</th>
+            <th>Status</th>
+            <th>From</th>
+            <th>To</th>
+            <th>Started</th>
+            <th>Completed</th>
+            <th>Duration</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (mission of missions; track mission.id) {
+            <tr [ngClass]="mission.status?.toLowerCase() || ''">
+              <td>{{ mission.id.substring(0, 8) }}</td>
+              <td>
+                <span class="status-pill" [ngClass]="mission.status?.toLowerCase() || ''">
+                  {{ mission.status || 'Unknown' }}
+                </span>
+              </td>
+              <td class="address-cell" [title]="mission.deliveryRequest?.pickupAddress">
+                {{ mission.deliveryRequest?.pickupAddress || 'Not available' }}
+              </td>
+              <td class="address-cell" [title]="mission.deliveryRequest?.deliveryAddress">
+                {{ mission.deliveryRequest?.deliveryAddress || 'Not available' }}
+              </td>
+              <td>{{ mission.startTime | date:'short' }}</td>
+              <td>{{ mission.endTime ? (mission.endTime | date:'short') : 'Not completed' }}</td>
+              <td>{{ mission.endTime ? calculateDuration(mission.startTime, mission.endTime) : 'In progress' }}</td>
+              <td class="action-cell">
+                @if (mission.status === 'PENDING') {
+                  <button (click)="startMission(mission.id)" class="table-btn start">
+                    Start
+                  </button>
+                }
+                
+                @if (mission.status === 'IN_PROGRESS') {
+                  <button (click)="completeMission(mission.id)" class="table-btn complete">
+                    Complete
+                  </button>
+                }
+                
+                <button (click)="openMissionDetails(mission.id)" class="table-btn details">
+                  Details
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
     </div>
   }
   

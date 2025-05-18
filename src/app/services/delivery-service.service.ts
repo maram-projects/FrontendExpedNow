@@ -9,11 +9,14 @@ import { Mission } from '../models/mission.model';
 // Current Angular interface (problematic)
 // Updated to match Java DeliveryResponseDTO
 export interface DeliveryRequest {
+actionTime: string|number|Date;
+updatedAt: string|number|Date;
   id: string;
   pickupAddress: string;
   deliveryAddress: string;
   packageDescription: string;  // Not packageType
   packageWeight: number;
+
   vehicleId?: string;
   scheduledDate: string;  // Will be in Java's format "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
   additionalInstructions?: string;
@@ -268,4 +271,27 @@ export class DeliveryService {
       })
     );
   }
+
+/**
+ * Gets the history of accepted and rejected deliveries for the current delivery person
+ */
+getDeliveryHistory(): Observable<DeliveryRequest[]> {
+  const userId = this.authService.getCurrentUser()?.userId;
+  console.log('Fetching delivery history for user:', userId);
+  
+  return this.http.get<DeliveryRequest[]>(
+    `${this.apiUrl}/history`,
+    { headers: this.getAuthHeaders() }
+  ).pipe(
+    tap(history => {
+      console.log('Delivery history count:', history.length);
+      console.log('Delivery history:', history);
+    }),
+    catchError(error => {
+      console.error('Error fetching delivery history:', error);
+      return throwError(() => new Error('Failed to load delivery history'));
+    })
+  );
+}
+
 }

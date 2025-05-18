@@ -1,4 +1,3 @@
-// mission-dashboard.component.ts
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { RouterModule } from '@angular/router';
@@ -11,7 +10,7 @@ import { MissionDetailsComponent } from "../mission-details/mission-details.comp
 @Component({
   selector: 'app-mission-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, DatePipe, MissionDetailsComponent], // Add DatePipe here
+  imports: [CommonModule, RouterModule, DatePipe, MissionDetailsComponent],
   templateUrl: './mission-dashboard.component.html',
   styleUrls: ['./mission-dashboard.component.css']
 })
@@ -19,10 +18,14 @@ export class MissionDashboardComponent implements OnInit {
   missions: any[] = [];
   currentUser: any;
   isLoading = true;
-  errorMessage: string = ''; // أضف هذا السطر
-  successMessage: string = ''; // إضافة اختيارية إذا كنت تحتاجها
+  errorMessage: string = '';
+  successMessage: string = '';
   selectedMissionId: string | null = null;
   showMissionDialog = false;
+  
+  // Add view mode toggle property
+  viewMode: 'cards' | 'table' = 'cards';
+  
   constructor(
     private missionService: MissionService,
     private authService: AuthService,
@@ -31,7 +34,7 @@ export class MissionDashboardComponent implements OnInit {
   
   ngOnInit() {
     this.currentUser = this.authService.getCurrentUser();
-    console.log('Current User:', this.currentUser); // للتأكد من البيانات
+    console.log('Current User:', this.currentUser);
     
     if (!this.currentUser?.userId) {
       console.error('User not authenticated or missing ID');
@@ -48,7 +51,6 @@ export class MissionDashboardComponent implements OnInit {
     this.isLoading = true;
     this.errorMessage = '';
     
-    // تأكد أن الـ userId مش null أو undefined
     if (!this.currentUser?.userId) {
       this.errorMessage = 'User ID is missing';
       this.isLoading = false;
@@ -77,7 +79,6 @@ export class MissionDashboardComponent implements OnInit {
           this.missions[missionIndex].status = 'IN_PROGRESS';
           this.successMessage = 'Mission started successfully';
           
-          // تحديث حالة الطلب المرتبط
           if (this.missions[missionIndex].deliveryRequest) {
             this.missions[missionIndex].deliveryRequest.status = 'IN_TRANSIT';
           }
@@ -99,7 +100,6 @@ export class MissionDashboardComponent implements OnInit {
           this.missions[missionIndex].endTime = new Date();
           this.successMessage = 'Mission completed successfully';
           
-          // تحديث حالة الطلب المرتبط
           if (this.missions[missionIndex].deliveryRequest) {
             this.missions[missionIndex].deliveryRequest.status = 'DELIVERED';
           }
@@ -111,6 +111,7 @@ export class MissionDashboardComponent implements OnInit {
       }
     });
   }
+  
   openMissionDetails(missionId: string) {
     this.selectedMissionId = missionId;
     this.showMissionDialog = true;
@@ -122,10 +123,37 @@ export class MissionDashboardComponent implements OnInit {
   }
   
   onMissionUpdated(mission: any) {
-    // Update the mission in your local list if needed
     const index = this.missions.findIndex(m => m.id === mission.id);
     if (index !== -1) {
       this.missions[index] = mission;
     }
+  }
+  
+  // Add calculate duration method from MissionDetailsComponent
+  calculateDuration(startTime: string, endTime: string): string {
+    if (!startTime || !endTime) {
+      return 'N/A';
+    }
+    
+    const start = new Date(startTime).getTime();
+    const end = new Date(endTime).getTime();
+    const durationMs = end - start;
+    
+    // Less than an hour
+    if (durationMs < 3600000) {
+      return Math.round(durationMs / 60000) + ' minutes';
+    }
+    
+    // Less than a day
+    if (durationMs < 86400000) {
+      const hours = Math.floor(durationMs / 3600000);
+      const minutes = Math.round((durationMs % 3600000) / 60000);
+      return `${hours} hour${hours !== 1 ? 's' : ''} ${minutes} minute${minutes !== 1 ? 's' : ''}`;
+    }
+    
+    // More than a day
+    const days = Math.floor(durationMs / 86400000);
+    const hours = Math.round((durationMs % 86400000) / 3600000);
+    return `${days} day${days !== 1 ? 's' : ''} ${hours} hour${hours !== 1 ? 's' : ''}`;
   }
 }

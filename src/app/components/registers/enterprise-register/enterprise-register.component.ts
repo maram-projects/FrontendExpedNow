@@ -78,7 +78,8 @@ export class EnterpriseRegisterComponent implements OnInit {
       vatNumber: formValue.vatNumber,
       businessPhone: formValue.businessPhone,
       businessAddress: formValue.businessAddress,
-      deliveryRadius: formValue.deliveryRadius
+      deliveryRadius: formValue.deliveryRadius,
+      id: ''
     };
     
     console.log('Submitting registration:', userData); // Debug log

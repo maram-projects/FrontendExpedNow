@@ -64,7 +64,8 @@ export class IndividualRegisterComponent implements OnInit {
       email: this.individualForm.value.email,
       password: this.individualForm.value.password,
       phone: this.individualForm.value.phone,
-      address: this.individualForm.value.address
+      address: this.individualForm.value.address,
+      id: ''
     };
     
     this.authService.register(userData, 'individual').subscribe({

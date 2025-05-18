@@ -98,7 +98,8 @@ export class TemporaryRegisterComponent implements OnInit {
       vehicleHasFridge: formValue.vehicleHasFridge,
       driverLicenseNumber: formValue.driverLicenseNumber,
       driverLicenseCategory: formValue.driverLicenseCategory,
-      preferredZones: formValue.preferredZones
+      preferredZones: formValue.preferredZones,
+      id: ''
     };
     
     this.authService.register(userData, 'temporary').subscribe({

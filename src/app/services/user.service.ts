@@ -15,11 +15,10 @@ export class UserService {
     private authService: AuthService
   ) {}
 
-  getUserDetails(): Observable<User> {
-    return this.http.get<User>(`${this.apiUrl}/me`).pipe(
-      catchError(this.handleError)
-    );
-  }
+ // Ensure your backend returns proper User objects with id
+getUserDetails(): Observable<User> {
+  return this.http.get<User>(`${this.apiUrl}/me`);
+}
     
   updateProfile(user: User): Observable<User> {
     return this.http.put<User>(`${this.apiUrl}/profile`, user).pipe(

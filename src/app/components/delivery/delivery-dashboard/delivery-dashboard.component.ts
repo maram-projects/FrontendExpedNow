@@ -1,13 +1,43 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { DeliveryRequest, DeliveryService } from '../../../services/delivery-service.service';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
+import { AvailabilityService } from '../../../services/availability.service';
+import { AvailabilitySchedule, DayOfWeek, DaySchedule } from '../../../models/availability.model';
+import { MatCardModule } from '@angular/material/card';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTableModule } from '@angular/material/table';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+import { MatOptionModule } from '@angular/material/core';
+import { MatIconModule } from '@angular/material/icon';
+import { DatePipe } from '@angular/common';
+import { MatTabsModule } from '@angular/material/tabs';
+import { ScheduleComponent } from '../../admin-dashboard/schedule/schedule.component';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { NgIf } from '@angular/common';
 
 @Component({
   selector: 'app-delivery-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [
+    CommonModule, 
+    FormsModule, 
+    MatCardModule,
+    MatButtonModule,
+    MatTableModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatOptionModule,
+    MatIconModule,
+    MatTabsModule,
+    DatePipe,
+    ScheduleComponent,
+    MatProgressSpinnerModule,
+    NgIf
+  ],
   templateUrl: './delivery-dashboard.component.html',
   styleUrls: ['./delivery-dashboard.component.css']
 })
@@ -16,46 +46,234 @@ export class DeliveryDashboardComponent implements OnInit {
   isLoading: boolean = true;
   errorMessage: string = '';
   successMessage: string = '';
-  debugMode: boolean = false; // Toggle for showing debug info
-  allDeliveries: DeliveryRequest[] = []; // For debugging
-  
-  // Set to track delivery IDs that are being processed
   processingItems: Set<string> = new Set<string>();
+  
+  // Add the missing property for delivery person selection with proper type
+  selectedDeliveryPerson: {
+    userId: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+  } | null = null;
+  
+  // Section management
+  currentSection: 'pending' | 'history' = 'pending';
+  
+  // View mode for pending deliveries
+  viewMode: 'cards' | 'table' = 'cards';
+  
+  // Availability panel
+  showAvailabilityPanel = false;
+  currentSchedule: AvailabilitySchedule | null = null;
+  isScheduleLoading = false;
+  scheduleError = '';
+  
+  // History section
+  isHistoryLoading = false;
+  historyFilter: string = 'all';
+  filteredHistory: any[] = [];
+  
+  selectedTabIndex = 0;
 
-  // Add access to authService for the template
   constructor(
-    public deliveryService: DeliveryService, // Changed to public for template access
+    public deliveryService: DeliveryService,
     private router: Router,
-    public authService: AuthService // Inject and expose AuthService
+    public authService: AuthService,
+    private availabilityService: AvailabilityService
   ) {}
 
   ngOnInit(): void {
     this.loadAssignedDeliveries();
+    this.loadSchedule();
+    this.loadHistory();
+    // Auto-show schedule panel for delivery personnel
+    if (!this.authService.isAdmin()) {
+      this.showAvailabilityPanel = true;
+    }
+  }
+
+  // Clear messages
+  clearErrorMessage(): void {
+    this.errorMessage = '';
+  }
+
+  clearSuccessMessage(): void {
+    this.successMessage = '';
+  }
+
+  // Section switching
+  switchSection(section: 'pending' | 'history'): void {
+    this.currentSection = section;
+    if (section === 'history' && this.filteredHistory.length === 0) {
+      this.loadHistory();
+    }
+  }
+
+  // History management
+  loadHistory(): void {
+    this.isHistoryLoading = true;
+    // Implement your history loading logic here
+    // For example:
+    // this.deliveryService.getDeliveryHistory().subscribe(history => {
+    //   this.filteredHistory = history;
+    //   this.isHistoryLoading = false;
+    // });
+    this.isHistoryLoading = false; // Remove this when implementing actual loading
+  }
+
+  refreshHistory(): void {
+    this.loadHistory();
+  }
+
+  applyHistoryFilter(): void {
+    // Implement filtering logic based on this.historyFilter
+    // For example:
+    // if (this.historyFilter === 'all') {
+    //   this.filteredHistory = [...allHistory];
+    // } else {
+    //   this.filteredHistory = allHistory.filter(d => d.status === this.historyFilter);
+    // }
+  }
+
+  // ID shortening utility
+  shortenId(id: string): string {
+    return id ? id.substring(0, 8) : '';
+  }
+
+  toggleAvailabilityPanel(): void {
+    this.showAvailabilityPanel = !this.showAvailabilityPanel;
+    if (this.showAvailabilityPanel && !this.currentSchedule) {
+      this.loadSchedule();
+    }
   }
 
   loadAssignedDeliveries(): void {
     this.isLoading = true;
     this.errorMessage = '';
-    this.successMessage = '';
-    this.processingItems.clear();
-
+    
     this.deliveryService.getAssignedPendingDeliveries().subscribe({
       next: (deliveries) => {
         this.assignedDeliveries = deliveries;
         this.isLoading = false;
-        console.log('Deliveries loaded successfully:', deliveries);
       },
       error: (err) => {
-        this.errorMessage = 'Failed to load deliveries. Please try again later.';
+        this.errorMessage = 'Failed to load assigned deliveries';
         this.isLoading = false;
         console.error('Error loading deliveries:', err);
       }
     });
   }
 
-  // Check if the item is being processed
-  isProcessing(deliveryId: string): boolean {
-    return this.processingItems.has(deliveryId);
+  loadSchedule(): void {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser?.userId) {
+      this.scheduleError = 'User not authenticated';
+      return;
+    }
+  
+    // Determine which user's schedule to load
+    const targetUserId = this.authService.isAdmin() && this.selectedDeliveryPerson 
+      ? this.selectedDeliveryPerson.userId
+      : currentUser.userId;
+  
+    this.isScheduleLoading = true;
+    this.scheduleError = '';
+    
+    this.availabilityService.getSchedule(targetUserId).subscribe({
+      next: (response) => {
+        if (response.success) {
+          // Handle both response structures
+          // Fix the type error by ensuring we don't assign undefined
+          this.currentSchedule = response.schedule || response.data || null;
+          
+          // If no schedule exists, initialize an empty one
+          if (!this.currentSchedule) {
+            this.currentSchedule = this.initializeEmptySchedule(targetUserId);
+          }
+        }
+        this.isScheduleLoading = false;
+      },
+      error: (err) => {
+        if (err.status === 404) {
+          // No schedule exists - create an empty one
+          this.currentSchedule = this.initializeEmptySchedule(targetUserId);
+        } else {
+          this.scheduleError = 'Failed to load availability schedule';
+          console.error('Error loading schedule:', err);
+        }
+        this.isScheduleLoading = false;
+      }
+    });
+  }
+  
+  // Add the missing method referenced in the template
+  initializeNewSchedule(): void {
+    const userId = this.authService.getCurrentUser()?.userId;
+    if (!userId) {
+      this.scheduleError = 'User not authenticated';
+      return;
+    }
+    
+    const targetUserId = this.authService.isAdmin() && this.selectedDeliveryPerson 
+      ? this.selectedDeliveryPerson.userId
+      : userId;
+    
+    this.currentSchedule = this.initializeEmptySchedule(targetUserId);
+  }
+  
+  // Renamed from initializeEmptyWeeklySchedule to better reflect its functionality
+  private initializeEmptySchedule(userId: string): AvailabilitySchedule {
+    return {
+      userId: userId,
+      weeklySchedule: this.initializeEmptyWeeklySchedule(),
+      monthlySchedule: {}
+    };
+  }
+  
+  private initializeEmptyWeeklySchedule(): Record<DayOfWeek, DaySchedule> {
+    return {
+      [DayOfWeek.MONDAY]: { working: false, startTime: null, endTime: null },
+      [DayOfWeek.TUESDAY]: { working: false, startTime: null, endTime: null },
+      [DayOfWeek.WEDNESDAY]: { working: false, startTime: null, endTime: null },
+      [DayOfWeek.THURSDAY]: { working: false, startTime: null, endTime: null },
+      [DayOfWeek.FRIDAY]: { working: false, startTime: null, endTime: null },
+      [DayOfWeek.SATURDAY]: { working: false, startTime: null, endTime: null },
+      [DayOfWeek.SUNDAY]: { working: false, startTime: null, endTime: null }
+    };
+  }
+
+  onScheduleUpdated(updatedSchedule: AvailabilitySchedule): void {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser?.userId) {
+      this.scheduleError = 'User not authenticated';
+      return;
+    }
+
+    this.isScheduleLoading = true;
+    this.scheduleError = '';
+    
+    // Determine the user ID for the schedule
+    const targetUserId = this.authService.isAdmin() && this.selectedDeliveryPerson 
+      ? this.selectedDeliveryPerson.userId
+      : currentUser.userId;
+    
+    updatedSchedule.userId = targetUserId;
+
+    this.availabilityService.saveSchedule(updatedSchedule).subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.currentSchedule = updatedSchedule;
+          this.successMessage = 'Schedule updated successfully';
+          setTimeout(() => this.successMessage = '', 3000);
+        }
+        this.isScheduleLoading = false;
+      },
+      error: (err) => {
+        this.scheduleError = 'Failed to update schedule';
+        this.isScheduleLoading = false;
+        console.error('Error updating schedule:', err);
+      }
+    });
   }
 
   acceptDelivery(deliveryId: string): void {
@@ -64,129 +282,73 @@ export class DeliveryDashboardComponent implements OnInit {
     this.processingItems.add(deliveryId);
     
     this.deliveryService.acceptDelivery(deliveryId).subscribe({
-      next: (response: any) => {
-        console.log('API response:', response);
-        this.successMessage = 'تم قبول التسليم وإنشاء المهمة بنجاح';
-        setTimeout(() => {
-          this.router.navigate(['/delivery/missions']);
-        }, 1500);
+      next: (response) => {
+        this.handleDeliveryAccepted(deliveryId, response);
+        this.processingItems.delete(deliveryId);
       },
       error: (err) => {
-        console.error('API error:', err);
-        this.errorMessage = err.message || 'فشل في قبول التسليم';
-        if (err.status === 400) {
-          this.errorMessage = 'حالة الطلب غير صالحة للقبول';
-        }
-      },
-      complete: () => {
+        this.handleDeliveryError(err, 'accept');
         this.processingItems.delete(deliveryId);
       }
     });
   }
 
   rejectDelivery(deliveryId: string): void {
-    // Prevent repeated clicks while processing
-    if (this.isProcessing(deliveryId)) {
-      return;
-    }
+    if (this.isProcessing(deliveryId)) return;
     
     this.processingItems.add(deliveryId);
     
     this.deliveryService.rejectDelivery(deliveryId).subscribe({
       next: () => {
-        this.successMessage = 'Delivery rejected successfully!';
-        console.log('Delivery rejected successfully');
-        this.loadAssignedDeliveries();
+        this.handleDeliveryRejected(deliveryId);
+        this.processingItems.delete(deliveryId);
       },
       error: (err) => {
-        this.errorMessage = 'Failed to reject delivery. Please try again.';
-        console.error('Error rejecting delivery:', err);
+        this.handleDeliveryError(err, 'reject');
         this.processingItems.delete(deliveryId);
       }
     });
   }
-  
-  // Helper function to shorten delivery ID
-  shortenId(id: string): string {
-    return id.substring(0, 8);
-  }
-  
-  // Clear success messages
-  clearSuccessMessage(): void {
-    this.successMessage = '';
-  }
-  
-  // Clear error messages
-  clearErrorMessage(): void {
-    this.errorMessage = '';
+
+  private handleDeliveryAccepted(deliveryId: string, response: any): void {
+    this.successMessage = 'Delivery accepted successfully';
+    this.assignedDeliveries = this.assignedDeliveries.filter(d => d.id !== deliveryId);
+    setTimeout(() => this.router.navigate(['/delivery/missions']), 1500);
   }
 
-  // Method to toggle debug mode
-  toggleDebugMode(): void {
-    this.debugMode = !this.debugMode;
-    if (this.debugMode) {
-      this.loadAllDeliveries();
+  private handleDeliveryRejected(deliveryId: string): void {
+    this.successMessage = 'Delivery rejected successfully';
+    this.assignedDeliveries = this.assignedDeliveries.filter(d => d.id !== deliveryId);
+  }
+
+  private handleDeliveryError(err: any, action: string): void {
+    this.errorMessage = `Failed to ${action} delivery. ${err.error?.message || ''}`;
+    console.error(`Error ${action}ing delivery:`, err);
+  }
+
+  isProcessing(deliveryId: string): boolean {
+    return this.processingItems.has(deliveryId);
+  }
+
+  // Method to handle delivery person selection (for admin use)
+  selectDeliveryPerson(person: { userId: string; firstName: string; lastName: string; email?: string; } | null): void {
+    this.selectedDeliveryPerson = person;
+    
+    // If a person is selected, load their schedule
+    if (person) {
+      this.loadSchedule();
+    } else {
+      // If person selection is cleared, load current user's schedule
+      const currentUser = this.authService.getCurrentUser();
+      if (currentUser?.userId) {
+        this.loadSchedule();
+      }
     }
   }
 
-  // Load all deliveries for debugging
-  loadAllDeliveries(): void {
-    this.deliveryService.getAllDeliveries().subscribe({
-      next: (deliveries) => {
-        this.allDeliveries = deliveries;
-        console.log('All deliveries loaded:', deliveries.length);
-      },
-      error: (err) => {
-        console.error('Failed to load all deliveries:', err);
-      }
-    });
-  }
-
-  // Check if there are deliveries in the system that could be assigned
-  checkAvailableDeliveries(): void {
-    this.deliveryService.getPendingDeliveriesUnassigned().subscribe({
-      next: (deliveries) => {
-        if (deliveries && deliveries.length > 0) {
-          this.successMessage = `There are ${deliveries.length} unassigned deliveries available in the system.`;
-        } else {
-          this.successMessage = 'There are no unassigned deliveries available at the moment.';
-        }
-      },
-      error: (err) => {
-        this.errorMessage = 'Failed to check for available deliveries.';
-        console.error('Error checking available deliveries:', err);
-      }
-    });
-  }
-
-  // Method to manually refresh assignments
   refreshAssignments(): void {
     this.isLoading = true;
-    this.errorMessage = '';
     this.successMessage = 'Refreshing assignments...';
-    
     this.loadAssignedDeliveries();
-  }
-
-  // Check delivery person status
-  checkDeliveryPersonStatus(): void {
-    this.deliveryService.checkDeliveryPersonStatus().subscribe({
-      next: (status) => {
-        this.successMessage = `Your current status: ${JSON.stringify(status)}`;
-      },
-      error: (err) => {
-        this.errorMessage = 'Failed to check your delivery person status.';
-        console.error('Error checking status:', err);
-      }
-    });
-  }
-  
-  // Helper methods to expose user data to the template
-  getCurrentUserId(): string | undefined {
-    return this.authService.getCurrentUser()?.userId;
-  }
-  
-  getCurrentUserRole(): string | undefined {
-    return this.authService.getCurrentUser()?.userType;
   }
 }

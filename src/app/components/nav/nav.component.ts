@@ -69,6 +69,11 @@ interface Message {
                     <i class="fas fa-truck me-1"></i> Deliveries
                   </a>
                 </li>
+                <li class="nav-item">
+                  <a class="nav-link" routerLink="/delivery/missions" routerLinkActive="active">
+                    <i class="fas fa-tasks me-1"></i> Missions
+                  </a>
+                </li>
               </ng-container>
             </ng-container>
           </ul>

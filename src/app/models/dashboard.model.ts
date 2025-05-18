@@ -1,3 +1,4 @@
+// dashboard.model.ts
 import { User } from "./user.model";
 
 export interface DashboardStats {
@@ -6,8 +7,11 @@ export interface DashboardStats {
     [key: string]: number;
   };
   recentRegistrations: User[];
-  totalOrders?: number; // Optional
-  pendingOrders?: number; // Optional
-  completedOrders?: number; // Optional
+  totalOrders?: number;
+  pendingOrders?: number;
+  completedOrders?: number;
+  // Add any other stats you want to display
+  activeToday?: number;
+  deliveryPersons?: number;
+  pendingApprovals?: number;
 }
-  

@@ -45,6 +45,13 @@ import { RouterModule } from '@angular/router';
                 <span>Vehicle Management</span>
               </a>
             </li>
+            <!-- New Navigation Item for Availability Schedule -->
+            <li class="nav-item">
+              <a class="nav-link" routerLink="/admin/availability" routerLinkActive="active">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Availability Schedule</span>
+              </a>
+            </li>
           </ul>
         </nav>
         

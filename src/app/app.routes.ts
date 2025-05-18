@@ -19,6 +19,7 @@ import { HomeComponent } from './components/home/home/home.component';
 import { homeGuard } from './guards/home.guard';
 import { AdminDashboardComponentComponent } from './components/admin-dashboard/admin-dashboard-component/admin-dashboard-component.component';
 import { ReactiveFormsModule } from '@angular/forms'; 
+import { ScheduleComponent } from './components/admin-dashboard/schedule/schedule.component';
 
 export const routes: Routes = [
   // Public routes
@@ -65,7 +66,8 @@ export const routes: Routes = [
       { path: 'users', component: UserManagementComponent },
       { path: 'roles', component: RoleManagementComponent },
       { path: 'settings', component: SettingsComponent },
-      // Vehicle management routes
+      {path: 'availability',
+        loadComponent: () => import('./components/admin-dashboard/schedule/schedule.component').then(m => m.ScheduleComponent)   }, 
       { path: 'vehicles', component: VehicleListComponent },
       { path: 'vehicles/create', component: VehicleFormComponent },
       { path: 'vehicles/edit/:id', component: VehicleFormComponent },

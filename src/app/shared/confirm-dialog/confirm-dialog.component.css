@@ -1,0 +1,21 @@
+.confirm-dialog {
+    padding: 20px;
+    min-width: 300px;
+  }
+  
+  mat-dialog-content {
+    margin: 16px 0;
+  }
+  
+  mat-dialog-actions {
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  
+  .cancel-button {
+    margin-right: 8px;
+  }
+  
+  .confirm-button {
+    margin-left: 8px;
+  }

@@ -45,7 +45,7 @@ export class AuthService {
           const authData: AuthResponse = {
             token: response.token,
             userType: response.userType?.toLowerCase() || '',
-            userId: response.userId,
+            userId: response.userId, // Make sure this is set
             email: response.email,
             firstName: response.firstName,
             lastName: response.lastName,
@@ -131,11 +131,28 @@ export class AuthService {
     this.currentUserSubject.next(null);
   }
 
-  getCurrentUser(): AuthResponse | null {
+  getCurrentUser(): AuthResponse {
     const user = localStorage.getItem('currentUser');
-    return user ? JSON.parse(user) as AuthResponse : null;
+    if (!user) {
+      throw new Error('No user session');
+    }
+    
+    try {
+      return JSON.parse(user) as AuthResponse;
+    } catch (e) {
+      this.clearUserSession();
+      throw new Error('Invalid user data');
+    }
   }
 
+  isSessionValid(): boolean {
+    try {
+      const user = this.getCurrentUser();
+      return !!user?.token && !!user?.userId;
+    } catch {
+      return false;
+    }
+  }
   isClient(): boolean {
     const user = this.getCurrentUser();
     return !!user && [USER_TYPES.INDIVIDUAL, USER_TYPES.ENTERPRISE].includes(user.userType);
@@ -143,8 +160,8 @@ export class AuthService {
 
   isAdmin(): boolean {
     const user = this.getCurrentUser();
-    return !!user && user.userType.toLowerCase() === USER_TYPES.ADMIN;
-  }
+    return !!user && user.userType.toLowerCase() === 'admin'; // Ensure case insensitivity
+}
   
   isLoggedIn(): boolean {
     return !!this.getCurrentUser()?.token;

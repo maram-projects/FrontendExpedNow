@@ -1,57 +1,347 @@
-<div class="delivery-wrapper">
-  <!-- Page Title -->
-  <h2 class="page-title">Delivery Assignments</h2>
-
-  <!-- Success and Error Notifications -->
-  <div *ngIf="successMessage" class="notification success">
-    <div class="notification-icon">✓</div>
-    <span>{{ successMessage }}</span>
-    <button class="close-button" (click)="clearSuccessMessage()">×</button>
-  </div>
-
-  <div *ngIf="errorMessage" class="notification error">
-    <div class="notification-icon">!</div>
-    <span>{{ errorMessage }}</span>
-    <button class="close-button" (click)="clearErrorMessage()">×</button>
-  </div>
-
-  <!-- Loading State -->
-  <div *ngIf="isLoading" class="loading-state">
-    <p>Loading your deliveries...</p>
-    <div class="spinner"></div>
-  </div>
-
-  <!-- Deliveries List -->
-  <div *ngIf="!isLoading && assignedDeliveries.length > 0" class="delivery-grid">
-    <div *ngFor="let delivery of assignedDeliveries" class="card-delivery">
-      <div class="card-header">
-        <h3>Delivery #{{ shortenId(delivery.id) }}</h3>
-        <span class="badge">{{ delivery.status }}</span>
-      </div>
-
-      <div class="card-body">
-        <p><strong>Pickup:</strong> {{ delivery.pickupAddress }}</p>
-        <p><strong>Delivery:</strong> {{ delivery.deliveryAddress }}</p>
-        <p><strong>Package:</strong> {{ delivery.packageDescription }} ({{ delivery.packageWeight }} kg)</p>
-        <p><strong>Client:</strong> {{ delivery.clientId }}</p>
-      </div>
-
-      <div class="card-actions">
-        <button (click)="acceptDelivery(delivery.id)" class="accept-button" [disabled]="isProcessing(delivery.id)">
-          <ng-container *ngIf="isProcessing(delivery.id); else acceptLabel">Processing...</ng-container>
-          <ng-template #acceptLabel>Accept</ng-template>
+<!-- delivery-dashboard.component.html -->
+<div class="dashboard-container">
+  <!-- Header Section -->
+  <header class="dashboard-header">
+    <h1 class="title-text">
+      <span class="text-gradient">Delivery Dashboard</span>
+      <div class="title-decoration"></div>
+    </h1>
+    
+    <div class="header-controls">
+      <!-- Only show schedule toggle for admins -->
+      <button mat-stroked-button 
+              *ngIf="authService.isAdmin()"
+              (click)="toggleAvailabilityPanel()"
+              class="toggle-button">
+        <mat-icon>schedule</mat-icon>
+        {{ showAvailabilityPanel ? 'Hide Schedule' : 'Show Schedule' }}
+      </button>
+      
+      <div class="section-toggles">
+        <button mat-stroked-button 
+                (click)="switchSection('pending')" 
+                [class.active]="currentSection === 'pending'">
+          Pending Assignments
         </button>
-
-        <button (click)="rejectDelivery(delivery.id)" class="reject-button" [disabled]="isProcessing(delivery.id)">
-          <ng-container *ngIf="isProcessing(delivery.id); else rejectLabel">Processing...</ng-container>
-          <ng-template #rejectLabel>Reject</ng-template>
+        <button mat-stroked-button 
+                (click)="switchSection('history')" 
+                [class.active]="currentSection === 'history'">
+          Delivery History
         </button>
       </div>
     </div>
+  </header>
+
+  <!-- Notifications -->
+  <div class="notifications">
+    <div *ngIf="errorMessage" class="notification error">
+      <mat-icon>error</mat-icon>
+      <div class="notification-content">{{ errorMessage }}</div>
+      <button class="close-btn" (click)="clearErrorMessage()">×</button>
+    </div>
+    
+    <div *ngIf="successMessage" class="notification success">
+      <mat-icon>check_circle</mat-icon>
+      <div class="notification-content">{{ successMessage }}</div>
+      <button class="close-btn" (click)="clearSuccessMessage()">×</button>
+    </div>
   </div>
 
-  <!-- No Deliveries -->
-  <div *ngIf="!isLoading && assignedDeliveries.length === 0" class="no-deliveries">
-    <p>No deliveries are currently assigned to you. Check back later!</p>
+  <!-- Loading Overlay -->
+  <div *ngIf="isLoading" class="loading-overlay">
+    <mat-spinner diameter="50"></mat-spinner>
+    <div class="loading-text">Loading deliveries...</div>
+  </div>
+
+  <!-- Availability Schedule Panel - Always visible for delivery personnel -->
+  <div *ngIf="!authService.isAdmin() || showAvailabilityPanel" class="availability-panel" [class.always-visible]="!authService.isAdmin()">
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>
+          {{ authService.isAdmin() && selectedDeliveryPerson ? 
+              selectedDeliveryPerson.firstName + ' ' + selectedDeliveryPerson.lastName + '\'s Schedule' : 
+              'Your Availability Schedule' }}
+        </mat-card-title>
+        <mat-card-subtitle>Manage your delivery availability</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div *ngIf="isScheduleLoading" class="loading-spinner">
+          <mat-spinner diameter="40"></mat-spinner>
+          <p>Loading your schedule...</p>
+        </div>
+        
+        <div *ngIf="scheduleError" class="error-message">
+          <mat-icon>warning</mat-icon>
+          {{ scheduleError }}
+        </div>
+        
+        <!-- Schedule Component -->
+        <app-availability-schedule
+          *ngIf="currentSchedule && !isScheduleLoading"
+          [schedule]="currentSchedule"
+          (scheduleChange)="onScheduleUpdated($event)">
+        </app-availability-schedule>
+        
+        <div *ngIf="!currentSchedule && !isScheduleLoading" class="no-schedule-message">
+          <p>No schedule available</p>
+          <button mat-button color="primary" (click)="initializeNewSchedule()">
+            <mat-icon>add</mat-icon> Create Schedule
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Main Content -->
+  <div class="dashboard-content">
+    <!-- Pending Assignments Section -->
+    <div *ngIf="currentSection === 'pending'" class="pending-section">
+      <div class="section-header">
+        <h2>Pending Delivery Assignments</h2>
+        <div class="section-controls">
+          <button mat-stroked-button (click)="refreshAssignments()" [disabled]="isLoading">
+            <mat-icon>refresh</mat-icon>
+            Refresh
+          </button>
+          
+          <div class="view-toggle">
+            <button mat-stroked-button 
+                    (click)="viewMode = 'cards'" 
+                    [class.active]="viewMode === 'cards'">
+              <mat-icon>view_module</mat-icon> Cards
+            </button>
+            <button mat-stroked-button 
+                    (click)="viewMode = 'table'" 
+                    [class.active]="viewMode === 'table'">
+              <mat-icon>view_list</mat-icon> Table
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div *ngIf="!isLoading && assignedDeliveries.length === 0" class="empty-state">
+        <mat-icon class="empty-icon">assignment</mat-icon>
+        <h3>No Pending Assignments</h3>
+        <p>You currently have no pending delivery assignments.</p>
+        <button mat-stroked-button (click)="refreshAssignments()">
+          <mat-icon>refresh</mat-icon> Check Again
+        </button>
+      </div>
+
+      <!-- Cards View -->
+      <div *ngIf="!isLoading && assignedDeliveries.length > 0 && viewMode === 'cards'" class="cards-container">
+        <mat-card *ngFor="let delivery of assignedDeliveries" class="delivery-card">
+          <div class="card-header">
+            <span class="delivery-id">#{{shortenId(delivery.id)}}</span>
+            <span class="delivery-status">{{delivery.status || 'PENDING'}}</span>
+          </div>
+          
+          <div class="card-content">
+            <div class="delivery-info">
+              <div class="info-row">
+                <mat-icon>location_on</mat-icon>
+                <div>
+                  <span class="info-label">Pickup:</span>
+                  <span class="info-value">{{delivery.pickupAddress}}</span>
+                </div>
+              </div>
+              <div class="info-row">
+                <mat-icon>local_shipping</mat-icon>
+                <div>
+                  <span class="info-label">Delivery:</span>
+                  <span class="info-value">{{delivery.deliveryAddress}}</span>
+                </div>
+              </div>
+              <div class="info-row">
+                <mat-icon>access_time</mat-icon>
+                <div>
+                  <span class="info-label">When:</span>
+                  <span class="info-value">
+                    {{delivery.scheduledDate | date:'mediumDate'}} 
+                    at {{delivery.scheduledDate | date:'shortTime'}}
+                  </span>
+                </div>
+              </div>
+              <div class="info-row" *ngIf="delivery.packageDescription">
+                <mat-icon>inventory</mat-icon>
+                <div>
+                  <span class="info-label">Package:</span>
+                  <span class="info-value">{{delivery.packageDescription}}</span>
+                </div>
+              </div>
+              <div class="info-row" *ngIf="delivery.packageWeight">
+                <mat-icon>fitness_center</mat-icon>
+                <div>
+                  <span class="info-label">Weight:</span>
+                  <span class="info-value">{{delivery.packageWeight}} kg</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <mat-card-actions>
+            <button mat-raised-button 
+                    color="primary" 
+                    (click)="acceptDelivery(delivery.id)"
+                    [disabled]="isProcessing(delivery.id)">
+              <mat-icon>check</mat-icon>
+              {{isProcessing(delivery.id) ? 'Processing...' : 'Accept'}}
+            </button>
+            
+            <button mat-stroked-button 
+                    color="warn" 
+                    (click)="rejectDelivery(delivery.id)"
+                    [disabled]="isProcessing(delivery.id)">
+              <mat-icon>close</mat-icon>
+              {{isProcessing(delivery.id) ? 'Processing...' : 'Reject'}}
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      </div>
+
+      <!-- Table View -->
+      <div *ngIf="!isLoading && assignedDeliveries.length > 0 && viewMode === 'table'" class="table-container">
+        <table mat-table [dataSource]="assignedDeliveries" class="deliveries-table">
+          <!-- ID Column -->
+          <ng-container matColumnDef="id">
+            <th mat-header-cell *matHeaderCellDef>ID</th>
+            <td mat-cell *matCellDef="let delivery">#{{shortenId(delivery.id)}}</td>
+          </ng-container>
+
+          <!-- Pickup Column -->
+          <ng-container matColumnDef="pickup">
+            <th mat-header-cell *matHeaderCellDef>Pickup</th>
+            <td mat-cell *matCellDef="let delivery">{{delivery.pickupAddress}}</td>
+          </ng-container>
+
+          <!-- Delivery Column -->
+          <ng-container matColumnDef="delivery">
+            <th mat-header-cell *matHeaderCellDef>Delivery</th>
+            <td mat-cell *matCellDef="let delivery">{{delivery.deliveryAddress}}</td>
+          </ng-container>
+
+          <!-- Date Column -->
+          <ng-container matColumnDef="date">
+            <th mat-header-cell *matHeaderCellDef>Date/Time</th>
+            <td mat-cell *matCellDef="let delivery">
+              {{delivery.scheduledDate | date:'mediumDate'}}<br>
+              {{delivery.scheduledDate | date:'shortTime'}}
+            </td>
+          </ng-container>
+
+          <!-- Package Column -->
+          <ng-container matColumnDef="package">
+            <th mat-header-cell *matHeaderCellDef>Package</th>
+            <td mat-cell *matCellDef="let delivery">
+              {{delivery.packageDescription || 'N/A'}}<br>
+              <span *ngIf="delivery.packageWeight">{{delivery.packageWeight}} kg</span>
+            </td>
+          </ng-container>
+
+          <!-- Actions Column -->
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let delivery" class="actions-cell">
+              <button mat-stroked-button 
+                      color="primary" 
+                      (click)="acceptDelivery(delivery.id)"
+                      [disabled]="isProcessing(delivery.id)">
+                <mat-icon>check</mat-icon> Accept
+              </button>
+              <button mat-stroked-button 
+                      color="warn" 
+                      (click)="rejectDelivery(delivery.id)"
+                      [disabled]="isProcessing(delivery.id)">
+                <mat-icon>close</mat-icon> Reject
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="['id', 'pickup', 'delivery', 'date', 'package', 'actions']"></tr>
+          <tr mat-row *matRowDef="let row; columns: ['id', 'pickup', 'delivery', 'date', 'package', 'actions'];"></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- History Section -->
+    <div *ngIf="currentSection === 'history'" class="history-section">
+      <div class="section-header">
+        <h2>Delivery History</h2>
+        <div class="section-controls">
+          <button mat-stroked-button (click)="refreshHistory()" [disabled]="isHistoryLoading">
+            <mat-icon>refresh</mat-icon> Refresh
+          </button>
+          
+          <mat-form-field appearance="outline" class="filter-select">
+            <mat-label>Filter</mat-label>
+            <mat-select [(ngModel)]="historyFilter" (selectionChange)="applyHistoryFilter()">
+              <mat-option value="all">All Deliveries</mat-option>
+              <mat-option value="ACCEPTED">Accepted</mat-option>
+              <mat-option value="REJECTED">Rejected</mat-option>
+              <mat-option value="COMPLETED">Completed</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div *ngIf="!isHistoryLoading && filteredHistory.length === 0" class="empty-state">
+        <mat-icon class="empty-icon">history</mat-icon>
+        <h3>No Delivery History</h3>
+        <p>Your delivery history will appear here once you accept or reject assignments.</p>
+      </div>
+
+      <!-- History Table -->
+      <div *ngIf="!isHistoryLoading && filteredHistory.length > 0" class="history-table-container">
+        <table mat-table [dataSource]="filteredHistory" class="history-table">
+          <!-- ID Column -->
+          <ng-container matColumnDef="id">
+            <th mat-header-cell *matHeaderCellDef>ID</th>
+            <td mat-cell *matCellDef="let delivery">#{{shortenId(delivery.id)}}</td>
+          </ng-container>
+
+          <!-- Pickup Column -->
+          <ng-container matColumnDef="pickup">
+            <th mat-header-cell *matHeaderCellDef>Pickup</th>
+            <td mat-cell *matCellDef="let delivery">{{delivery.pickupAddress}}</td>
+          </ng-container>
+
+          <!-- Delivery Column -->
+          <ng-container matColumnDef="delivery">
+            <th mat-header-cell *matHeaderCellDef>Delivery</th>
+            <td mat-cell *matCellDef="let delivery">{{delivery.deliveryAddress}}</td>
+          </ng-container>
+
+          <!-- Date Column -->
+          <ng-container matColumnDef="date">
+            <th mat-header-cell *matHeaderCellDef>Date/Time</th>
+            <td mat-cell *matCellDef="let delivery">
+              {{delivery.scheduledDate | date:'mediumDate'}}<br>
+              {{delivery.scheduledDate | date:'shortTime'}}
+            </td>
+          </ng-container>
+
+          <!-- Status Column -->
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let delivery" [ngClass]="'status-' + delivery.status.toLowerCase()">
+              {{delivery.status}}
+            </td>
+          </ng-container>
+
+          <!-- Action Date Column -->
+          <ng-container matColumnDef="actionDate">
+            <th mat-header-cell *matHeaderCellDef>Action Date</th>
+            <td mat-cell *matCellDef="let delivery">
+              {{delivery.actionTime | date:'short'}}
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="['id', 'pickup', 'delivery', 'date', 'status', 'actionDate']"></tr>
+          <tr mat-row *matRowDef="let row; columns: ['id', 'pickup', 'delivery', 'date', 'status', 'actionDate'];"></tr>
+        </table>
+      </div>
+    </div>
   </div>
 </div>

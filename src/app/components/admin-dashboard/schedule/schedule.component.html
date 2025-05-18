@@ -1,0 +1,327 @@
+<div class="availability-container">
+  <!-- Error & Success Messages -->
+  <div class="message-container">
+    <div *ngIf="error" class="error-message">
+      <mat-card>
+        <mat-card-content>
+          <i class="material-icons">error</i> {{ error }}
+        </mat-card-content>
+      </mat-card>
+    </div>
+    <div *ngIf="successMessage" class="success-message">
+      <mat-card>
+        <mat-card-content>
+          <i class="material-icons">check_circle</i> {{ successMessage }}
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+
+  <!-- Loading Indicator -->
+  <div *ngIf="isLoading" class="loading-overlay">
+    <div class="spinner-container">
+      <div class="spinner"></div>
+      <p>Loading...</p>
+    </div>
+  </div>
+
+  <!-- Admin Section -->
+  <div *ngIf="isAdmin" class="admin-section">
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>Delivery Person Management</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-form-field appearance="fill" class="full-width">
+          <mat-label>Select Delivery Person</mat-label>
+          <mat-select (selectionChange)="onDeliveryPersonSelected($event)">
+            <mat-option [value]="null">Select a delivery person</mat-option>
+            <mat-option *ngFor="let person of deliveryPersons" [value]="person.id">
+              {{ person.firstName }} {{ person.lastName }} ({{ person.email }})
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+        <div *ngIf="selectedDeliveryPerson" class="selected-person-info">
+          <p><strong>Selected:</strong> {{ selectedDeliveryPerson.firstName }} {{ selectedDeliveryPerson.lastName }}</p>
+          <p><strong>Email:</strong> {{ selectedDeliveryPerson.email }}</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Main Tabs -->
+  <mat-card class="main-card">
+    <mat-card-header>
+      <mat-card-title>
+        {{ isAdmin && selectedDeliveryPerson ? (selectedDeliveryPerson.firstName + ' ' + selectedDeliveryPerson.lastName + '\'s Schedule') : 'My Availability Schedule' }}
+      </mat-card-title>
+      <mat-card-subtitle>Manage when you're available for deliveries</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <mat-tab-group animationDuration="300ms">
+        <!-- Weekly Schedule Tab -->
+        <mat-tab label="Weekly Schedule">
+          <div class="tab-content">
+            <div class="section-intro">
+              <h3>Set your regular weekly availability</h3>
+              <p>Configure your standard working hours for each day of the week.</p>
+            </div>
+
+            <div class="weekly-schedule">
+              <div *ngFor="let day of daysOfWeek" class="day-schedule">
+                <mat-card>
+                  <mat-card-header>
+                    <mat-card-title>{{ getDayName(day) }}</mat-card-title>
+                  </mat-card-header>
+                  <mat-card-content>
+                    <div class="day-controls">
+                      <mat-slide-toggle 
+                        [(ngModel)]="weeklySchedule[day].working"
+                        (change)="onWeeklyToggleChange(day)"
+                        color="primary">
+                        {{ weeklySchedule[day].working ? 'Available' : 'Not Available' }}
+                      </mat-slide-toggle>
+                      
+                      <div *ngIf="weeklySchedule[day].working" class="time-controls">
+                        <mat-form-field appearance="fill">
+                          <mat-label>Start Time</mat-label>
+                          <input matInput type="time" [(ngModel)]="weeklySchedule[day].startTime">
+                        </mat-form-field>
+                        
+                        <span class="time-separator">to</span>
+                        
+                        <mat-form-field appearance="fill">
+                          <mat-label>End Time</mat-label>
+                          <input matInput type="time" [(ngModel)]="weeklySchedule[day].endTime">
+                        </mat-form-field>
+                      </div>
+                    </div>
+                  </mat-card-content>
+                  <mat-card-actions align="end">
+                    <button mat-button color="primary" (click)="updateDaySchedule(day)">
+                      SAVE
+                    </button>
+                  </mat-card-actions>
+                </mat-card>
+              </div>
+            </div>
+            
+            <div class="action-buttons">
+              <button mat-raised-button color="primary" (click)="saveWeeklySchedule()">
+                Save All Weekly Settings
+              </button>
+            </div>
+          </div>
+        </mat-tab>
+        
+        <!-- Monthly Calendar Tab -->
+        <mat-tab label="Monthly Calendar">
+          <div class="tab-content">
+            <div class="section-intro">
+              <h3>Monthly Availability Overview</h3>
+              <p>View and update your schedule for specific dates. Click on a date to add or override availability.</p>
+            </div>
+            
+            <div class="calendar-controls">
+              <mat-form-field appearance="fill">
+                <mat-label>Select Month</mat-label>
+                <input matInput [matDatepicker]="monthPicker" [(ngModel)]="selectedMonth" (dateChange)="onMonthSelected($event.value)">
+                <mat-datepicker-toggle matSuffix [for]="monthPicker"></mat-datepicker-toggle>
+                <mat-datepicker #monthPicker startView="year" [startAt]="selectedMonth"></mat-datepicker>
+              </mat-form-field>
+              
+              <div class="calendar-actions">
+                <button mat-button color="primary" (click)="generateMonthFromWeekly()">
+                  Generate From Weekly
+                </button>
+                <button mat-button color="warn" (click)="clearMonthSchedule()">
+                  Clear Monthly Schedule
+                </button>
+              </div>
+            </div>
+            
+            <div class="calendar-legend">
+              <div class="legend-item">
+                <div class="color-box" style="background-color: #2196F3;"></div>
+                <span>Weekly Schedule - Available</span>
+              </div>
+              <div class="legend-item">
+                <div class="color-box" style="background-color: #9E9E9E;"></div>
+                <span>Weekly Schedule - Not Available</span>
+              </div>
+              <div class="legend-item">
+                <div class="color-box" style="background-color: #4CAF50;"></div>
+                <span>Override - Available</span>
+              </div>
+              <div class="legend-item">
+                <div class="color-box" style="background-color: #F44336;"></div>
+                <span>Override - Not Available</span>
+              </div>
+            </div>
+            
+            <div class="calendar-container">
+              <full-calendar [options]="calendarOptions"></full-calendar>
+            </div>
+          </div>
+        </mat-tab>
+        
+        <!-- Bulk Updates Tab -->
+        <mat-tab label="Bulk Updates">
+          <div class="tab-content">
+            <div class="section-intro">
+              <h3>Update Multiple Dates</h3>
+              <p>Apply the same availability settings to a range of dates.</p>
+            </div>
+            
+            <mat-card>
+              <mat-card-header>
+                <mat-card-title>Date Range Availability</mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
+                <div class="date-range-controls">
+                  <div class="date-inputs">
+                    <mat-form-field appearance="fill">
+                      <mat-label>Start Date</mat-label>
+                      <input matInput [matDatepicker]="startPicker" [(ngModel)]="rangeStart">
+                      <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
+                      <mat-datepicker #startPicker></mat-datepicker>
+                    </mat-form-field>
+                    
+                    <mat-form-field appearance="fill">
+                      <mat-label>End Date</mat-label>
+                      <input matInput [matDatepicker]="endPicker" [(ngModel)]="rangeEnd">
+                      <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
+                      <mat-datepicker #endPicker></mat-datepicker>
+                    </mat-form-field>
+                  </div>
+                  
+                  <div class="availability-controls">
+                    <mat-slide-toggle 
+                      [(ngModel)]="rangeSchedule.working"
+                      (change)="onRangeToggleChange()"
+                      color="primary">
+                      {{ rangeSchedule.working ? 'Available' : 'Not Available' }}
+                    </mat-slide-toggle>
+                    
+                    <div *ngIf="rangeSchedule.working" class="time-controls">
+                      <mat-form-field appearance="fill">
+                        <mat-label>Start Time</mat-label>
+                        <input matInput type="time" [(ngModel)]="rangeSchedule.startTime">
+                      </mat-form-field>
+                      
+                      <span class="time-separator">to</span>
+                      
+                      <mat-form-field appearance="fill">
+                        <mat-label>End Time</mat-label>
+                        <input matInput type="time" [(ngModel)]="rangeSchedule.endTime">
+                      </mat-form-field>
+                    </div>
+                  </div>
+                  
+                  <div *ngIf="showWeekdaySelector" class="weekday-selector">
+                    <h4>Apply to selected days of the week:</h4>
+                    <div class="weekday-checkboxes">
+                      <mat-checkbox *ngFor="let day of daysOfWeek" [(ngModel)]="selectedWeekdays[day]">
+                        {{ getDayName(day) }}
+                      </mat-checkbox>
+                    </div>
+                  </div>
+                </div>
+              </mat-card-content>
+              <mat-card-actions align="end">
+                <button mat-button (click)="clearDateRange()" color="warn" [disabled]="!isRangeValid()">
+                  Clear Range
+                </button>
+                <button mat-raised-button (click)="applyDateRange()" color="primary" [disabled]="!isRangeValid()">
+                  Apply Range
+                </button>
+              </mat-card-actions>
+            </mat-card>
+          </div>
+        </mat-tab>
+        
+        <!-- Check Availability Tab -->
+        <mat-tab label="Check Availability">
+          <div class="tab-content">
+            <div class="section-intro">
+              <h3>Check Availability Status</h3>
+              <p>Verify availability for a specific date and time.</p>
+            </div>
+            
+            <mat-card>
+              <mat-card-header>
+                <mat-card-title>Availability Check</mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
+                <div class="availability-check-container">
+                  <mat-form-field appearance="fill">
+                    <mat-label>Date and Time</mat-label>
+                    <input matInput type="datetime-local" [(ngModel)]="checkDateTime">
+                  </mat-form-field>
+                </div>
+              </mat-card-content>
+              <mat-card-actions align="end">
+                <button mat-raised-button color="primary" (click)="checkAvailability()">
+                  Check Availability
+                </button>
+              </mat-card-actions>
+            </mat-card>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </mat-card-content>
+  </mat-card>
+</div>
+
+<!-- Date Editor Dialog (Shown when a date is clicked on the calendar) -->
+<div *ngIf="showDateEditor" class="date-editor-overlay">
+  <div class="date-editor-dialog">
+    <div class="dialog-header">
+      <h2>{{ selectedDate | date:'fullDate' }}</h2>
+      <button mat-icon-button class="close-button" (click)="cancelDateEdit()">
+        <i class="material-icons">close</i>
+      </button>
+    </div>
+    
+    <div class="dialog-content">
+      <div class="availability-controls">
+        <mat-slide-toggle 
+          [(ngModel)]="editingSchedule.working"
+          (change)="onDateToggleChange()"
+          color="primary">
+          {{ editingSchedule.working ? 'Available' : 'Not Available' }}
+        </mat-slide-toggle>
+        
+        <div *ngIf="editingSchedule.working" class="time-controls">
+          <mat-form-field appearance="fill">
+            <mat-label>Start Time</mat-label>
+            <input matInput type="time" [(ngModel)]="editingSchedule.startTime">
+          </mat-form-field>
+          
+          <span class="time-separator">to</span>
+          
+          <mat-form-field appearance="fill">
+            <mat-label>End Time</mat-label>
+            <input matInput type="time" [(ngModel)]="editingSchedule.endTime">
+          </mat-form-field>
+        </div>
+      </div>
+      
+      <div *ngIf="isOverride" class="override-info">
+        <p>This is a date override that takes precedence over your regular weekly schedule.</p>
+      </div>
+    </div>
+    
+    <div class="dialog-actions">
+      <button mat-button (click)="cancelDateEdit()">
+        Cancel
+      </button>
+      <button *ngIf="isOverride" mat-button color="warn" (click)="removeDateOverride()">
+        Remove Override
+      </button>
+      <button mat-raised-button color="primary" (click)="saveDateSchedule()">
+        Save
+      </button>
+    </div>
+  </div>
+</div>

@@ -2,7 +2,7 @@ import { Vehicle } from "./Vehicle.model";
 
 // models/user.model.ts
 export interface User {
-  id?: string;
+  id: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -67,6 +67,7 @@ export interface User {
 }
 
 export interface AuthResponse {
+  [x: string]: any;
   token: string;
   userType: string;
   userId: string;

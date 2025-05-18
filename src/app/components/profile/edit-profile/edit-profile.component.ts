@@ -54,7 +54,7 @@ export class EditProfileComponent implements OnInit {
         address: this.editProfileForm.get('address')?.value
       };
   
-      this.userService.updateProfile(updatedUser).subscribe({
+      this.userService.updateProfile(updatedUser.email).subscribe({
         next: (response) => {
           console.log('Profile updated successfully:', response);
           this.router.navigate(['/profile']);

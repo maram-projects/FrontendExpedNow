@@ -1,87 +1,254 @@
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-  <h1>Admin Dashboard</h1>
-</div>
-
-<!-- Loading spinner -->
-<div *ngIf="loading" class="text-center">
-  <div class="spinner-border" role="status">
-    <span class="visually-hidden">Loading...</span>
+<div class="container-fluid">
+  <!-- Header -->
+  <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Admin Dashboard</h1>
   </div>
-</div>
 
-<!-- Error message -->
-<div *ngIf="error" class="alert alert-danger">
-  {{error}}
-</div>
+  <!-- Loading spinner -->
+  @if (loading) {
+    <div class="text-center">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+  }
 
-<!-- Dashboard content -->
-<div *ngIf="stats && !loading" class="row">
-  <!-- Total Users Card -->
-  <div class="col-xl-3 col-md-6 mb-4">
-    <div class="card border-left-primary shadow h-100 py-2">
-      <div class="card-body">
-        <div class="row no-gutters align-items-center">
-          <div class="col mr-2">
-            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-              Total Users
+  <!-- Messages -->
+  @if (error) {
+    <div class="alert alert-danger alert-dismissible fade show">
+      {{error}}
+      <button type="button" class="btn-close" (click)="error = ''"></button>
+    </div>
+  }
+
+  @if (successMessage) {
+    <div class="alert alert-success alert-dismissible fade show">
+      {{successMessage}}
+      <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+    </div>
+  }
+
+  <!-- Dashboard content -->
+  @if (stats && !loading) {
+    <div class="row">
+      <!-- Stats Cards -->
+      <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+          <div class="card-body">
+            <div class="row no-gutters align-items-center">
+              <div class="col mr-2">
+                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                  Total Users
+                </div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  {{stats.totalUsers}}
+                </div>
+              </div>
+              <div class="col-auto">
+                <i class="fas fa-users fa-2x text-gray-300"></i>
+              </div>
             </div>
-            <div class="h5 mb-0 font-weight-bold text-gray-800">
-              {{stats.totalUsers}}
-            </div>
-          </div>
-          <div class="col-auto">
-            <i class="fas fa-users fa-2x text-gray-300"></i>
           </div>
         </div>
       </div>
-    </div>
-  </div>
 
-  <!-- Users by Role Chart -->
-  <div class="card shadow mb-4">
-    <div class="card-header py-3">
-      <h6 class="m-0 font-weight-bold text-primary">Users by Role</h6>
-    </div>
-    <div class="card-body">
-      <ngx-charts-pie-chart
-        [view]="view"
-        [results]="userRoleData"
-        [colorScheme]="colorScheme" 
-        [gradient]="true"
-        [legend]="true"
-        [labels]="true">
-      </ngx-charts-pie-chart>
-    </div>
-  </div>
+      @if (stats.activeToday !== undefined) {
+        <div class="col-xl-3 col-md-6 mb-4">
+          <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+              <div class="row no-gutters align-items-center">
+                <div class="col mr-2">
+                  <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                    Active Today
+                  </div>
+                  <div class="h5 mb-0 font-weight-bold text-gray-800">
+                    {{stats.activeToday}}
+                  </div>
+                </div>
+                <div class="col-auto">
+                  <i class="fas fa-user-check fa-2x text-gray-300"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
 
-  <!-- Recent Registrations -->
-  <div class="col-12">
-    <div class="card shadow mb-4">
-      <div class="card-header py-3">
-        <h6 class="m-0 font-weight-bold text-primary">Recent Registrations</h6>
-      </div>
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Registration Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let user of stats.recentRegistrations">
-                <td>{{user.firstName}} {{user.lastName}}</td>
-                <td>{{user.email}}</td>
-                <td>{{user.roles?.join(', ')}}</td>
-                <td>{{user.dateOfRegistration | date}}</td>
-              </tr>
-            </tbody>
-          </table>
+      @if (stats.deliveryPersons !== undefined) {
+        <div class="col-xl-3 col-md-6 mb-4">
+          <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+              <div class="row no-gutters align-items-center">
+                <div class="col mr-2">
+                  <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                    Delivery Persons
+                  </div>
+                  <div class="h5 mb-0 font-weight-bold text-gray-800">
+                    {{stats.deliveryPersons}}
+                  </div>
+                </div>
+                <div class="col-auto">
+                  <i class="fas fa-truck fa-2x text-gray-300"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (stats.pendingApprovals !== undefined) {
+        <div class="col-xl-3 col-md-6 mb-4">
+          <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+              <div class="row no-gutters align-items-center">
+                <div class="col mr-2">
+                  <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                    Pending Approvals
+                  </div>
+                  <div class="h5 mb-0 font-weight-bold text-gray-800">
+                    {{stats.pendingApprovals}}
+                  </div>
+                </div>
+                <div class="col-auto">
+                  <i class="fas fa-clock fa-2x text-gray-300"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (stats.totalOrders !== undefined) {
+        <div class="col-xl-3 col-md-6 mb-4">
+          <div class="card border-left-secondary shadow h-100 py-2">
+            <div class="card-body">
+              <div class="row no-gutters align-items-center">
+                <div class="col mr-2">
+                  <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
+                    Total Orders
+                  </div>
+                  <div class="h5 mb-0 font-weight-bold text-gray-800">
+                    {{stats.totalOrders}}
+                  </div>
+                </div>
+                <div class="col-auto">
+                  <i class="fas fa-shopping-cart fa-2x text-gray-300"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (stats.pendingOrders !== undefined) {
+        <div class="col-xl-3 col-md-6 mb-4">
+          <div class="card border-left-danger shadow h-100 py-2">
+            <div class="card-body">
+              <div class="row no-gutters align-items-center">
+                <div class="col mr-2">
+                  <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                    Pending Orders
+                  </div>
+                  <div class="h5 mb-0 font-weight-bold text-gray-800">
+                    {{stats.pendingOrders}}
+                  </div>
+                </div>
+                <div class="col-auto">
+                  <i class="fas fa-hourglass-half fa-2x text-gray-300"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (stats.completedOrders !== undefined) {
+        <div class="col-xl-3 col-md-6 mb-4">
+          <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+              <div class="row no-gutters align-items-center">
+                <div class="col mr-2">
+                  <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                    Completed Orders
+                  </div>
+                  <div class="h5 mb-0 font-weight-bold text-gray-800">
+                    {{stats.completedOrders}}
+                  </div>
+                </div>
+                <div class="col-auto">
+                  <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Users by Role Chart -->
+      <div class="col-12">
+        <div class="card shadow mb-4">
+          <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Users by Role</h6>
+          </div>
+          <div class="card-body">
+            <ngx-charts-pie-chart
+              [view]="view"
+              [results]="userRoleData"
+              [colorScheme]="colorScheme" 
+              [gradient]="true"
+              [legend]="true"
+              [labels]="true">
+            </ngx-charts-pie-chart>
+          </div>
         </div>
       </div>
+
+      <!-- Recent Registrations -->
+      <div class="col-12">
+        <div class="card shadow mb-4">
+          <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Recent Registrations</h6>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-bordered">
+                <thead class="thead-light">
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Type</th>
+                    <th>Roles</th>
+                    <th>Registration Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (user of stats.recentRegistrations; track user.id) {
+                    <tr>
+                      <td>{{user.firstName}} {{user.lastName}}</td>
+                      <td>{{user.email}}</td>
+                      <td>{{user.phone}}</td>
+                      <td>
+                        @if (user.roles?.includes('ROLE_ADMIN')) {
+                          <span class="badge bg-danger">Admin</span>
+                        } @else if (user.roles?.includes('ROLE_DELIVERY_PERSON')) {
+                          <span class="badge bg-info">Delivery</span>
+                        } @else if (user.roles?.includes('ROLE_CLIENT')) {
+                          <span class="badge bg-primary">Client</span>
+                        }
+                      </td>
+                      <td>{{user.roles?.join(', ')}}</td>
+                      <td>{{user.dateOfRegistration | date:'medium'}}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    
     </div>
-  </div>
+  }
 </div>
