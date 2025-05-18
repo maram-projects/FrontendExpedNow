@@ -28,6 +28,12 @@ import { RouterModule } from '@angular/router';
               </a>
             </li>
             <li class="nav-item">
+              <a class="nav-link" routerLink="/admin/DeliveryPersonnel" routerLinkActive="active">
+                <i class="fas fa-users"></i>
+                <span>Delivery Personnel Management</span>
+              </a>
+            </li>
+            <li class="nav-item">
               <a class="nav-link" routerLink="/admin/roles" routerLinkActive="active">
                 <i class="fas fa-user-tag"></i>
                 <span>Role Management</span>

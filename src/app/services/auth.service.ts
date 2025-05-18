@@ -122,28 +122,28 @@ export class AuthService {
   }
 
   logout(): void {
+    console.log('Logout initiated');
     this.clearUserSession();
-    this.router.navigate(['/login']);
-  }
+    console.log('Session cleared, navigating to login');
+    this.router.navigate(['/login']).then(success => {
+        console.log(success ? 'Navigation successful' : 'Navigation failed');
+    });
+}
 
   private clearUserSession(): void {
     localStorage.removeItem('currentUser');
     this.currentUserSubject.next(null);
   }
 
-  getCurrentUser(): AuthResponse {
-    const user = localStorage.getItem('currentUser');
-    if (!user) {
-      throw new Error('No user session');
-    }
-    
+  getCurrentUser(): AuthResponse | null {
     try {
-      return JSON.parse(user) as AuthResponse;
+        const user = localStorage.getItem('currentUser');
+        return user ? JSON.parse(user) as AuthResponse : null;
     } catch (e) {
-      this.clearUserSession();
-      throw new Error('Invalid user data');
+        this.clearUserSession();
+        return null;
     }
-  }
+}
 
   isSessionValid(): boolean {
     try {

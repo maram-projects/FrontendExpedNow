@@ -1,19 +1,42 @@
 <div class="availability-container">
   <!-- Error & Success Messages -->
   <div class="message-container">
-    <div *ngIf="error" class="error-message">
-      <mat-card>
-        <mat-card-content>
-          <i class="material-icons">error</i> {{ error }}
-        </mat-card-content>
-      </mat-card>
-    </div>
+    <!-- Success Message -->
     <div *ngIf="successMessage" class="success-message">
-      <mat-card>
-        <mat-card-content>
-          <i class="material-icons">check_circle</i> {{ successMessage }}
-        </mat-card-content>
-      </mat-card>
+      <div class="message-card">
+        <div class="message-content">
+          <i class="material-icons message-icon">check_circle</i>
+          <div class="message-text">
+            <div class="message-title">Success!</div>
+            <div class="message-details">{{ successMessage }}</div>
+          </div>
+          <button class="close-message" (click)="dismissSuccess()">
+            <i class="material-icons">close</i>
+          </button>
+        </div>
+        <div class="message-progress">
+          <div class="message-progress-bar" [style.animation-duration]="autoDismissTime + 'ms'"></div>
+        </div>
+      </div>
+    </div>
+  
+    <!-- Error Message -->
+    <div *ngIf="error" class="error-message">
+      <div class="message-card">
+        <div class="message-content">
+          <i class="material-icons message-icon">error</i>
+          <div class="message-text">
+            <div class="message-title">Error</div>
+            <div class="message-details">{{ error }}</div>
+          </div>
+          <button class="close-message" (click)="dismissError()">
+            <i class="material-icons">close</i>
+          </button>
+        </div>
+        <div class="message-progress">
+          <div class="message-progress-bar" [style.animation-duration]="autoDismissTime + 'ms'"></div>
+        </div>
+      </div>
     </div>
   </div>
 

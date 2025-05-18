@@ -171,7 +171,7 @@ export class DeliveryDashboardComponent implements OnInit {
       return;
     }
   
-    // Determine which user's schedule to load
+    // Always use the same ID format as when creating the schedule
     const targetUserId = this.authService.isAdmin() && this.selectedDeliveryPerson 
       ? this.selectedDeliveryPerson.userId
       : currentUser.userId;
@@ -183,13 +183,15 @@ export class DeliveryDashboardComponent implements OnInit {
       next: (response) => {
         if (response.success) {
           // Handle both response structures
-          // Fix the type error by ensuring we don't assign undefined
           this.currentSchedule = response.schedule || response.data || null;
           
           // If no schedule exists, initialize an empty one
           if (!this.currentSchedule) {
             this.currentSchedule = this.initializeEmptySchedule(targetUserId);
           }
+        } else if (response.isNewSchedule) {
+          // Handle case where no schedule exists but API indicates it's new
+          this.currentSchedule = this.initializeEmptySchedule(targetUserId);
         }
         this.isScheduleLoading = false;
       },
@@ -198,7 +200,8 @@ export class DeliveryDashboardComponent implements OnInit {
           // No schedule exists - create an empty one
           this.currentSchedule = this.initializeEmptySchedule(targetUserId);
         } else {
-          this.scheduleError = 'Failed to load availability schedule';
+          this.scheduleError = 'Failed to load availability schedule: ' + 
+            (err.error?.message || err.message || 'Unknown error');
           console.error('Error loading schedule:', err);
         }
         this.isScheduleLoading = false;

@@ -50,14 +50,19 @@ export class AvailabilityService {
       .pipe(
         catchError((error: HttpErrorResponse) => {
           if (error.status === 404) {
-            // Return an observable with a "not found" response
+            // Return a consistent response structure
             return of({
               success: false,
               message: 'No schedule found',
               isNewSchedule: true
             });
           }
-          return this.handleError(error);
+          // Ensure other errors have a consistent structure
+          return throwError(() => ({
+            success: false,
+            message: error.error?.message || error.message || 'Unknown error',
+            status: error.status
+          }));
         })
       );
   }

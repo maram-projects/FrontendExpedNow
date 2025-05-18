@@ -108,12 +108,16 @@ interface CalendarEvent {
 })
 export class ScheduleComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
-  
+  autoDismissTime = 5000;
   // Schedule data
   @Input() schedule: AvailabilitySchedule | undefined;
   @Output() scheduleChange = new EventEmitter<AvailabilitySchedule>();
   availabilitySchedule: AvailabilitySchedule | null = null;
   weeklySchedule: Record<DayOfWeek, DaySchedule> = {} as Record<DayOfWeek, DaySchedule>;
+
+
+  successMessage: string | null = null;
+error: string | null = null;
   
   // User data
   currentUser: User | null = null;
@@ -124,8 +128,7 @@ export class ScheduleComponent implements OnInit, OnDestroy {
   
   // UI state
   isLoading = false;
-  error = '';
-  successMessage = '';
+ 
   showDateEditor = false;
   showWeekdaySelector = false;
   isOverride = false;
@@ -1016,4 +1019,40 @@ export class ScheduleComponent implements OnInit, OnDestroy {
       DayOfWeek.SATURDAY
     ][dayIndex];
   }
+
+
+  dismissSuccess(): void {
+    const messageCard = document.querySelector('.success-message .message-card');
+    if (messageCard) {
+      messageCard.classList.add('exit');
+      setTimeout(() => {
+        this.successMessage = null;
+      }, 600);
+    }
+  }
+  
+  dismissError(): void {
+    const messageCard = document.querySelector('.error-message .message-card');
+    if (messageCard) {
+      messageCard.classList.add('exit');
+      setTimeout(() => {
+        this.error = null;
+      }, 600);
+    }
+  }
+
+// Auto dismiss messages
+ngOnChanges() {
+  if (this.successMessage) {
+    setTimeout(() => {
+      this.dismissSuccess();
+    }, this.autoDismissTime);
+  }
+  
+  if (this.error) {
+    setTimeout(() => {
+      this.dismissError();
+    }, this.autoDismissTime);
+  }
+}
 }
