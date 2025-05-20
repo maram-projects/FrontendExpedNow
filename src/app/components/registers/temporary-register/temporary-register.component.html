@@ -1,14 +1,13 @@
-
 <div class="container mt-5">
   <div class="row justify-content-center">
-    <div class="col-md-8">
+    <div class="col-md-10">
       <div class="card shadow-sm">
         <div class="card-header bg-white">
           <div class="d-flex align-items-center">
             <a routerLink="/register" class="btn btn-sm btn-outline-secondary me-3">
               <i class="fas fa-arrow-left"></i>
             </a>
-            <h2 class="mb-0">Inscription Livreur Temporaire</h2>
+            <h2 class="mb-0">Temporary Driver Registration</h2>
           </div>
         </div>
         <div class="card-body">
@@ -18,12 +17,12 @@
               <div class="section-icon me-3">
                 <i class="fas fa-user-circle text-primary"></i>
               </div>
-              <h3 class="h5 mb-0">Informations Personnelles</h3>
+              <h3 class="h5 mb-0">Personal Information</h3>
             </div>
 
             <div class="row mb-3">
               <div class="col-md-6 mb-3">
-                <label class="form-label">Prénom</label>
+                <label class="form-label">First Name</label>
                 <input 
                   type="text" 
                   formControlName="firstName" 
@@ -31,12 +30,12 @@
                   [class.is-invalid]="submitted && f['firstName'].errors"
                 >
                 <div class="invalid-feedback" *ngIf="submitted && f['firstName'].errors">
-                  Le prénom est requis
+                  First name is required
                 </div>
               </div>
               
               <div class="col-md-6">
-                <label class="form-label">Nom</label>
+                <label class="form-label">Last Name</label>
                 <input 
                   type="text" 
                   formControlName="lastName" 
@@ -44,7 +43,7 @@
                   [class.is-invalid]="submitted && f['lastName'].errors"
                 >
                 <div class="invalid-feedback" *ngIf="submitted && f['lastName'].errors">
-                  Le nom est requis
+                  Last name is required
                 </div>
               </div>
             </div>
@@ -54,7 +53,7 @@
               <div class="section-icon me-3">
                 <i class="fas fa-address-card text-primary"></i>
               </div>
-              <h3 class="h5 mb-0">Coordonnées</h3>
+              <h3 class="h5 mb-0">Contact Information</h3>
             </div>
 
             <div class="mb-3">
@@ -66,19 +65,20 @@
                 [class.is-invalid]="submitted && f['email'].errors"
               >
               <div class="invalid-feedback" *ngIf="submitted && f['email'].errors">
-                <span *ngIf="f['email'].errors['required']">L'email est requis</span>
-                <span *ngIf="f['email'].errors['email']">Email invalide</span>
+                <span *ngIf="f['email'].errors['required']">Email is required</span>
+                <span *ngIf="f['email'].errors['email']">Invalid email format</span>
               </div>
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Mot de passe</label>
+              <label class="form-label">Password</label>
               <div class="input-group">
                 <input 
                   [type]="showPassword ? 'text' : 'password'" 
                   formControlName="password" 
                   class="form-control"
                   [class.is-invalid]="submitted && f['password'].errors"
+                  (input)="calculatePasswordStrength(f['password'].value)"
                 >
                 <button 
                   type="button" 
@@ -88,17 +88,65 @@
                   <i [class]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
                 </button>
               </div>
+              <!-- Password Strength Indicator -->
+              <div class="password-strength mt-2" *ngIf="f['password'].value">
+                <div class="progress">
+                  <div class="progress-bar" 
+                      [ngClass]="{
+                        'bg-danger': passwordStrength < 40,
+                        'bg-warning': passwordStrength >= 40 && passwordStrength < 80,
+                        'bg-success': passwordStrength >= 80
+                      }"
+                      [style.width.%]="passwordStrength">
+                  </div>
+                </div>
+                <small class="text-muted">
+                  Password strength: 
+                  <span [ngClass]="{
+                    'text-danger': passwordStrength < 40,
+                    'text-warning': passwordStrength >= 40 && passwordStrength < 80,
+                    'text-success': passwordStrength >= 80
+                  }">
+                    {{ getPasswordStrengthText() }}
+                  </span>
+                </small>
+              </div>
               <div class="invalid-feedback" *ngIf="submitted && f['password'].errors">
-                <span *ngIf="f['password'].errors['required']">Mot de passe requis</span>
-                <span *ngIf="f['password'].errors['minlength']">Minimum 6 caractères</span>
+                <span *ngIf="f['password'].errors['required']">Password is required</span>
+                <span *ngIf="f['password'].errors['minlength']">Minimum 6 characters</span>
               </div>
               <small class="form-text text-muted mt-1">
-                Le mot de passe doit contenir au moins 6 caractères
+                Password must contain at least 6 characters
               </small>
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Téléphone</label>
+              <label class="form-label">Confirm Password</label>
+              <div class="input-group">
+                <input 
+                  [type]="showConfirmPassword ? 'text' : 'password'" 
+                  formControlName="confirmPassword" 
+                  class="form-control"
+                  [class.is-invalid]="(submitted && f['confirmPassword'].errors) || (temporaryForm.errors?.['mustMatch'] && f['confirmPassword'].touched)"
+                >
+                <button 
+                  type="button" 
+                  class="btn btn-outline-secondary" 
+                  (click)="toggleConfirmPasswordVisibility()"
+                >
+                  <i [class]="showConfirmPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                </button>
+              </div>
+              <div class="invalid-feedback" *ngIf="submitted && f['confirmPassword'].errors">
+                <span *ngIf="f['confirmPassword'].errors['required']">Please confirm your password</span>
+              </div>
+              <div class="invalid-feedback" *ngIf="temporaryForm.errors?.['mustMatch'] && f['confirmPassword'].touched">
+                Passwords do not match
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Phone</label>
               <input 
                 type="tel" 
                 formControlName="phone" 
@@ -106,12 +154,12 @@
                 [class.is-invalid]="submitted && f['phone'].errors"
               >
               <div class="invalid-feedback" *ngIf="submitted && f['phone'].errors">
-                Le téléphone est requis
+                Phone number is required
               </div>
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Adresse</label>
+              <label class="form-label">Address</label>
               <input 
                 type="text" 
                 formControlName="address" 
@@ -119,7 +167,7 @@
                 [class.is-invalid]="submitted && f['address'].errors"
               >
               <div class="invalid-feedback" *ngIf="submitted && f['address'].errors">
-                L'adresse est requise
+                Address is required
               </div>
             </div>
 
@@ -128,27 +176,27 @@
               <div class="section-icon me-3">
                 <i class="fas fa-motorcycle text-primary"></i>
               </div>
-              <h3 class="h5 mb-0">Informations Véhicule</h3>
+              <h3 class="h5 mb-0">Vehicle Information</h3>
             </div>
 
             <div class="mb-4">
-              <label class="form-label">Type de Véhicule</label>
+              <label class="form-label">Vehicle Type</label>
               <select 
                 formControlName="vehicleType" 
                 class="form-select"
                 [class.is-invalid]="submitted && f['vehicleType'].errors"
               >
-                <option value="" disabled selected>Sélectionnez un type de véhicule</option>
+                <option value="" disabled selected>Select vehicle type</option>
                 <option *ngFor="let type of vehicleTypes" [value]="type.value">{{type.display}}</option>
               </select>
               <div class="invalid-feedback" *ngIf="submitted && f['vehicleType'].errors">
-                Le type de véhicule est requis
+                Vehicle type is required
               </div>
             </div>
 
             <div class="row mb-3">
               <div class="col-md-6">
-                <label class="form-label">Marque du Véhicule</label>
+                <label class="form-label">Vehicle Brand</label>
                 <input 
                   type="text" 
                   formControlName="vehicleBrand" 
@@ -156,11 +204,11 @@
                   [class.is-invalid]="submitted && f['vehicleBrand'].errors"
                 >
                 <div class="invalid-feedback" *ngIf="submitted && f['vehicleBrand'].errors">
-                  La marque du véhicule est requise
+                  Vehicle brand is required
                 </div>
               </div>
               <div class="col-md-6">
-                <label class="form-label">Modèle du Véhicule</label>
+                <label class="form-label">Vehicle Model</label>
                 <input 
                   type="text" 
                   formControlName="vehicleModel" 
@@ -168,14 +216,14 @@
                   [class.is-invalid]="submitted && f['vehicleModel'].errors"
                 >
                 <div class="invalid-feedback" *ngIf="submitted && f['vehicleModel'].errors">
-                  Le modèle du véhicule est requis
+                  Vehicle model is required
                 </div>
               </div>
             </div>
 
             <div class="row mb-3">
               <div class="col-md-6">
-                <label class="form-label">Plaque d'immatriculation</label>
+                <label class="form-label">License Plate</label>
                 <input 
                   type="text" 
                   formControlName="vehiclePlateNumber" 
@@ -183,11 +231,11 @@
                   [class.is-invalid]="submitted && f['vehiclePlateNumber'].errors"
                 >
                 <div class="invalid-feedback" *ngIf="submitted && f['vehiclePlateNumber'].errors">
-                  La plaque d'immatriculation est requise
+                  License plate is required
                 </div>
               </div>
               <div class="col-md-6">
-                <label class="form-label">Couleur</label>
+                <label class="form-label">Color</label>
                 <input 
                   type="text" 
                   formControlName="vehicleColor" 
@@ -195,14 +243,14 @@
                   [class.is-invalid]="submitted && f['vehicleColor'].errors"
                 >
                 <div class="invalid-feedback" *ngIf="submitted && f['vehicleColor'].errors">
-                  La couleur est requise
+                  Color is required
                 </div>
               </div>
             </div>
 
             <div class="row mb-3">
               <div class="col-md-4">
-                <label class="form-label">Année</label>
+                <label class="form-label">Year</label>
                 <input 
                   type="number" 
                   formControlName="vehicleYear" 
@@ -210,13 +258,13 @@
                   [class.is-invalid]="submitted && f['vehicleYear'].errors"
                 >
                 <div class="invalid-feedback" *ngIf="submitted && f['vehicleYear'].errors">
-                  <span *ngIf="f['vehicleYear'].errors['required']">L'année est requise</span>
-                  <span *ngIf="f['vehicleYear'].errors['min']">Année minimale: 1900</span>
-                  <span *ngIf="f['vehicleYear'].errors['max']">Année maximale: {{currentYear}}</span>
+                  <span *ngIf="f['vehicleYear'].errors['required']">Year is required</span>
+                  <span *ngIf="f['vehicleYear'].errors['min']">Minimum year: 1900</span>
+                  <span *ngIf="f['vehicleYear'].errors['max']">Maximum year: {{currentYear}}</span>
                 </div>
               </div>
               <div class="col-md-4">
-                <label class="form-label">Capacité (kg)</label>
+                <label class="form-label">Capacity (kg)</label>
                 <input 
                   type="number" 
                   step="0.1" 
@@ -225,8 +273,8 @@
                   [class.is-invalid]="submitted && f['vehicleCapacityKg'].errors"
                 >
                 <div class="invalid-feedback" *ngIf="submitted && f['vehicleCapacityKg'].errors">
-                  <span *ngIf="f['vehicleCapacityKg'].errors['required']">La capacité est requise</span>
-                  <span *ngIf="f['vehicleCapacityKg'].errors['min']">La capacité doit être positive</span>
+                  <span *ngIf="f['vehicleCapacityKg'].errors['required']">Capacity is required</span>
+                  <span *ngIf="f['vehicleCapacityKg'].errors['min']">Capacity must be positive</span>
                 </div>
               </div>
               <div class="col-md-4">
@@ -239,8 +287,8 @@
                   [class.is-invalid]="submitted && f['vehicleVolumeM3'].errors"
                 >
                 <div class="invalid-feedback" *ngIf="submitted && f['vehicleVolumeM3'].errors">
-                  <span *ngIf="f['vehicleVolumeM3'].errors['required']">Le volume est requis</span>
-                  <span *ngIf="f['vehicleVolumeM3'].errors['min']">Le volume doit être positif</span>
+                  <span *ngIf="f['vehicleVolumeM3'].errors['required']">Volume is required</span>
+                  <span *ngIf="f['vehicleVolumeM3'].errors['min']">Volume must be positive</span>
                 </div>
               </div>
             </div>
@@ -252,7 +300,7 @@
                 class="form-check-input" 
                 id="hasFridge"
               >
-              <label class="form-check-label" for="hasFridge">Véhicule équipé d'un frigo</label>
+              <label class="form-check-label" for="hasFridge">Vehicle equipped with fridge</label>
             </div>
 
             <!-- Driver License Information -->
@@ -260,12 +308,12 @@
               <div class="section-icon me-3">
                 <i class="fas fa-id-card text-primary"></i>
               </div>
-              <h3 class="h5 mb-0">Permis de Conduire</h3>
+              <h3 class="h5 mb-0">Driver License</h3>
             </div>
 
             <div class="row mb-3">
               <div class="col-md-6">
-                <label class="form-label">Numéro de Permis</label>
+                <label class="form-label">License Number</label>
                 <input 
                   type="text" 
                   formControlName="driverLicenseNumber" 
@@ -273,11 +321,11 @@
                   [class.is-invalid]="submitted && f['driverLicenseNumber'].errors"
                 >
                 <div class="invalid-feedback" *ngIf="submitted && f['driverLicenseNumber'].errors">
-                  Le numéro de permis est requis
+                  License number is required
                 </div>
               </div>
               <div class="col-md-6">
-                <label class="form-label">Catégorie</label>
+                <label class="form-label">License Category</label>
                 <input 
                   type="text" 
                   formControlName="driverLicenseCategory" 
@@ -285,18 +333,18 @@
                   [class.is-invalid]="submitted && f['driverLicenseCategory'].errors"
                 >
                 <div class="invalid-feedback" *ngIf="submitted && f['driverLicenseCategory'].errors">
-                  La catégorie est requise
+                  License category is required
                 </div>
               </div>
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Zones Préférées</label>
+              <label class="form-label">Preferred Zones</label>
               <input 
                 type="text" 
                 formControlName="preferredZones" 
                 class="form-control"
-                placeholder="Ex: Tunis Centre, Ariana, La Marsa"
+                placeholder="Ex: Downtown, Suburb, Business District"
               >
             </div>
 
@@ -311,10 +359,10 @@
                   [class.is-invalid]="submitted && f['termsAccepted'].errors"
                 >
                 <label class="form-check-label" for="termsCheck">
-                  J'accepte les <a href="#" class="text-primary">conditions d'utilisation</a> et la <a href="#" class="text-primary">politique de confidentialité</a>
+                  I accept the <a href="#" class="text-primary">terms of service</a> and <a href="#" class="text-primary">privacy policy</a>
                 </label>
                 <div class="invalid-feedback" *ngIf="submitted && f['termsAccepted']?.errors?.['required']">
-                  Vous devez accepter les conditions pour continuer
+                  You must accept the terms to continue
                 </div>
               </div>
             </div>
@@ -333,11 +381,11 @@
                 [disabled]="loading"
               >
                 <span *ngIf="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
-                {{loading ? 'Inscription en cours...' : 'S\'inscrire'}}
+                {{loading ? 'Registering...' : 'Register'}}
               </button>
               
               <p class="text-center mt-3">
-                Vous avez déjà un compte ? <a routerLink="/login" class="text-primary fw-bold">Connectez-vous</a>
+                Already have an account? <a routerLink="/login" class="text-primary fw-bold">Login here</a>
               </p>
             </div>
           </form>

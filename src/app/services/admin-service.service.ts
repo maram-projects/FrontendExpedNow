@@ -37,6 +37,18 @@ export class AdminService {
       })
     );
   }
+
+  getPendingApprovals(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/pending-approvals`);
+  }
+
+  approveUser(userId: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/approve-user/${userId}`, {});
+  }
+
+  rejectUser(userId: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/reject-user/${userId}`, {});
+  }
   
   getAllUsers(): Observable<User[]> {
     return this.http.get<User[]>(`${this.apiUrl}/users`).pipe(

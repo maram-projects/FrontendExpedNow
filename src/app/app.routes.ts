@@ -18,8 +18,11 @@ import { TemporaryRegisterComponent } from './components/registers/temporary-reg
 import { HomeComponent } from './components/home/home/home.component';
 import { homeGuard } from './guards/home.guard';
 import { AdminDashboardComponentComponent } from './components/admin-dashboard/admin-dashboard-component/admin-dashboard-component.component';
-import { ReactiveFormsModule } from '@angular/forms'; 
 import { ScheduleComponent } from './components/admin-dashboard/schedule/schedule.component';
+import { DeliveryPersonnelManagementComponent } from './components/admin-dashboard/delivery-personnel-management/delivery-personnel-management.component';
+import { ProfessionalRegisterComponent } from './components/registers/professional-register/professional-register.component';
+import { ForgetPasswordComponent } from './components/forget-password/forget-password.component';
+import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
 
 export const routes: Routes = [
   // Public routes
@@ -35,10 +38,23 @@ export const routes: Routes = [
       { path: 'individual', component: IndividualRegisterComponent },
       { path: 'enterprise', component: EnterpriseRegisterComponent },
       { path: 'temporary', component: TemporaryRegisterComponent },
+      { path: 'professional', component: ProfessionalRegisterComponent },
       { path: '', redirectTo: 'individual', pathMatch: 'full' }
     ]
   },
-  { path: 'login', component: LoginComponent },
+  { 
+    path: 'login', 
+    component: LoginComponent 
+  },
+  // Add these new routes for password management
+  { 
+    path: 'forgot-password', 
+    component: ForgetPasswordComponent 
+  },
+  { 
+    path: 'reset-password', 
+    component: ResetPasswordComponent 
+  },
 
   // Client routes
   {
@@ -66,10 +82,11 @@ export const routes: Routes = [
       { path: 'users', component: UserManagementComponent },
       { path: 'roles', component: RoleManagementComponent },
       { path: 'settings', component: SettingsComponent },
-      {path: 'availability',
-        loadComponent: () => import('./components/admin-dashboard/schedule/schedule.component').then(m => m.ScheduleComponent)   },
-        {path: 'DeliveryPersonnel',
-          loadComponent: () => import('./components/admin-dashboard/admin-dashboard-component/admin-dashboard-component.component').then(m => m.AdminDashboardComponentComponent)   },  
+      {
+        path: 'availability',
+        loadComponent: () => import('./components/admin-dashboard/schedule/schedule.component').then(m => m.ScheduleComponent)
+      },
+      { path: 'DeliveryPersonnel', component: DeliveryPersonnelManagementComponent },
       { path: 'vehicles', component: VehicleListComponent },
       { path: 'vehicles/create', component: VehicleFormComponent },
       { path: 'vehicles/edit/:id', component: VehicleFormComponent },

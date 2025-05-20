@@ -7,7 +7,7 @@
             <a routerLink="/register" class="btn btn-sm btn-outline-secondary me-3">
               <i class="fas fa-arrow-left"></i>
             </a>
-            <h2 class="mb-0">Inscription Client Entreprise</h2>
+            <h2 class="mb-0">Business Client Registration</h2>
           </div>
         </div>
         <div class="card-body">
@@ -19,12 +19,12 @@
                   <div class="section-icon me-3">
                     <i class="fas fa-user-circle text-primary"></i>
                   </div>
-                  <h3 class="h5 mb-0">Contact Principal</h3>
+                  <h3 class="h5 mb-0">Primary Contact</h3>
                 </div>
                 
                 <!-- First Name -->
                 <div class="mb-3">
-                  <label for="firstName" class="form-label">Prénom</label>
+                  <label for="firstName" class="form-label">First Name</label>
                   <input 
                     type="text" 
                     id="firstName"
@@ -33,13 +33,13 @@
                     [class.is-invalid]="submitted && f['firstName'].errors"
                   >
                   <div class="invalid-feedback" *ngIf="submitted && f['firstName'].errors">
-                    <span *ngIf="f['firstName'].errors['required']">Le prénom est requis</span>
+                    <span *ngIf="f['firstName'].errors['required']">First name is required</span>
                   </div>
                 </div>
                 
                 <!-- Last Name -->
                 <div class="mb-3">
-                  <label for="lastName" class="form-label">Nom</label>
+                  <label for="lastName" class="form-label">Last Name</label>
                   <input 
                     type="text" 
                     id="lastName"
@@ -48,13 +48,13 @@
                     [class.is-invalid]="submitted && f['lastName'].errors"
                   >
                   <div class="invalid-feedback" *ngIf="submitted && f['lastName'].errors">
-                    <span *ngIf="f['lastName'].errors['required']">Le nom est requis</span>
+                    <span *ngIf="f['lastName'].errors['required']">Last name is required</span>
                   </div>
                 </div>
                 
                 <!-- Email -->
                 <div class="mb-3">
-                  <label for="email" class="form-label">Email Professionnel</label>
+                  <label for="email" class="form-label">Professional Email</label>
                   <div class="input-group">
                     <span class="input-group-text"><i class="fas fa-envelope"></i></span>
                     <input 
@@ -65,15 +65,15 @@
                       [class.is-invalid]="submitted && f['email'].errors"
                     >
                     <div class="invalid-feedback" *ngIf="submitted && f['email'].errors">
-                      <span *ngIf="f['email'].errors['required']">L'email est requis</span>
-                      <span *ngIf="f['email'].errors['email']">Veuillez entrer un email valide</span>
+                      <span *ngIf="f['email'].errors['required']">Email is required</span>
+                      <span *ngIf="f['email'].errors['email']">Please enter a valid email</span>
                     </div>
                   </div>
                 </div>
                 
                 <!-- Password -->
                 <div class="mb-3">
-                  <label for="password" class="form-label">Mot de passe</label>
+                  <label for="password" class="form-label">Password</label>
                   <div class="input-group">
                     <span class="input-group-text"><i class="fas fa-lock"></i></span>
                     <input 
@@ -82,6 +82,7 @@
                       formControlName="password" 
                       class="form-control"
                       [class.is-invalid]="submitted && f['password'].errors"
+                      (input)="passwordStrength = calculatePasswordStrength(f['password'].value)"
                     >
                     <button 
                       type="button" 
@@ -91,18 +92,69 @@
                       <i [class]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
                     </button>
                     <div class="invalid-feedback" *ngIf="submitted && f['password'].errors">
-                      <span *ngIf="f['password'].errors['required']">Le mot de passe est requis</span>
-                      <span *ngIf="f['password'].errors['minlength']">Le mot de passe doit contenir au moins 6 caractères</span>
+                      <span *ngIf="f['password'].errors['required']">Password is required</span>
+                      <span *ngIf="f['password'].errors['minlength']">Password must be at least 6 characters</span>
                     </div>
                   </div>
+                  <!-- Password Strength Indicator -->
+                  <div class="password-strength mt-2" *ngIf="f['password'].value">
+                    <div class="progress">
+                      <div class="progress-bar" 
+                          [ngClass]="{
+                            'bg-danger': passwordStrength < 40,
+                            'bg-warning': passwordStrength >= 40 && passwordStrength < 80,
+                            'bg-success': passwordStrength >= 80
+                          }"
+                          [style.width.%]="passwordStrength">
+                      </div>
+                    </div>
+                    <small class="text-muted">
+                      Password strength: 
+                      <span [ngClass]="{
+                        'text-danger': passwordStrength < 40,
+                        'text-warning': passwordStrength >= 40 && passwordStrength < 80,
+                        'text-success': passwordStrength >= 80
+                      }">
+                        {{ getPasswordStrengthText() }}
+                      </span>
+                    </small>
+                  </div>
                   <small class="form-text text-muted mt-1">
-                    Le mot de passe doit contenir au moins 6 caractères
+                    Password must contain at least 6 characters
                   </small>
+                </div>
+                
+                <!-- Confirm Password -->
+                <div class="mb-3">
+                  <label for="confirmPassword" class="form-label">Confirm Password</label>
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                    <input 
+                      [type]="showPassword ? 'text' : 'password'" 
+                      id="confirmPassword"
+                      formControlName="confirmPassword" 
+                      class="form-control"
+                      [class.is-invalid]="(submitted && f['confirmPassword'].errors) || (enterpriseForm.errors?.['mustMatch'] && f['confirmPassword'].touched)"
+                    >
+                    <button 
+                      type="button" 
+                      class="btn btn-outline-secondary"
+                      (click)="togglePasswordVisibility()"
+                    >
+                      <i [class]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                    </button>
+                  </div>
+                  <div class="invalid-feedback" *ngIf="submitted && f['confirmPassword'].errors">
+                    <span *ngIf="f['confirmPassword'].errors['required']">Please confirm your password</span>
+                  </div>
+                  <div class="invalid-feedback" *ngIf="enterpriseForm.errors?.['mustMatch'] && f['confirmPassword'].touched">
+                    Passwords do not match
+                  </div>
                 </div>
                 
                 <!-- Phone -->
                 <div class="mb-3">
-                  <label for="phone" class="form-label">Téléphone du Contact</label>
+                  <label for="phone" class="form-label">Contact Phone</label>
                   <div class="input-group">
                     <span class="input-group-text"><i class="fas fa-phone"></i></span>
                     <input 
@@ -114,14 +166,14 @@
                       [class.is-invalid]="submitted && f['phone'].errors"
                     >
                     <div class="invalid-feedback" *ngIf="submitted && f['phone'].errors">
-                      <span *ngIf="f['phone'].errors['required']">Le numéro de téléphone est requis</span>
+                      <span *ngIf="f['phone'].errors['required']">Phone number is required</span>
                     </div>
                   </div>
                 </div>
 
                 <!-- Address -->
                 <div class="mb-3">
-                  <label for="address" class="form-label">Adresse Personnelle</label>
+                  <label for="address" class="form-label">Personal Address</label>
                   <div class="input-group">
                     <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
                     <input 
@@ -132,7 +184,7 @@
                       [class.is-invalid]="submitted && f['address'].errors"
                     >
                     <div class="invalid-feedback" *ngIf="submitted && f['address'].errors">
-                      <span *ngIf="f['address'].errors['required']">L'adresse personnelle est requise</span>
+                      <span *ngIf="f['address'].errors['required']">Address is required</span>
                     </div>
                   </div>
                 </div>
@@ -144,12 +196,12 @@
                   <div class="section-icon me-3">
                     <i class="fas fa-building text-primary"></i>
                   </div>
-                  <h3 class="h5 mb-0">Informations de l'Entreprise</h3>
+                  <h3 class="h5 mb-0">Business Information</h3>
                 </div>
                 
                 <!-- Company Name -->
                 <div class="mb-3">
-                  <label for="companyName" class="form-label">Nom de l'Entreprise</label>
+                  <label for="companyName" class="form-label">Company Name</label>
                   <input 
                     type="text" 
                     id="companyName"
@@ -158,30 +210,30 @@
                     [class.is-invalid]="submitted && f['companyName'].errors"
                   >
                   <div class="invalid-feedback" *ngIf="submitted && f['companyName'].errors">
-                    <span *ngIf="f['companyName'].errors['required']">Le nom de l'entreprise est requis</span>
+                    <span *ngIf="f['companyName'].errors['required']">Company name is required</span>
                   </div>
                 </div>
                 
                 <!-- Business Type -->
                 <div class="mb-3">
-                  <label for="businessType" class="form-label">Type d'Entreprise</label>
+                  <label for="businessType" class="form-label">Business Type</label>
                   <select 
                     id="businessType"
                     formControlName="businessType" 
                     class="form-select"
                     [class.is-invalid]="submitted && f['businessType'].errors"
                   >
-                    <option value="" disabled selected>Sélectionnez un type</option>
+                    <option value="" disabled selected>Select a type</option>
                     <option *ngFor="let type of businessTypes" [value]="type.value">{{type.display}}</option>
                   </select>
                   <div class="invalid-feedback" *ngIf="submitted && f['businessType'].errors">
-                    <span *ngIf="f['businessType'].errors['required']">Le type d'entreprise est requis</span>
+                    <span *ngIf="f['businessType'].errors['required']">Business type is required</span>
                   </div>
                 </div>
                 
                 <!-- VAT Number -->
                 <div class="mb-3">
-                  <label for="vatNumber" class="form-label">Numéro TVA</label>
+                  <label for="vatNumber" class="form-label">VAT Number</label>
                   <input 
                     type="text" 
                     id="vatNumber"
@@ -191,14 +243,14 @@
                     [class.is-invalid]="submitted && f['vatNumber'].errors"
                   >
                   <div class="invalid-feedback" *ngIf="submitted && f['vatNumber'].errors">
-                    <span *ngIf="f['vatNumber'].errors['required']">Le numéro TVA est requis</span>
-                    <span *ngIf="f['vatNumber'].errors['pattern']">Format TVA invalide</span>
+                    <span *ngIf="f['vatNumber'].errors['required']">VAT number is required</span>
+                    <span *ngIf="f['vatNumber'].errors['pattern']">Invalid VAT format (e.g. TN12345678)</span>
                   </div>
                 </div>
                 
                 <!-- Business Phone -->
                 <div class="mb-3">
-                  <label for="businessPhone" class="form-label">Téléphone de l'Entreprise</label>
+                  <label for="businessPhone" class="form-label">Business Phone</label>
                   <div class="input-group">
                     <span class="input-group-text"><i class="fas fa-phone"></i></span>
                     <input 
@@ -210,14 +262,14 @@
                       [class.is-invalid]="submitted && f['businessPhone'].errors"
                     >
                     <div class="invalid-feedback" *ngIf="submitted && f['businessPhone'].errors">
-                      <span *ngIf="f['businessPhone'].errors['required']">Le téléphone de l'entreprise est requis</span>
+                      <span *ngIf="f['businessPhone'].errors['required']">Business phone is required</span>
                     </div>
                   </div>
                 </div>
                 
                 <!-- Business Address -->
                 <div class="mb-3">
-                  <label for="businessAddress" class="form-label">Adresse de l'Entreprise</label>
+                  <label for="businessAddress" class="form-label">Business Address</label>
                   <div class="input-group">
                     <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
                     <textarea
@@ -228,25 +280,26 @@
                       [class.is-invalid]="submitted && f['businessAddress'].errors"
                     ></textarea>
                     <div class="invalid-feedback" *ngIf="submitted && f['businessAddress'].errors">
-                      <span *ngIf="f['businessAddress'].errors['required']">L'adresse de l'entreprise est requise</span>
+                      <span *ngIf="f['businessAddress'].errors['required']">Business address is required</span>
                     </div>
                   </div>
                 </div>
                 
                 <!-- Delivery Radius -->
                 <div class="mb-3">
-                  <label for="deliveryRadius" class="form-label">Rayon de Livraison (km)</label>
+                  <label for="deliveryRadius" class="form-label">Delivery Radius (km)</label>
                   <input 
                     type="number" 
                     id="deliveryRadius"
                     formControlName="deliveryRadius" 
                     class="form-control"
                     step="0.1"
+                    min="1"
                     [class.is-invalid]="submitted && f['deliveryRadius'].errors"
                   >
                   <div class="invalid-feedback" *ngIf="submitted && f['deliveryRadius'].errors">
-                    <span *ngIf="f['deliveryRadius'].errors['required']">Le rayon de livraison est requis</span>
-                    <span *ngIf="f['deliveryRadius'].errors['min']">Le rayon doit être positif</span>
+                    <span *ngIf="f['deliveryRadius'].errors['required']">Delivery radius is required</span>
+                    <span *ngIf="f['deliveryRadius'].errors['min']">Radius must be at least 1 km</span>
                   </div>
                 </div>
               </div>
@@ -263,10 +316,10 @@
                   [class.is-invalid]="submitted && f['termsAccepted'].errors"
                 >
                 <label class="form-check-label" for="termsCheck">
-                  J'accepte les <a href="#" class="text-primary">conditions d'utilisation</a> et la <a href="#" class="text-primary">politique de confidentialité</a>
+                  I accept the <a href="#" class="text-primary">terms of service</a> and <a href="#" class="text-primary">privacy policy</a>
                 </label>
                 <div class="invalid-feedback" *ngIf="submitted && f['termsAccepted'].errors">
-                  <span *ngIf="f['termsAccepted'].errors['required']">Vous devez accepter les conditions pour continuer</span>
+                  <span *ngIf="f['termsAccepted'].errors['required']">You must accept the terms to continue</span>
                 </div>
               </div>
             </div>
@@ -282,14 +335,14 @@
               <button 
                 type="submit" 
                 class="btn btn-primary btn-lg"
-                [disabled]="loading"
+                [disabled]="loading || enterpriseForm.invalid"
               >
                 <span *ngIf="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
-                {{loading ? 'Inscription en cours...' : 'S\'inscrire'}}
+                {{loading ? 'Registering...' : 'Register'}}
               </button>
               
               <p class="text-center mt-3">
-                Vous avez déjà un compte ? <a routerLink="/login" class="text-primary fw-bold">Connectez-vous</a>
+                Already have an account? <a routerLink="/login" class="text-primary fw-bold">Login here</a>
               </p>
             </div>
           </form>

@@ -1,0 +1,13 @@
+/* professional-register-dialog.component.css */
+mat-dialog-content {
+    padding: 20px;
+  }
+  
+  .row {
+    display: flex;
+    gap: 16px;
+  }
+  
+  mat-form-field {
+    width: 100%;
+  }

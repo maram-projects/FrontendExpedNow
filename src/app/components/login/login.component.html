@@ -5,25 +5,25 @@
       <p>Please sign in to continue</p>
     </div>
 
-  <!-- Social Login Buttons -->
-<div class="social-login-container">
-  <!-- Login with Google Button -->
-  <button class="oauth-button google" (click)="loginWithGoogle()">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google Logo" class="oauth-logo" />
-    <span>Sign in with Google</span>
-  </button>
+    <!-- Social Login Buttons -->
+    <div class="social-login-container">
+      <!-- Login with Google Button -->
+      <button class="oauth-button google" (click)="loginWithGoogle()">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google Logo" class="oauth-logo" />
+        <span>Sign in with Google</span>
+      </button>
 
-  <!-- Login with Facebook Button -->
-  <button class="oauth-button facebook" (click)="loginWithFacebook()">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg" alt="Facebook Logo" class="oauth-logo" />
-    <span>Sign in with Facebook</span>
-  </button>
-</div>
+      <!-- Login with Facebook Button -->
+      <button class="oauth-button facebook" (click)="loginWithFacebook()">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg" alt="Facebook Logo" class="oauth-logo" />
+        <span>Sign in with Facebook</span>
+      </button>
+    </div>
 
-<!-- Divider -->
-<div class="divider">
-  <span class="divider-text">OR</span>
-</div>
+    <!-- Divider -->
+    <div class="divider">
+      <span class="divider-text">OR</span>
+    </div>
 
     <!-- Existing Email/Password Form -->
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
@@ -40,9 +40,11 @@
             [class.error]="hasFieldError('email')"
           >
         </div>
-        <span class="error-message" *ngIf="hasFieldError('email')">
-          {{ getFieldErrorMessage('email') }}
-        </span>
+        @if (hasFieldError('email')) {
+          <span class="error-message">
+            {{ getFieldErrorMessage('email') }}
+          </span>
+        }
       </div>
 
       <!-- Password Field -->
@@ -61,20 +63,30 @@
             type="button" 
             class="toggle-password"
             (click)="togglePasswordVisibility()"
+            aria-label="Toggle password visibility"
           >
             <i [class]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
           </button>
         </div>
-        <span class="error-message" *ngIf="hasFieldError('password')">
-          {{ getFieldErrorMessage('password') }}
-        </span>
+        @if (hasFieldError('password')) {
+          <span class="error-message">
+            {{ getFieldErrorMessage('password') }}
+          </span>
+        }
+      </div>
+
+      <!-- Forgot Password Link -->
+      <div class="forgot-password-link">
+        <a routerLink="/forgot-password">Forgot your password?</a>
       </div>
 
       <!-- Error Alert -->
-      <div class="alert-error" *ngIf="error">
-        <i class="fas fa-exclamation-circle"></i>
-        {{ error }}
-      </div>
+      @if (error) {
+        <div class="alert-error">
+          <i class="fas fa-exclamation-circle"></i>
+          {{ error }}
+        </div>
+      }
 
       <!-- Submit Button -->
       <button 
@@ -82,12 +94,16 @@
         class="login-button"
         [disabled]="loginForm.invalid || loading"
       >
-        <span *ngIf="!loading">Sign In</span>
-        <div class="spinner" *ngIf="loading">
-          <div class="bounce1"></div>
-          <div class="bounce2"></div>
-          <div class="bounce3"></div>
-        </div>
+        @if (!loading) {
+          <span>Sign In</span>
+        }
+        @if (loading) {
+          <div class="spinner">
+            <div class="bounce1"></div>
+            <div class="bounce2"></div>
+            <div class="bounce3"></div>
+          </div>
+        }
       </button>
 
       <!-- Register Link -->

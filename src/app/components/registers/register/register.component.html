@@ -1,142 +1,28 @@
-<div class="container mt-5">
-  <div class="row justify-content-center">
-    <div class="col-md-6">
-      <div class="card">
-        <div class="card-header">
-          <h2 class="text-center">Register</h2>
-        </div>
-        <div class="card-body">
-          <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
-            <!-- First Name -->
-            <div class="mb-3">
-              <label class="form-label">First Name</label>
-              <input 
-                type="text" 
-                formControlName="firstName" 
-                class="form-control"
-                [class.is-invalid]="registerForm.get('firstName')?.invalid && registerForm.get('firstName')?.touched"
-              >
-              <div class="invalid-feedback">
-                First name is required
-              </div>
-            </div>
-
-            <!-- Last Name -->
-            <div class="mb-3">
-              <label class="form-label">Last Name</label>
-              <input 
-                type="text" 
-                formControlName="lastName" 
-                class="form-control"
-                [class.is-invalid]="registerForm.get('lastName')?.invalid && registerForm.get('lastName')?.touched"
-              >
-              <div class="invalid-feedback">
-                Last name is required
-              </div>
-            </div>
-
-            <!-- Email -->
-            <div class="mb-3">
-              <label class="form-label">Email</label>
-              <input 
-                type="email" 
-                formControlName="email" 
-                class="form-control"
-                [class.is-invalid]="registerForm.get('email')?.invalid && registerForm.get('email')?.touched"
-              >
-              <div class="invalid-feedback">
-                Please enter a valid email address
-              </div>
-            </div>
-
-            <!-- Password -->
-            <div class="mb-3">
-              <label class="form-label">Password</label>
-              <input 
-                type="password" 
-                formControlName="password" 
-                class="form-control"
-                [class.is-invalid]="registerForm.get('password')?.invalid && registerForm.get('password')?.touched"
-              >
-              <div class="invalid-feedback">
-                Password must be at least 6 characters long
-              </div>
-            </div>
-
-            <!-- Phone -->
-            <div class="mb-3">
-              <label class="form-label">Phone</label>
-              <input 
-                type="tel" 
-                formControlName="phone" 
-                class="form-control"
-                [class.is-invalid]="registerForm.get('phone')?.invalid && registerForm.get('phone')?.touched"
-              >
-              <div class="invalid-feedback">
-                Phone number is required
-              </div>
-            </div>
-
-            <!-- Address -->
-            <div class="mb-3">
-              <label class="form-label">Address</label>
-              <input 
-                type="text" 
-                formControlName="address" 
-                class="form-control"
-                [class.is-invalid]="registerForm.get('address')?.invalid && registerForm.get('address')?.touched"
-              >
-              <div class="invalid-feedback">
-                Address is required
-              </div>
-            </div>
-
-            <!-- User Type -->
-            <div class="mb-3">
-              <label class="form-label">User Type</label>
-              <select 
-                formControlName="userType" 
-                class="form-control"
-              >
-                <option *ngFor="let type of userTypes" [value]="type">
-                  {{type | titlecase}}
-                </option>
-              </select>
-              <small class="form-text text-muted" *ngIf="!userTypes.includes('professional')">
-                Professional delivery personnel can only be added by administrators.
-              </small>
-            </div>
-
-            <!-- Vehicle Type - only shown for temporary users -->
-            <div class="mb-3" *ngIf="registerForm.get('userType')?.value === 'temporary'">
-              <label class="form-label">Authorized Vehicle Type</label>
-              <select formControlName="vehicleType">
-                <option *ngFor="let type of vehicleTypes" [value]="type.value">{{type.display}}</option>
-              </select>
-            </div>
-
-            <!-- Error Message -->
-            <div class="alert alert-danger" *ngIf="error">{{error}}</div>
-
-            <!-- Submit Button -->
-            <button 
-              type="submit" 
-              class="btn btn-primary w-100" 
-              [disabled]="!registerForm.valid || loading"
-            >
-              <span *ngIf="loading" class="spinner-border spinner-border-sm me-2" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </span>
-              {{loading ? 'Registering...' : 'Register'}}
-            </button>
-
-            <!-- Login Link -->
-            <div class="mt-3 text-center">
-              Already have an account? <a routerLink="/login">Login</a>
-            </div>
-          </form>
-        </div>
+<!-- register.component.html -->
+<div class="register-container">
+  <div class="register-options">
+    <h2>Choose Your Account Type</h2>
+    <div class="option-cards">
+      <div class="option-card" routerLink="individual">
+        <i class="fas fa-user"></i>
+        <h3>Individual</h3>
+        <p>For personal deliveries</p>
+      </div>
+      
+      <div class="option-card" routerLink="enterprise">
+        <i class="fas fa-building"></i>
+        <h3>Enterprise</h3>
+        <p>For business accounts</p>
+      </div>
+      
+      <div class="option-card" routerLink="professional">
+        <i class="fas fa-truck"></i>
+        <h3>Professional</h3>
+        <p>For delivery drivers</p>
       </div>
     </div>
   </div>
+  
+  <!-- This is where child routes will be rendered -->
+  <router-outlet></router-outlet>
 </div>

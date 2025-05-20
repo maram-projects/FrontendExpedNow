@@ -1,0 +1,122 @@
+<h2 mat-dialog-title>Register Professional Delivery Person</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="professionalForm">
+    <div class="form-row">
+      <mat-form-field>
+        <mat-label>First Name</mat-label>
+        <input matInput formControlName="firstName" required>
+        <mat-error *ngIf="professionalForm.get('firstName')?.invalid">First name is required</mat-error>
+      </mat-form-field>
+
+      <mat-form-field>
+        <mat-label>Last Name</mat-label>
+        <input matInput formControlName="lastName" required>
+        <mat-error *ngIf="professionalForm.get('lastName')?.invalid">Last name is required</mat-error>
+      </mat-form-field>
+    </div>
+
+    <mat-form-field>
+      <mat-label>Email</mat-label>
+      <input matInput formControlName="email" type="email" required>
+      <mat-error *ngIf="professionalForm.get('email')?.invalid">Valid email is required</mat-error>
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>Password</mat-label>
+      <input matInput [type]="showPassword ? 'text' : 'password'" formControlName="password" required>
+      <button mat-icon-button matSuffix (click)="togglePasswordVisibility()">
+        <mat-icon>{{showPassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+      </button>
+      <mat-error *ngIf="professionalForm.get('password')?.invalid">
+        Password must be at least 6 characters
+      </mat-error>
+    </mat-form-field>
+
+    <mat-form-field>
+        <mat-label>Confirm Password</mat-label>
+        <input matInput [type]="showPassword ? 'text' : 'password'" formControlName="confirmPassword" required>
+        <button mat-icon-button matSuffix (click)="togglePasswordVisibility()">
+          <mat-icon>{{showPassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+        </button>
+        <mat-error *ngIf="professionalForm.hasError('notSame')">
+          Passwords do not match
+        </mat-error>
+      </mat-form-field>
+      
+
+    <mat-form-field>
+      <mat-label>Phone</mat-label>
+      <input matInput formControlName="phone" required>
+      <mat-error *ngIf="professionalForm.get('phone')?.invalid">Phone is required</mat-error>
+    </mat-form-field>
+
+    <mat-form-field>
+      <mat-label>Address</mat-label>
+      <input matInput formControlName="address" required>
+      <mat-error *ngIf="professionalForm.get('address')?.invalid">Address is required</mat-error>
+    </mat-form-field>
+
+    <div class="form-row">
+      <mat-form-field>
+        <mat-label>Vehicle Type</mat-label>
+        <mat-select formControlName="vehicleType" required>
+          <mat-option *ngFor="let type of vehicleTypes" [value]="type.value">
+            {{type.display}}
+          </mat-option>
+        </mat-select>
+        <mat-error *ngIf="professionalForm.get('vehicleType')?.invalid">Vehicle type is required</mat-error>
+      </mat-form-field>
+
+      <mat-form-field>
+        <mat-label>Vehicle Brand</mat-label>
+        <input matInput formControlName="vehicleBrand" required>
+        <mat-error *ngIf="professionalForm.get('vehicleBrand')?.invalid">Brand is required</mat-error>
+      </mat-form-field>
+    </div>
+
+    <div class="form-row">
+      <mat-form-field>
+        <mat-label>Vehicle Model</mat-label>
+        <input matInput formControlName="vehicleModel" required>
+        <mat-error *ngIf="professionalForm.get('vehicleModel')?.invalid">Model is required</mat-error>
+      </mat-form-field>
+
+      <mat-form-field>
+        <mat-label>License Plate</mat-label>
+        <input matInput formControlName="vehiclePlateNumber" required>
+        <mat-error *ngIf="professionalForm.get('vehiclePlateNumber')?.invalid">Plate number is required</mat-error>
+      </mat-form-field>
+    </div>
+
+    <div class="form-row">
+      <mat-form-field>
+        <mat-label>Driver License Number</mat-label>
+        <input matInput formControlName="driverLicenseNumber" required>
+        <mat-error *ngIf="professionalForm.get('driverLicenseNumber')?.invalid">License number is required</mat-error>
+      </mat-form-field>
+
+      <mat-form-field>
+        <mat-label>License Category</mat-label>
+        <input matInput formControlName="driverLicenseCategory" required>
+        <mat-error *ngIf="professionalForm.get('driverLicenseCategory')?.invalid">Category is required</mat-error>
+      </mat-form-field>
+    </div>
+
+    <mat-checkbox formControlName="termsAccepted" required>
+      I accept the terms and conditions
+    </mat-checkbox>
+    <mat-error *ngIf="professionalForm.get('termsAccepted')?.invalid && professionalForm.get('termsAccepted')?.touched">
+      You must accept the terms
+    </mat-error>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-raised-button color="primary" 
+          (click)="onSubmit()" 
+          [disabled]="professionalForm.invalid">
+    Register
+  </button>
+</mat-dialog-actions>

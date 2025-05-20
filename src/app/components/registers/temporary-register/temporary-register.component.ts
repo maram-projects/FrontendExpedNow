@@ -29,8 +29,10 @@ export class TemporaryRegisterComponent implements OnInit {
   error: string = '';
   loading: boolean = false;
   showPassword: boolean = false;
+  showConfirmPassword: boolean = false;
   vehicleTypes = VEHICLE_TYPES;
   currentYear: number;
+  passwordStrength: number = 0;
 
   constructor(
     private fb: FormBuilder,
@@ -43,6 +45,7 @@ export class TemporaryRegisterComponent implements OnInit {
       lastName: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]],
+      confirmPassword: ['', [Validators.required]],
       phone: ['', Validators.required],
       address: ['', Validators.required],
       vehicleType: ['', Validators.required],
@@ -58,7 +61,26 @@ export class TemporaryRegisterComponent implements OnInit {
       driverLicenseCategory: ['', Validators.required],
       preferredZones: [''],
       termsAccepted: [false, Validators.requiredTrue]
+    }, { 
+      validators: this.mustMatch('password', 'confirmPassword') 
     });
+  }
+
+  mustMatch(controlName: string, matchingControlName: string) {
+    return (formGroup: FormGroup) => {
+      const control = formGroup.controls[controlName];
+      const matchingControl = formGroup.controls[matchingControlName];
+  
+      if (matchingControl.errors && !matchingControl.errors['mustMatch']) {
+        return;
+      }
+  
+      if (control.value !== matchingControl.value) {
+        matchingControl.setErrors({ mustMatch: true });
+      } else {
+        matchingControl.setErrors(null);
+      }
+    };
   }
 
   ngOnInit(): void {}
@@ -69,54 +91,84 @@ export class TemporaryRegisterComponent implements OnInit {
     this.showPassword = !this.showPassword;
   }
 
+  toggleConfirmPasswordVisibility(): void {
+    this.showConfirmPassword = !this.showConfirmPassword;
+  }
+
+  calculatePasswordStrength(password: string): number {
+    if (!password) return 0;
+    
+    let strength = 0;
+    strength += Math.min(50, (password.length / 12) * 50);
+    
+    if (/[a-z]/.test(password)) strength += 10;
+    if (/[A-Z]/.test(password)) strength += 10;
+    if (/\d/.test(password)) strength += 15;
+    if (/[^a-zA-Z0-9]/.test(password)) strength += 15;
+    
+    this.passwordStrength = Math.max(0, Math.min(100, strength));
+    return this.passwordStrength;
+  }
+
+  getPasswordStrengthText(): string {
+    if (this.passwordStrength < 40) return 'Weak';
+    if (this.passwordStrength < 80) return 'Medium';
+    return 'Strong';
+  }
+
   onSubmit(): void {
     this.submitted = true;
     this.error = '';
-    
+
+    if (this.temporaryForm.hasError('mustMatch')) {
+        this.error = 'Passwords do not match';
+        return;
+    }
+
     if (this.temporaryForm.invalid) {
-      return;
+        return;
     }
     
     this.loading = true;
     
     const formValue = this.temporaryForm.value;
     const userData: User = {
-      firstName: formValue.firstName,
-      lastName: formValue.lastName,
-      email: formValue.email,
-      password: formValue.password,
-      phone: formValue.phone,
-      address: formValue.address,
-      vehicleType: formValue.vehicleType,
-      vehicleBrand: formValue.vehicleBrand,
-      vehicleModel: formValue.vehicleModel,
-      vehiclePlateNumber: formValue.vehiclePlateNumber,
-      vehicleColor: formValue.vehicleColor,
-      vehicleYear: formValue.vehicleYear,
-      vehicleCapacityKg: formValue.vehicleCapacityKg,
-      vehicleVolumeM3: formValue.vehicleVolumeM3,
-      vehicleHasFridge: formValue.vehicleHasFridge,
-      driverLicenseNumber: formValue.driverLicenseNumber,
-      driverLicenseCategory: formValue.driverLicenseCategory,
-      preferredZones: formValue.preferredZones,
-      id: ''
+        firstName: formValue.firstName,
+        lastName: formValue.lastName,
+        email: formValue.email,
+        password: formValue.password,
+        confirmPassword: formValue.confirmPassword, // Add this
+        phone: formValue.phone,
+        address: formValue.address,
+        vehicleType: formValue.vehicleType,
+        vehicleBrand: formValue.vehicleBrand,
+        vehicleModel: formValue.vehicleModel,
+        vehiclePlateNumber: formValue.vehiclePlateNumber,
+        vehicleColor: formValue.vehicleColor,
+        vehicleYear: formValue.vehicleYear,
+        vehicleCapacityKg: formValue.vehicleCapacityKg,
+        vehicleVolumeM3: formValue.vehicleVolumeM3,
+        vehicleHasFridge: formValue.vehicleHasFridge,
+        driverLicenseNumber: formValue.driverLicenseNumber,
+        driverLicenseCategory: formValue.driverLicenseCategory,
+        preferredZones: formValue.preferredZones
     };
     
     this.authService.register(userData, 'temporary').subscribe({
-      next: () => {
-        this.loading = false;
-        this.router.navigate(['/login'], { 
-          state: {
-            registrationSuccess: true,
-            message: 'Votre compte livreur temporaire a été créé! Un administrateur validera votre compte sous 24h.'
-          },
-          queryParams: { registered: 'temporary' }
-        });
-      },
-      error: (err: { error: { message: string; }; }) => {
-        this.loading = false;
-        this.error = err.error?.message || 'Échec de l\'inscription. Veuillez réessayer.';
-      }
+        next: (response) => {
+            this.loading = false;
+            this.router.navigate(['/login'], { 
+                state: {
+                    registrationSuccess: true,
+                    message: response.message || 'Your temporary driver account has been created! An administrator will validate your account within 24 hours.'
+                },
+                queryParams: { registered: 'temporary' }
+            });
+        },
+        error: (err) => {
+            this.loading = false;
+            this.error = err.error?.message || 'Registration failed. Please try again.';
+        }
     });
-  }
+}
 }

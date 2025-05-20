@@ -1,7 +1,7 @@
 // components/register/register.component.ts
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, RouterModule } from '@angular/router';
 import { User, USER_TYPES, VEHICLE_TYPES } from '../../../models/user.model';
 import { AuthService } from '../../../services/auth.service';
 import { CommonModule } from '@angular/common';
@@ -14,7 +14,9 @@ import { CommonModule } from '@angular/common';
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    RouterLink
+    RouterLink,
+     RouterModule // Add this
+      // Add this
   ]
 })
 export class RegisterComponent {
@@ -76,7 +78,8 @@ export class RegisterComponent {
         password: formData.password,
         phone: formData.phone,
         address: formData.address,
-        vehicleType: formData.vehicleType || null
+        vehicleType: formData.vehicleType || null,
+        id: ''
       };
       
       this.authService.register(userData, userType).subscribe({

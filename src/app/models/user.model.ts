@@ -1,12 +1,12 @@
 import { Vehicle } from "./Vehicle.model";
 
-// models/user.model.ts
 export interface User {
-  id: string;
+  id?: string;
   firstName: string;
   lastName: string;
   email: string;
   password?: string;
+  confirmPassword?: string;
   phone: string;
   address: string;
   dateOfRegistration?: Date;
@@ -33,7 +33,6 @@ export interface User {
   vehicleInsuranceExpiry?: Date;
   vehicleInspectionExpiry?: Date;
   
-  
   // Professional fields
   driverLicenseNumber?: string;
   driverLicenseCategory?: string;
@@ -48,6 +47,7 @@ export interface User {
   
   // Account status
   verified?: boolean;
+  approved?: boolean;
   enabled?: boolean;
   available?: boolean;
   
@@ -64,10 +64,10 @@ export interface User {
   
   // Roles
   roles?: string[];
+  userType?: string;
 }
 
 export interface AuthResponse {
-  [x: string]: any;
   token: string;
   userType: string;
   userId: string;
@@ -79,6 +79,8 @@ export interface AuthResponse {
   companyName?: string;
   vehicleType?: string;
   assignedVehicleId?: string;
+  approved?: boolean;
+  enabled?: boolean;
 }
 
 export const USER_TYPES = {
@@ -87,6 +89,13 @@ export const USER_TYPES = {
   TEMPORARY: 'temporary',
   PROFESSIONAL: 'professional',
   ADMIN: 'admin'
+};
+
+export const USER_STATUS = {
+  PENDING: 'pending',
+  ACTIVE: 'active',
+  DISABLED: 'disabled',
+  REJECTED: 'rejected'
 };
 
 export const VEHICLE_TYPES = [
