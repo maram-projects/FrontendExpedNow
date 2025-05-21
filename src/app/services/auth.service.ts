@@ -39,8 +39,10 @@
     }
 
     login(email: string, password: string): Observable<AuthResponse> {
+      console.log('Login attempt for:', email);
       return this.http.post<AuthResponse>(`${this.apiUrl}/login`, { email, password }).pipe(
         tap((response) => {
+          console.log('Login response:', response);
           if (response?.token && response?.userId) {
             const authData: AuthResponse = {
               token: response.token,
@@ -54,30 +56,36 @@
               companyName: response.companyName,
               vehicleType: response.vehicleType,
               assignedVehicleId: response.assignedVehicleId,
-              
             };
-
+    
+            console.log('Storing auth data:', authData);
             localStorage.setItem('currentUser', JSON.stringify(authData));
-        this.currentUserSubject.next(authData);
-        
-        // Special handling for admin redirect
-        if (authData.userType === 'admin') {
-          this.router.navigate(['/admin/dashboard']);
-        } else {
-          this.redirectBasedOnUserType(authData.userType);
-        }
-      }
-    }),
-    catchError((error: HttpErrorResponse) => {
-      let errorMessage = 'Login failed';
-      if (error.error?.error) {
-        errorMessage += `: ${error.error.error}`;
-      }
-      return throwError(() => new Error(errorMessage));
-    })
-  );
-}
-
+            this.currentUserSubject.next(authData);
+            
+            console.log('User type for redirection:', authData.userType);
+            
+            // Special handling for admin redirect
+            if (authData.userType === 'admin') {
+              console.log('Redirecting to admin dashboard');
+              this.router.navigate(['/admin/dashboard']);
+            } else {
+              console.log('Redirecting based on user type:', authData.userType);
+              this.redirectBasedOnUserType(authData.userType);
+            }
+          } else {
+            console.error('Invalid login response - missing token or userId');
+          }
+        }),
+        catchError((error: HttpErrorResponse) => {
+          console.error('Login error:', error);
+          let errorMessage = 'Login failed';
+          if (error.error?.error) {
+            errorMessage += `: ${error.error.error}`;
+          }
+          return throwError(() => new Error(errorMessage));
+        })
+      );
+    }
     register(user: User, userType: string): Observable<any> {
       // Create payload that matches your backend expectations
       const payload = {
@@ -127,6 +135,15 @@
           })
       );
   }
+
+  getAuthHeaders(): HttpHeaders {
+    const token = this.getToken();
+    return new HttpHeaders({
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    });
+  }
+  
   forgotPassword(email: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/forgot-password`, { email }).pipe(
       catchError(error => {
@@ -269,6 +286,18 @@
     }
 
     redirectBasedOnUserType(userType: string): void {
+      console.log('Redirecting user with type:', userType);
+      
+      // Check if userType is valid
+      if (!userType) {
+        console.error('Invalid user type for redirection');
+        this.router.navigate(['/login']);
+        return;
+      }
+      
+      const normalizedUserType = userType.toLowerCase();
+      console.log('Normalized user type:', normalizedUserType);
+      
       const routes = {
         [USER_TYPES.INDIVIDUAL]: '/client/dashboard',
         [USER_TYPES.ENTERPRISE]: '/client/dashboard',
@@ -276,20 +305,12 @@
         [USER_TYPES.PROFESSIONAL]: '/delivery/dashboard',
         [USER_TYPES.ADMIN]: '/admin/dashboard'
       };
-
-      const route = routes[userType.toLowerCase() as keyof typeof routes] || '/login';
-      this.router.navigate([route]);
-    }
-
-    updateLocalUserData(userData: any): void {
-      const currentUser = this.getCurrentUser();
-      if (currentUser) {
-        // Update the current user data with new information
-        const updatedUser = { ...currentUser, ...userData };
-        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-        this.currentUserSubject.next(updatedUser);
-      }
-
-
+    
+      const route = routes[normalizedUserType as keyof typeof routes] || '/login';
+      console.log('Selected route for navigation:', route);
+      
+      this.router.navigate([route]).then(success => {
+        console.log(success ? 'Navigation successful' : 'Navigation failed');
+      });
     }
   }

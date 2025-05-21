@@ -1,0 +1,57 @@
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5>Bonuses Management</h5>
+      <div class="d-flex gap-2">
+        <input type="text" class="form-control" placeholder="Search..." [(ngModel)]="searchTerm" (input)="filterBonuses()">
+        <select class="form-select" [(ngModel)]="selectedStatus" (change)="filterBonuses()">
+          <option value="ALL">All Statuses</option>
+          <option *ngFor="let status of getEnumValues(BonusStatus)" [value]="status">{{status}}</option>
+        </select>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Delivery Person</th>
+              <th>Deliveries</th>
+              <th>Amount</th>
+              <th>Period</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let bonus of filteredBonuses">
+              <td>{{bonus.id | shorten: 8}}</td>
+              <td>{{bonus.deliveryPersonId | shorten: 8}}</td>
+              <td>{{bonus.deliveryCount}}</td>
+              <td>{{bonus.amount | currency:'TND'}}</td>
+              <td>
+                {{bonus.startDate | date:'shortDate'}} - 
+                {{bonus.endDate | date:'shortDate'}}
+              </td>
+              <td><span [class]="getStatusClass(bonus.status)">{{bonus.status}}</span></td>
+              <td>
+                <button *ngIf="bonus.status === BonusStatus.PENDING"
+                       class="btn btn-sm btn-primary"
+                       (click)="approveBonus(bonus.id)">
+                  Approve
+                </button>
+                <button *ngIf="bonus.status === BonusStatus.APPROVED"
+                       class="btn btn-sm btn-success ms-2"
+                       (click)="payBonus(bonus.id)">
+                  Pay
+                </button>
+                <a [routerLink]="['/admin/bonuses', bonus.id]" class="btn btn-sm btn-info ms-2">
+                  Details
+                </a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>

@@ -1,0 +1,47 @@
+<!-- client-discounts.component.html -->
+<div class="card">
+    <div class="card-header">
+      <h5>My Discounts</h5>
+    </div>
+    <div class="card-body">
+      <!-- Apply Discount Form -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5 class="card-title">Apply Discount Code</h5>
+          <div class="input-group">
+            <input type="text" class="form-control" [(ngModel)]="newDiscountCode" placeholder="Enter discount code">
+            <button class="btn btn-primary" (click)="applyDiscount()">Apply</button>
+          </div>
+        </div>
+      </div>
+  
+      <!-- Discounts List -->
+      <div *ngIf="discounts.length > 0; else noDiscounts">
+        <div class="list-group">
+          <div *ngFor="let discount of discounts" class="list-group-item">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="mb-1">{{discount.description || 'Discount'}}</h6>
+                <small class="text-muted">
+                  Valid until: {{discount.validUntil | date}} | 
+                  Code: <span class="fw-bold">{{discount.code}}</span>
+                </small>
+              </div>
+              <div class="text-end">
+                <span class="badge bg-primary fs-6">{{discount.percentage}}% OFF</span>
+                <button class="btn btn-sm btn-outline-secondary ms-2" (click)="copyToClipboard(discount.code)">
+                  <i class="bi bi-clipboard"></i> Copy
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+      <ng-template #noDiscounts>
+        <div class="alert alert-info">
+          You don't have any active discounts. Keep shopping to earn loyalty discounts!
+        </div>
+      </ng-template>
+    </div>
+  </div>

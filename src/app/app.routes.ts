@@ -46,7 +46,6 @@ export const routes: Routes = [
     path: 'login', 
     component: LoginComponent 
   },
-  // Add these new routes for password management
   { 
     path: 'forgot-password', 
     component: ForgetPasswordComponent 
@@ -82,15 +81,24 @@ export const routes: Routes = [
       { path: 'users', component: UserManagementComponent },
       { path: 'roles', component: RoleManagementComponent },
       { path: 'settings', component: SettingsComponent },
-      {
-        path: 'availability',
-        loadComponent: () => import('./components/admin-dashboard/schedule/schedule.component').then(m => m.ScheduleComponent)
-      },
+      { path: 'availability', component: ScheduleComponent },
       { path: 'DeliveryPersonnel', component: DeliveryPersonnelManagementComponent },
       { path: 'vehicles', component: VehicleListComponent },
       { path: 'vehicles/create', component: VehicleFormComponent },
       { path: 'vehicles/edit/:id', component: VehicleFormComponent },
       { path: 'vehicles/:id', component: VehicleDetailComponent },
+      { 
+        path: 'discounts', 
+        loadComponent: () => import('./components/admin-dashboard/admin-discount/admin-discount.component').then(m => m.AdminDiscountComponent) 
+      },
+      { 
+        path: 'payments', 
+        loadComponent: () => import('./components/admin-dashboard/admin-payment/admin-payment.component').then(m => m.AdminPaymentComponent) 
+      },
+      { 
+        path: 'bonuses', 
+        loadComponent: () => import('./components/admin-dashboard/admin-bonuses/admin-bonuses.component').then(m => m.AdminBonusesComponent) 
+      },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   },

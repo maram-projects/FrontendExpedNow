@@ -1,0 +1,122 @@
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5>Discount Management</h5>
+      <button class="btn btn-primary" (click)="showCreateForm = !showCreateForm">
+        {{showCreateForm ? 'Cancel' : 'Create Discount'}}
+      </button>
+    </div>
+    
+    <div class="card-body">
+      <!-- Create Discount Form -->
+      <div class="card mb-4" *ngIf="showCreateForm">
+        <div class="card-body">
+          <h5 class="card-title">Create New Discount</h5>
+          <form (ngSubmit)="createDiscount()">
+            <div class="mb-3">
+              <label class="form-label">Client ID (optional)</label>
+              <input type="text" class="form-control" 
+                     [(ngModel)]="newDiscount.clientId" 
+                     name="clientId"
+                     placeholder="Leave empty for general discounts">
+            </div>
+  
+            <div class="mb-3">
+              <label class="form-label">Percentage</label>
+              <input type="number" class="form-control" 
+                     [(ngModel)]="newDiscount.percentage" 
+                     name="percentage" 
+                     min="1" max="100" required>
+            </div>
+  
+            <div class="mb-3">
+              <label class="form-label">Valid Until</label>
+              <input type="datetime-local" 
+                     class="form-control" 
+                     [ngModel]="newDiscount.validUntil | date:'yyyy-MM-ddTHH:mm'"
+                     (ngModelChange)="newDiscount.validUntil = parseDate($event)"
+                     name="validUntil" 
+                     required>
+            </div>
+  
+            <div class="mb-3">
+              <label class="form-label">Type</label>
+              <select class="form-select" 
+                      [(ngModel)]="newDiscount.type" 
+                      name="type" 
+                      required>
+                <option *ngFor="let type of getEnumValues(discountTypeEnum)" 
+                        [value]="type">
+                  {{type | titlecase}}
+                </option>
+              </select>
+            </div>
+  
+            <div class="mb-3">
+              <label class="form-label">Description</label>
+              <textarea class="form-control" 
+                        [(ngModel)]="newDiscount.description" 
+                        name="description"
+                        placeholder="Enter discount description"
+                        required></textarea>
+            </div>
+  
+            <div class="alert alert-danger" *ngIf="errorMessage">
+              {{errorMessage}}
+            </div>
+  
+            <div class="d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-secondary" 
+                      (click)="showCreateForm = false">
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-success">
+                Create Discount
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+  
+      <!-- Discounts List -->
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Client</th>
+              <th>Percentage</th>
+              <th>Type</th>
+              <th>Valid Until</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let discount of discounts">
+              <td>{{discount.code}}</td>
+              <td>{{discount.clientId ? (discount.clientId | shorten:8) : 'General'}}</td>
+              <td>{{discount.percentage}}%</td>
+              <td>
+                <span [class]="getTypeClass(discount.type)">
+                  {{discount.type | titlecase}}
+                </span>
+              </td>
+              <td>{{discount.validUntil | date:'mediumDate'}}</td>
+              <td>
+                <span class="badge" [ngClass]="{'bg-success': !discount.used, 'bg-secondary': discount.used}">
+                  {{discount.used ? 'Used' : 'Active'}}
+                </span>
+              </td>
+              <td>
+                <button class="btn btn-sm btn-danger" 
+                        (click)="deleteDiscount(discount.id)"
+                        [disabled]="discount.used">
+                  Delete
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>

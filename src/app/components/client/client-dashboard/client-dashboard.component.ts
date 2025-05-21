@@ -1,8 +1,13 @@
+// client-dashboard.component.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { DeliveryRequest, DeliveryService } from '../../../services/delivery-service.service';
+import { DiscountService } from '../../../services/discount.service';
+import { Discount } from '../../../models/discount.model';
+import { MatDialog } from '@angular/material/dialog';
+import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
 
 interface DashboardStats {
   totalOrders: number;
@@ -32,12 +37,16 @@ export class ClientDashboardComponent implements OnInit {
     completedOrders: 0
   };
   recentDeliveries: DeliveryRequest[] = [];
+  activeDiscounts: Discount[] = [];
+  unpaidDeliveries: number = 0;
   isLoading = true;
   errorMessage = '';
 
   constructor(
     private authService: AuthService,
     private deliveryService: DeliveryService,
+    private discountService: DiscountService,
+    private dialog: MatDialog,
     private router: Router 
   ) {
     const currentUser = this.authService.getCurrentUser();
@@ -54,6 +63,7 @@ export class ClientDashboardComponent implements OnInit {
   ngOnInit() {
     this.loadDashboardStats();
     this.loadRecentDeliveries();
+    this.loadActiveDiscounts();
   }
 
   private loadDashboardStats(): void {
@@ -69,7 +79,6 @@ export class ClientDashboardComponent implements OnInit {
           const validStatuses = ['DELIVERED', 'IN_TRANSIT', 'PENDING', 'CANCELLED'];
           
           const statusCounts = deliveries.reduce((acc, delivery) => {
-            // Handle potential undefined status
             const status = delivery?.status?.toUpperCase() || 'UNKNOWN';
             const normalizedStatus = validStatuses.includes(status) 
               ? status 
@@ -78,6 +87,12 @@ export class ClientDashboardComponent implements OnInit {
             acc[normalizedStatus] = (acc[normalizedStatus] || 0) + 1;
             return acc;
           }, {} as Record<string, number>);
+
+          // Calculate unpaid deliveries
+          this.unpaidDeliveries = deliveries.filter(d => 
+            d.status === 'DELIVERED' && 
+            (!d.paymentStatus || d.paymentStatus === 'UNPAID')
+          ).length;
   
           this.stats = {
             totalOrders: deliveries.length,
@@ -87,7 +102,6 @@ export class ClientDashboardComponent implements OnInit {
             unknownStatus: statusCounts['UNKNOWN'] || 0
           };
   
-          // Handle empty results
           if (deliveries.length === 0) {
             this.errorMessage = 'No delivery history found';
           }
@@ -111,25 +125,20 @@ export class ClientDashboardComponent implements OnInit {
       }
     });
   }
-  
-  private handleAuthError(): void {
-    this.errorMessage = 'Authentication error. Please login again.';
-    this.authService.logout();
-    this.router.navigate(['/login']);
-  }
-  
-  private handleDataError(): void {
-    this.stats = { 
-      totalOrders: 0, 
-      pendingOrders: 0, 
-      completedOrders: 0,
-      canceledOrders: 0,
-      unknownStatus: 0
-    };
-    this.errorMessage = 'Error processing delivery data. Showing partial information.';
-  }
 
-  
+  private loadActiveDiscounts(): void {
+    if (!this.clientId) return;
+    
+    this.discountService.getClientDiscounts(this.clientId).subscribe({
+      next: (discounts) => {
+        this.activeDiscounts = discounts.filter(d => 
+          !d.used && 
+          new Date(d.validUntil) > new Date()
+        );
+      },
+      error: (err) => console.error('Error loading discounts:', err)
+    });
+  }
 
   private loadRecentDeliveries() {
     if (!this.clientId) return;
@@ -150,9 +159,44 @@ export class ClientDashboardComponent implements OnInit {
     });
   }
 
+  openPaymentDialog(delivery: DeliveryRequest): void {
+    const dialogRef = this.dialog.open(PaymentDialogComponent, {
+      width: '600px',
+      data: {
+        delivery,
+        clientId: this.clientId,
+        discounts: this.activeDiscounts
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result?.success) {
+        // Refresh data
+        this.loadDashboardStats();
+        this.loadRecentDeliveries();
+        this.loadActiveDiscounts();
+      }
+    });
+  }
 
   goToDeliveryRequest() {
     this.router.navigate(['/client/delivery-request']);
   }
   
+  private handleAuthError(): void {
+    this.errorMessage = 'Authentication error. Please login again.';
+    this.authService.logout();
+    this.router.navigate(['/login']);
+  }
+  
+  private handleDataError(): void {
+    this.stats = { 
+      totalOrders: 0, 
+      pendingOrders: 0, 
+      completedOrders: 0,
+      canceledOrders: 0,
+      unknownStatus: 0
+    };
+    this.errorMessage = 'Error processing delivery data. Showing partial information.';
+  }
 }

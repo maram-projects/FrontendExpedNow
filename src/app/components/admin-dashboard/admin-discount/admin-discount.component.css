@@ -1,0 +1,569 @@
+/* admin-discount.component.css */
+/* Modern Variable Setup */
+:root {
+    --primary-color: #4f46e5;
+    --primary-light: #818cf8;
+    --primary-dark: #3730a3;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --info-color: #06b6d4;
+    --gray-light: #f3f4f6;
+    --gray-medium: #9ca3af;
+    --gray-dark: #4b5563;
+    --transition-speed: 0.3s;
+    --border-radius: 8px;
+    --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --discount-purple: #8b5cf6;
+    --discount-blue: #3b82f6;
+    --discount-green: #22c55e;
+    --discount-orange: #f97316;
+  }
+  
+  /* Main Card Styling */
+  .card {
+    border: none;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    transition: all var(--transition-speed);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    animation: fadeIn 0.6s ease-in-out;
+  }
+  
+  .card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+  
+  /* Card Header with Gradient Background */
+  .card-header {
+    background: linear-gradient(135deg, var(--discount-purple), var(--primary-color));
+    color: white;
+    border-bottom: none;
+    padding: 1.25rem;
+  }
+  
+  .card-header h5 {
+    font-weight: 600;
+    margin: 0;
+    font-size: 1.25rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    animation: slideInLeft 0.5s ease-out;
+  }
+  
+  /* Create Button Animation */
+  .card-header .btn-primary {
+    background: linear-gradient(135deg, var(--discount-blue), var(--primary-light));
+    border: none;
+    padding: 0.5rem 1.25rem;
+    border-radius: 50px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    animation: slideInRight 0.5s ease-out;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .card-header .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    background: linear-gradient(135deg, var(--primary-light), var(--discount-blue));
+  }
+  
+  .card-header .btn-primary:active {
+    transform: translateY(0);
+  }
+  
+  /* Button Click Effects */
+  .card-header .btn-primary::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.5);
+    opacity: 0;
+    border-radius: 100%;
+    transform: scale(1, 1) translate(-50%);
+    transform-origin: 50% 50%;
+  }
+  
+  .card-header .btn-primary:hover::after {
+    animation: ripple 1s ease-out;
+  }
+  
+  /* Card Body Styling */
+  .card-body {
+    padding: 1.5rem;
+    position: relative;
+  }
+  
+  /* Create Discount Form Card */
+  .card .card-body .card {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border-left: 4px solid var(--primary-color);
+    animation: slideDown 0.5s ease-out;
+  }
+  
+  .card .card-body .card .card-title {
+    color: var(--primary-color);
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid var(--gray-light);
+    padding-bottom: 0.75rem;
+  }
+  
+  /* Form Elements Styling */
+  form .mb-3 {
+    margin-bottom: 1.5rem;
+    animation: fadeIn 0.5s ease-out;
+    animation-fill-mode: both;
+  }
+  
+  form .mb-3:nth-child(1) { animation-delay: 0.1s; }
+  form .mb-3:nth-child(2) { animation-delay: 0.2s; }
+  form .mb-3:nth-child(3) { animation-delay: 0.3s; }
+  form .mb-3:nth-child(4) { animation-delay: 0.4s; }
+  form .mb-3:nth-child(5) { animation-delay: 0.5s; }
+  
+  form .form-label {
+    font-weight: 500;
+    color: var(--gray-dark);
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+  
+  form .form-control,
+  form .form-select {
+    border-radius: var(--border-radius);
+    border: 1px solid var(--gray-light);
+    padding: 0.75rem;
+    transition: all var(--transition-speed);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+  
+  form .form-control:focus,
+  form .form-select:focus {
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
+  }
+  
+  /* Percentage Input Special Styling */
+  input[name="percentage"] {
+    position: relative;
+  }
+  
+  input[name="percentage"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    cursor: pointer;
+  }
+  
+  /* Date Input Special Styling */
+  input[type="date"] {
+    color: var(--gray-dark);
+  }
+  
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    background-color: var(--primary-light);
+    padding: 5px;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  
+  /* Create Button */
+  form .btn-success {
+    background-color: var(--success-color);
+    border: none;
+    padding: 0.6rem 1.5rem;
+    border-radius: 50px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  
+  form .btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    background-color: #0ca678;
+  }
+  
+  form .btn-success:active {
+    transform: translateY(0);
+  }
+  
+  /* Table Styling */
+  .table-responsive {
+    position: relative;
+    overflow-x: auto;
+    border-radius: var(--border-radius);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .table {
+    margin-bottom: 0;
+    width: 100%;
+  }
+  
+  .table th {
+    font-weight: 600;
+    color: var(--gray-dark);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid var(--gray-light);
+    padding: 1rem;
+    background-color: #fafafa;
+  }
+  
+  .table td {
+    padding: 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--gray-light);
+  }
+  
+  /* Row Hover Animation */
+  .table tr {
+    transition: background-color var(--transition-speed);
+  }
+  
+  .table tbody tr:hover {
+    background-color: rgba(139, 92, 246, 0.05);
+    cursor: pointer;
+  }
+  
+  /* Staggered Row Animation */
+  .table tbody tr {
+    opacity: 0;
+    animation: fadeInUp 0.5s ease-out forwards;
+  }
+  
+  .table tbody tr:nth-child(1) { animation-delay: 0.1s; }
+  .table tbody tr:nth-child(2) { animation-delay: 0.2s; }
+  .table tbody tr:nth-child(3) { animation-delay: 0.3s; }
+  .table tbody tr:nth-child(4) { animation-delay: 0.4s; }
+  .table tbody tr:nth-child(5) { animation-delay: 0.5s; }
+  .table tbody tr:nth-child(6) { animation-delay: 0.6s; }
+  .table tbody tr:nth-child(7) { animation-delay: 0.7s; }
+  .table tbody tr:nth-child(8) { animation-delay: 0.8s; }
+  .table tbody tr:nth-child(9) { animation-delay: 0.9s; }
+  .table tbody tr:nth-child(10) { animation-delay: 1s; }
+  
+  /* Badge Styling */
+  .badge {
+    font-weight: 500;
+    padding: 0.5em 0.75em;
+    border-radius: 50px;
+    text-transform: lowercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.03em;
+    transition: transform var(--transition-speed);
+  }
+  
+  .badge:first-letter {
+    text-transform: uppercase;
+  }
+  
+  .badge:hover {
+    transform: scale(1.1);
+  }
+  
+  /* Discount Type Badges */
+  .badge-promotional {
+    background-color: var(--discount-purple);
+    color: white;
+  }
+  
+  .badge-seasonal {
+    background-color: var(--discount-blue);
+    color: white;
+  }
+  
+  .badge-loyalty {
+    background-color: var(--discount-green);
+    color: white;
+  }
+  
+  .badge-new-customer {
+    background-color: var(--discount-orange);
+    color: white;
+  }
+  
+  /* Status Badges */
+  .bg-success {
+    background-color: var(--success-color) !important;
+  }
+  
+  .bg-secondary {
+    background-color: var(--gray-medium) !important;
+  }
+  
+  /* Delete Button */
+  .btn-danger {
+    background-color: var(--danger-color);
+    border: none;
+    border-radius: var(--border-radius);
+    transition: all var(--transition-speed);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .btn-danger:hover {
+    background-color: #dc2626;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .btn-danger::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.5);
+    opacity: 0;
+    border-radius: 100%;
+    transform: scale(1, 1) translate(-50%);
+    transform-origin: 50% 50%;
+  }
+  
+  .btn-danger:hover::after {
+    animation: ripple 1s ease-out;
+  }
+  
+  /* Percentage Cell Styling */
+  td:nth-child(3) {
+    font-weight: 600;
+    color: var(--primary-dark);
+  }
+  
+  /* Percentage Hover Animation */
+  td:nth-child(3):hover {
+    animation: bounce 0.5s ease-in-out;
+    color: var(--discount-purple);
+  }
+  
+  /* Date Cell Styling */
+  td:nth-child(5) {
+    color: var(--gray-dark);
+  }
+  
+  /* Discount Code Cell Styling */
+  td:nth-child(1) {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: var(--discount-blue);
+    letter-spacing: 0.05em;
+  }
+  
+  /* Discount Code Hover Animation */
+  td:nth-child(1):hover {
+    animation: pulse 1s infinite;
+    cursor: pointer;
+  }
+  
+  /* No Discounts Message */
+  .table:empty::after {
+    content: "No discounts available 🎁";
+    display: block;
+    text-align: center;
+    padding: 2rem;
+    color: var(--gray-medium);
+    font-style: italic;
+    animation: breathe 3s infinite;
+  }
+  
+  /* Fun loading state animation */
+  .table-responsive.loading::before {
+    content: "Loading discounts...";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 1rem 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    animation: breathe 1.5s infinite;
+  }
+  
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: var(--gray-light);
+    border-radius: 10px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: var(--primary-light);
+    border-radius: 10px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-color);
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .card-header {
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    .card-header .btn-primary {
+      width: 100%;
+    }
+    
+    .table td, .table th {
+      padding: 0.75rem 0.5rem;
+    }
+  }
+  
+  /* Keyframe Animations */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  @keyframes fadeInUp {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideInRight {
+    from {
+      transform: translateX(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideInLeft {
+    from {
+      transform: translateX(-20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideDown {
+    from {
+      transform: translateY(-20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes ripple {
+    0% {
+      transform: scale(0, 0);
+      opacity: 0.5;
+    }
+    20% {
+      transform: scale(25, 25);
+      opacity: 0.5;
+    }
+    100% {
+      opacity: 0;
+      transform: scale(40, 40);
+    }
+  }
+  
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  
+  @keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+  }
+  
+  @keyframes breathe {
+    0%, 100% { opacity: 0.8; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.05); }
+  }
+  
+  /* Special Animated Discount Form */
+  .card .card-body .card {
+    position: relative;
+  }
+  
+  .card .card-body .card::before {
+    content: "";
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border-radius: var(--border-radius);
+    background: linear-gradient(45deg, var(--discount-purple), var(--discount-blue), var(--primary-color), var(--discount-green), var(--discount-orange));
+    z-index: -1;
+    animation: rotate 6s linear infinite;
+    filter: blur(8px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .card .card-body .card:hover::before {
+    opacity: 0.8;
+  }
+  
+  @keyframes rotate {
+    0% { background-position: 0 0; }
+    100% { background-position: 300% 0; }
+  }
+  
+  /* Discount Type Badge Maker */
+  [class^="badge-"] {
+    padding: 0.35em 0.65em;
+    font-size: 0.75em;
+    font-weight: 500;
+    border-radius: 50px;
+    color: white;
+    text-transform: lowercase;
+    transition: all 0.3s ease;
+  }
+  
+  [class^="badge-"]:first-letter {
+    text-transform: uppercase;
+  }
+  
+  [class^="badge-"]:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }

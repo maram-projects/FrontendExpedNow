@@ -1,0 +1,63 @@
+<div class="card">
+    <div class="card-header">
+      <h5>Select Payment Method</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="list-group">
+            <button *ngFor="let method of paymentMethods" 
+                    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                    [class.active]="selectedMethod === method.id"
+                    (click)="selectMethod(method.id)">
+              <div>
+                <i class="bi bi-{{method.icon}} me-2"></i>
+                <strong>{{method.name}}</strong>
+                <p class="mb-0 small">{{method.description}}</p>
+              </div>
+              <i *ngIf="selectedMethod === method.id" class="bi bi-check-circle-fill"></i>
+            </button>
+          </div>
+        </div>
+        
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Order Summary</h5>
+              <p class="card-text">Total Amount: <strong>{{totalAmount | currency:'TND'}}</strong></p>
+              
+              <!-- Card Form (shown only for credit card) -->
+              <form *ngIf="showCardForm" (submit)="processPayment()">
+                <div class="mb-3">
+                  <label class="form-label">Card Number</label>
+                  <input type="text" class="form-control" [(ngModel)]="cardDetails.number" name="number" placeholder="1234 5678 9012 3456" required>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Expiry Date</label>
+                    <input type="text" class="form-control" [(ngModel)]="cardDetails.expiry" name="expiry" placeholder="MM/YY" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">CVV</label>
+                    <input type="text" class="form-control" [(ngModel)]="cardDetails.cvv" name="cvv" placeholder="123" required>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Cardholder Name</label>
+                  <input type="text" class="form-control" [(ngModel)]="cardDetails.name" name="name" placeholder="John Doe" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Pay {{totalAmount | currency:'TND'}}</button>
+              </form>
+              
+              <!-- Other payment methods -->
+              <div *ngIf="selectedMethod && !showCardForm" class="text-center mt-4">
+                <button (click)="processPayment()" class="btn btn-primary btn-lg">
+                  Complete Order with {{getMethodName(selectedMethod)}}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>

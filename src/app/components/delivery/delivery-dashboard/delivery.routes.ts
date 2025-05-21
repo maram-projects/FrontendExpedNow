@@ -15,6 +15,11 @@ export const DELIVERY_ROUTES: Routes = [
       { path: ':id', component: MissionDetailsComponent }
     ]
   },
+  {
+    path: 'bonuses',
+    loadComponent: () => import('../delivery-bonus/delivery-bonus.component')
+      .then(m => m.DeliveryBonusComponent)
+  },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
   { path: '**', redirectTo: 'dashboard' }
 ];

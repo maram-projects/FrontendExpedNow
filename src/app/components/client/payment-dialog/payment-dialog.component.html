@@ -1,0 +1,68 @@
+<!-- payment-dialog.component.html -->
+<div class="p-4">
+    <h2 class="mb-4">Payment for Delivery #{{data.delivery.id.slice(0, 8)}}</h2>
+    
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title">Order Summary</h5>
+        <div class="d-flex justify-content-between mb-2">
+          <span>Delivery Amount:</span>
+          <strong>{{data.delivery.amount | currency:'TND'}}</strong>
+        </div>
+        <div *ngIf="discountApplied" class="d-flex justify-content-between text-success mb-2">
+          <span>Discount Applied:</span>
+          <strong>-{{data.delivery.amount - data.delivery.finalAmountAfterDiscount | currency:'TND'}}</strong>
+        </div>
+        <div class="d-flex justify-content-between fw-bold fs-5">
+          <span>Total Amount:</span>
+          <strong>{{data.delivery.finalAmountAfterDiscount || data.delivery.amount | currency:'TND'}}</strong>
+        </div>
+      </div>
+    </div>
+  
+    <!-- Discount Section -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title">Apply Discount</h5>
+        <div class="input-group mb-3">
+          <input type="text" class="form-control" [(ngModel)]="discountCode" placeholder="Enter discount code">
+          <button class="btn btn-outline-primary" (click)="applyDiscount()" [disabled]="!discountCode || loading">
+            Apply
+          </button>
+        </div>
+        <div *ngIf="discountError" class="alert alert-danger">{{discountError}}</div>
+      </div>
+    </div>
+  
+    <!-- Payment Method -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title">Select Payment Method</h5>
+        <div class="list-group">
+          <button *ngFor="let method of paymentMethods" 
+                  class="list-group-item list-group-item-action"
+                  [class.active]="selectedMethod === method.id"
+                  (click)="selectedMethod = method.id">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-{{method.icon}} me-3 fs-4"></i>
+              <div>
+                <h6 class="mb-1">{{method.name}}</h6>
+                <small class="text-muted">{{method.description}}</small>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  
+    <!-- Actions -->
+    <div class="d-flex justify-content-end gap-2">
+      <button class="btn btn-outline-secondary" (click)="close()">Cancel</button>
+      <button class="btn btn-primary" 
+              (click)="processPayment()"
+              [disabled]="!selectedMethod || loading">
+        <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+        Pay Now
+      </button>
+    </div>
+  </div>

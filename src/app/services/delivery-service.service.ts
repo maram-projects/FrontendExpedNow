@@ -9,6 +9,8 @@ import { Mission } from '../models/mission.model';
 // Current Angular interface (problematic)
 // Updated to match Java DeliveryResponseDTO
 export interface DeliveryRequest {
+amount: string|number;
+  paymentStatus: string;
 actionTime: string|number|Date;
 updatedAt: string|number|Date;
   id: string;

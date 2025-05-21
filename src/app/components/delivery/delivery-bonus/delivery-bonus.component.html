@@ -1,0 +1,102 @@
+<!-- delivery-bonus.component.html -->
+<div class="row">
+    <!-- Stats Card -->
+    <div class="col-md-4 mb-4">
+      <div class="card h-100">
+        <div class="card-header bg-primary text-white">
+          <h5>This Week</h5>
+        </div>
+        <div class="card-body text-center">
+          <h1 class="display-4">{{stats.weeklyDeliveries || 0}}</h1>
+          <p class="card-text">Deliveries Completed</p>
+          <div *ngIf="stats.weeklyDeliveries >= 20" class="alert alert-success mt-3">
+            <i class="bi bi-trophy-fill me-2"></i>
+            You've qualified for a bonus this week!
+          </div>
+          <div *ngIf="stats.weeklyDeliveries < 20" class="alert alert-info mt-3">
+            <i class="bi bi-info-circle-fill me-2"></i>
+            {{20 - (stats.weeklyDeliveries || 0)}} more deliveries to qualify for bonus
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Monthly Stats -->
+    <div class="col-md-4 mb-4">
+      <div class="card h-100">
+        <div class="card-header bg-info text-white">
+          <h5>This Month</h5>
+        </div>
+        <div class="card-body text-center">
+          <h1 class="display-4">{{stats.monthlyDeliveries || 0}}</h1>
+          <p class="card-text">Deliveries Completed</p>
+          <div class="progress mt-3" style="height: 20px;">
+            <div class="progress-bar bg-success" role="progressbar"
+                  [style.width]="(stats.monthlyDeliveries / 100 * 100) + '%'">
+              {{stats.monthlyDeliveries || 0}}/100
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Earnings -->
+    <div class="col-md-4 mb-4">
+      <div class="card h-100">
+        <div class="card-header bg-success text-white">
+          <h5>Earnings</h5>
+        </div>
+        <div class="card-body text-center">
+          <!-- Fix 1: Use ngIf to handle the null case or apply the pipe after the null check -->
+          <h1 class="display-4">{{stats.totalEarnings ? (stats.totalEarnings | currency:'TND') : '0.00'}}</h1>
+          <p class="card-text">Total Earnings</p>
+          <div class="alert alert-warning mt-3" *ngIf="stats.pendingBonuses > 0">
+            <i class="bi bi-clock-history me-2"></i>
+            {{stats.pendingBonuses | currency:'TND'}} in pending bonuses
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Bonuses List -->
+  <div class="card mt-4">
+    <div class="card-header">
+      <h5>My Bonuses</h5>
+    </div>
+    <div class="card-body">
+      <div *ngIf="bonuses.length > 0; else noBonuses">
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Period</th>
+                <th>Deliveries</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Paid Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let bonus of bonuses">
+                <td>
+                  {{bonus.startDate | date:'shortDate'}} - 
+                  {{bonus.endDate | date:'shortDate'}}
+                </td>
+                <td>{{bonus.deliveryCount}}</td>
+                <td>{{bonus.amount | currency:'TND'}}</td>
+                <td><span [class]="getStatusClass(bonus.status)">{{bonus.status}}</span></td>
+                <!-- Fix 2: Use ngIf to handle the null case -->
+                <td>{{bonus.paidAt ? (bonus.paidAt | date:'shortDate') : 'Not paid yet'}}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <ng-template #noBonuses>
+        <div class="alert alert-info">
+          You don't have any bonuses yet. Complete more deliveries to qualify!
+        </div>
+      </ng-template>
+    </div>
+  </div>
