@@ -11,6 +11,16 @@
   box-shadow: 0 0.125rem 0.25rem rgba(209, 242, 22, 0.075);
 }
 
+.pricing-breakdown {
+  background: #f8f9fa;
+  border-radius: 10px;
+}
+.pricing-breakdown dt {
+  color: #6c757d;
+}
+.pricing-breakdown dd {
+  color: #212529;
+}
 .card-title {
   color: #6c757d;
   font-size: 0.875rem;

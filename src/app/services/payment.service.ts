@@ -1,4 +1,3 @@
-// payment.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -24,37 +23,39 @@ export class PaymentService {
   }
 
   // معالجة الدفع
-  processPayment(paymentId: string, cardDetails?: any, discountCode?: string): Observable<Payment> {
-    let url = `${this.apiUrl}/${paymentId}/process`;
-    const params: any = {};
-    
-    if (discountCode) {
-      params.discountCode = discountCode;
+  processPayment(paymentId: string, method: PaymentMethod, details: any): Observable<Payment> {
+    if (method === PaymentMethod.CREDIT_CARD) {
+      return this.processCreditCardPayment(paymentId, details);
     }
-    
-    return this.http.post<Payment>(url, cardDetails || {}, { params });
+    return this.http.post<Payment>(`${this.apiUrl}/${paymentId}/process`, { method, ...details });
   }
 
-  // الحصول على تفاصيل الدفع
+  private processCreditCardPayment(paymentId: string, cardDetails: any): Observable<Payment> {
+    // في الواقع يجب استخدام Stripe Elements أو بوابة دفع آمنة
+    // هذا مثال فقط للتوضيح
+    const paymentData = {
+      cardNumber: cardDetails.number,
+      expiry: cardDetails.expiry,
+      cvv: cardDetails.cvv,
+      name: cardDetails.name
+    };
+    return this.http.post<Payment>(`${this.apiUrl}/${paymentId}/process-card`, paymentData);
+  }
+
   getPayment(paymentId: string): Observable<Payment> {
     return this.http.get<Payment>(`${this.apiUrl}/${paymentId}`);
   }
 
-  // الحصول على جميع عمليات الدفع (للمسؤول)
   getAllPayments(): Observable<Payment[]> {
     return this.http.get<Payment[]>(this.apiUrl);
   }
 
-  // استرجاع المبلغ
   refundPayment(paymentId: string, amount?: number): Observable<Payment> {
     const params: any = {};
-    if (amount) {
-      params.amount = amount.toString();
-    }
+    if (amount) params.amount = amount.toString();
     return this.http.post<Payment>(`${this.apiUrl}/${paymentId}/refund`, {}, { params });
   }
 
-  // الحصول على طرق الدفع المتاحة
   getAvailablePaymentMethods(): PaymentMethodOption[] {
     return [
       { 
@@ -77,13 +78,6 @@ export class PaymentService {
         icon: 'money',
         description: 'الدفع عند استلام الطلب',
         available: true
-      },
-      { 
-        id: PaymentMethod.WALLET, 
-        name: 'المحفظة الإلكترونية', 
-        icon: 'account_balance_wallet',
-        description: 'الدفع من رصيدك في المحفظة',
-        available: false // حاليًا غير متاح
       }
     ].filter(method => method.available);
   }

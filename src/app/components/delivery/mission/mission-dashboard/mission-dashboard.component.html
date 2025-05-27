@@ -129,10 +129,9 @@
   }
   
   <!-- Mission Details Dialog -->
-  <app-mission-details-dialog 
-    *ngIf="showMissionDialog" 
-    [missionId]="selectedMissionId!"
-    (close)="closeMissionDialog()"
-    (missionUpdated)="onMissionUpdated($event)">
-  </app-mission-details-dialog>
+  <app-mission-details 
+  *ngIf="showMissionDialog"
+  [missionId]="selectedMissionId"
+  (closeDialogEvent)="closeMissionDialog()">
+</app-mission-details>
 </div>

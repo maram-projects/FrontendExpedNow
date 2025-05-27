@@ -15,15 +15,16 @@ import { CartService } from '../../../services/cart.service';
 })
 export class PaymentMethodComponent implements OnInit {
   paymentMethods: PaymentMethodOption[] = [];
-  selectedMethod: string = '';
-  cardDetails: any = {
+  selectedMethod: PaymentMethod | null = null; // تغيير من string إلى PaymentMethod
+  cardDetails = {
     number: '',
     expiry: '',
     cvv: '',
     name: ''
   };
-  showCardForm: boolean = false;
-  totalAmount: number = 0;
+  showCardForm = false;
+  totalAmount = 0;
+  isLoading = false; // إضافة الخاصية المفقودة
 
   constructor(
     private paymentService: PaymentService,
@@ -35,51 +36,55 @@ export class PaymentMethodComponent implements OnInit {
     this.totalAmount = this.cartService.getTotalAmount();
   }
 
-  selectMethod(methodId: string): void {
+  selectMethod(methodId: PaymentMethod): void { // تغيير نوع الباراميتر
     this.selectedMethod = methodId;
     this.showCardForm = methodId === PaymentMethod.CREDIT_CARD;
   }
 
-  // Add this method to fix the template error
-  getMethodName(methodId: string): string {
+  getMethodName(methodId: PaymentMethod): string {
     const method = this.paymentMethods.find(m => m.id === methodId);
     return method ? method.name : methodId;
   }
 
   processPayment(): void {
-    // Here you would normally get the delivery ID from your order flow
-    const deliveryId = 'temp-delivery-id'; 
-    const clientId = 'current-user-id'; // Normally from your auth service
+    if (!this.selectedMethod) {
+      alert('Please select a payment method');
+      return;
+    }
 
-    // First create the payment record
+    this.isLoading = true;
+    const deliveryId = 'temp-delivery-id'; 
+    const clientId = 'current-user-id';
+
     this.paymentService.createPayment({
-      deliveryId: deliveryId,
-      clientId: clientId,
+      deliveryId,
+      clientId,
       amount: this.totalAmount,
-      method: this.selectedMethod as PaymentMethod
+      method: this.selectedMethod // تم إصلاح نوع البيانات هنا
     }).subscribe({
       next: (payment) => {
-        // Once payment is created, process it based on method
-        if (this.selectedMethod === PaymentMethod.CREDIT_CARD) {
-          this.paymentService.processPayment(payment.id, this.cardDetails).subscribe({
-            next: (processedPayment) => {
-              alert('Payment successful!');
-              // Navigate to order confirmation or clear cart
-              // this.router.navigate(['/order-confirmation', processedPayment.id]);
-            },
-            error: (err) => alert('Payment failed: ' + err.message)
-          });
-        } else if (this.selectedMethod === PaymentMethod.BANK_TRANSFER) {
-          // For bank transfer, just show instructions
-          alert(`Payment ID: ${payment.id}. Please complete your bank transfer using the reference number and follow the instructions.`);
-          // this.router.navigate(['/bank-transfer-instructions', payment.id]);
-        } else {
-          // For cash on delivery
-          alert('Order placed successfully. You will pay when you receive your order.');
-          // this.router.navigate(['/order-confirmation', payment.id]);
-        }
+        const paymentDetails = this.selectedMethod === PaymentMethod.CREDIT_CARD 
+          ? this.cardDetails 
+          : {};
+
+        this.paymentService.processPayment(
+          payment.id, 
+          this.selectedMethod!, // تأكيد أن القيمة ليست null
+          paymentDetails
+        ).subscribe({
+          next: (processedPayment) => {
+            this.isLoading = false;
+            alert('Payment successful!');
+            // التوجيه لصفحة التأكيد هنا
+          },
+          error: (err) => {
+            this.isLoading = false;
+            alert('Payment failed: ' + err.message);
+          }
+        });
       },
       error: (err) => {
+        this.isLoading = false;
         alert('Failed to create payment: ' + err.message);
       }
     });

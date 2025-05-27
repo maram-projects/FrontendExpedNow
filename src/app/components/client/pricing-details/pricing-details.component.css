@@ -1,0 +1,254 @@
+/* pricing-details.component.css */
+.pricing-breakdown-container {
+    font-family: 'Tajawal', sans-serif;
+    direction: rtl;
+    animation: fadeIn 0.6s ease-out;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .pricing-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    border: none;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  .pricing-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+  }
+  
+  .card-header {
+    background: linear-gradient(135deg, #4361ee, #3a0ca3);
+    color: white;
+    padding: 1.5rem;
+    text-align: center;
+  }
+  
+  .card-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    position: relative;
+    display: inline-block;
+  }
+  
+  .card-title::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50px;
+    height: 3px;
+    background-color: #f72585;
+    border-radius: 3px;
+  }
+  
+  .card-subtitle {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    font-family: 'Poppins', sans-serif;
+  }
+  
+  .pricing-content {
+    padding: 1.5rem;
+  }
+  
+  .pricing-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    justify-content: space-between;
+  }
+  
+  .pricing-column {
+    flex: 1;
+    min-width: 250px;
+  }
+  
+  .pricing-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.8rem 0;
+    border-bottom: 1px dashed #eee;
+    animation: slideIn 0.5s ease-out;
+  }
+  
+  @keyframes slideIn {
+    from { transform: translateX(-30px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  
+  .item-label {
+    font-weight: 600;
+    color: #2b2d42;
+  }
+  
+  .item-value {
+    font-weight: 700;
+    color: #4361ee;
+  }
+  
+  .highlight {
+    background-color: rgba(248, 81, 73, 0.1);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    position: relative;
+  }
+  
+  .highlight::before {
+    content: '!';
+    position: absolute;
+    left: -15px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 25px;
+    height: 25px;
+    background-color: #f72585;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+  }
+  
+  .discount {
+    background-color: rgba(74, 222, 128, 0.1);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+  }
+  
+  .discount .item-value {
+    color: #10b981;
+  }
+  
+  .total-amount {
+    background: linear-gradient(135deg, #3a0ca3, #4361ee);
+    color: white;
+    padding: 1.2rem;
+    margin-top: 1.5rem;
+    border-radius: 0 0 16px 16px;
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.01); }
+    100% { transform: scale(1); }
+  }
+  
+  .total-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .total-label {
+    font-size: 1.1rem;
+  }
+  
+  .total-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+  }
+  
+  .applied-rules {
+    margin-top: 1.5rem;
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  
+  .rules-header {
+    padding: 1rem 1.5rem;
+    background-color: #e9ecef;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+  }
+  
+  .rules-header:hover {
+    background-color: #dee2e6;
+  }
+  
+  .rules-header h4 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #2b2d42;
+  }
+  
+  .rules-header i {
+    transition: transform 0.3s ease;
+  }
+  
+  .rules-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease;
+  }
+  
+  .rules-content.show {
+    max-height: 500px;
+    padding: 1rem 1.5rem;
+  }
+  
+  .rules-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .rule-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.8rem 0;
+    border-bottom: 1px solid #eee;
+    animation: fadeIn 0.5s ease-out;
+  }
+  
+  .rule-item:last-child {
+    border-bottom: none;
+  }
+  
+  .rule-description {
+    color: #2b2d42;
+    flex: 1;
+  }
+  
+  .rule-amount {
+    font-weight: 700;
+    color: #4361ee;
+    min-width: 80px;
+    text-align: left;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .pricing-row {
+      flex-direction: column;
+    }
+    
+    .pricing-column {
+      width: 100%;
+    }
+    
+    .pricing-item {
+      padding: 0.6rem 0;
+    }
+    
+    .card-header {
+      padding: 1.2rem;
+    }
+  }

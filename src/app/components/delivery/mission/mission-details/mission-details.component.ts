@@ -1,61 +1,138 @@
-import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
+import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Mission } from '../../../../models/mission.model';
 import { MissionService } from '../../../../services/mission-service.service';
 
+interface MissionViewModel extends Mission {
+  parsedStartTime?: Date | null;
+  parsedEndTime?: Date | null;
+}
+
 @Component({
-  selector: 'app-mission-details-dialog',
+  selector: 'app-mission-details',
   standalone: true,
   imports: [CommonModule, DatePipe],
   templateUrl: './mission-details.component.html',
   styleUrls: ['./mission-details.component.css']
 })
-export class MissionDetailsComponent implements OnInit {
-  @Input() missionId: string = '';
-  @Output() close = new EventEmitter<boolean>();
-  @Output() missionUpdated = new EventEmitter<any>();
+export class MissionDetailsComponent {
+  @Input() missionId: string | null = null;
+  @Output() closeDialogEvent = new EventEmitter<void>();
+  @Output() missionUpdated = new EventEmitter<Mission>();
   
-  mission: any;
-
+  mission: MissionViewModel | null = null;
+  errorMessage: string = '';
+  
   constructor(private missionService: MissionService) {}
-
-  ngOnInit() {
+  
+  ngOnChanges() {
     if (this.missionId) {
       this.loadMissionDetails();
     }
   }
   
   loadMissionDetails() {
-    this.missionService.getMissionDetails(this.missionId).subscribe(mission => {
-      this.mission = mission;
+    if (!this.missionId) return;
+    
+    this.missionService.getMissionDetails(this.missionId).subscribe({
+      next: (data: Mission) => {
+        this.mission = {
+          ...data,
+          parsedStartTime: this.parseDate(data.startTime),
+          parsedEndTime: data.endTime ? this.parseDate(data.endTime) : null
+        };
+      },
+      error: (err) => {
+        console.error('Error loading mission details:', err);
+        this.errorMessage = 'Failed to load mission details. Please try again.';
+      }
     });
   }
 
-  closeDialog() {
-    this.close.emit(true);
+  public parseDate(dateValue: string | number[] | Date | null): Date | null {
+    if (!dateValue) return null;
+    
+    // If it's already a Date object
+    if (dateValue instanceof Date) return dateValue;
+    
+    // If it's a string in array format
+    if (typeof dateValue === 'string' && dateValue.includes(',')) {
+      const parts = dateValue.split(',').map(Number);
+      return new Date(parts[0], parts[1] - 1, parts[2], parts[3], parts[4], parts[5], parts[6]);
+    }
+    
+    // If it's an array
+    if (Array.isArray(dateValue)) {
+      return new Date(
+        dateValue[0],         // year
+        dateValue[1] - 1,     // month (0-indexed)
+        dateValue[2],         // day
+        dateValue[3] || 0,    // hours
+        dateValue[4] || 0,    // minutes
+        dateValue[5] || 0,    // seconds
+        dateValue[6] || 0     // milliseconds
+      );
+    }
+    
+    // Try to parse as ISO string
+    try {
+      return new Date(dateValue);
+    } catch (e) {
+      console.error('Failed to parse date:', dateValue);
+      return null;
+    }
   }
   
+
+  
   startMission(missionId: string) {
-    this.missionService.startMission(missionId).subscribe(updatedMission => {
-      this.mission = updatedMission;
-      this.missionUpdated.emit(updatedMission);
+    this.missionService.startMission(missionId).subscribe({
+      next: () => {
+        if (this.mission) {
+          this.mission.status = 'IN_PROGRESS';
+          this.mission.startTime = new Date().toISOString();
+          this.mission.parsedStartTime = new Date();
+          if (this.mission.deliveryRequest) {
+            this.mission.deliveryRequest.status = 'IN_TRANSIT';
+          }
+          this.missionUpdated.emit(this.mission);
+        }
+      },
+      error: (err) => {
+        console.error('Failed to start mission', err);
+        this.errorMessage = 'Failed to start mission. Please try again.';
+      }
     });
   }
   
   completeMission(missionId: string) {
-    this.missionService.completeMission(missionId).subscribe(updatedMission => {
-      this.mission = updatedMission;
-      this.missionUpdated.emit(updatedMission);
+    this.missionService.completeMission(missionId).subscribe({
+      next: () => {
+        if (this.mission) {
+          this.mission.status = 'COMPLETED';
+          this.mission.endTime = new Date().toISOString();
+          this.mission.parsedEndTime = new Date();
+          if (this.mission.deliveryRequest) {
+            this.mission.deliveryRequest.status = 'DELIVERED';
+          }
+          this.missionUpdated.emit(this.mission);
+        }
+      },
+      error: (err) => {
+        console.error('Failed to complete mission', err);
+        this.errorMessage = 'Failed to complete mission. Please try again.';
+      }
     });
   }
   
-  calculateDuration(startTime: string, endTime: string): string {
-    if (!startTime || !endTime) {
-      return 'N/A';
-    }
+  calculateDuration(start: Date | null | undefined, end: Date | null | undefined): string {
+    if (!start || !end) return 'N/A';
     
-    const start = new Date(startTime).getTime();
-    const end = new Date(endTime).getTime();
-    const durationMs = end - start;
+    const startTime = start.getTime();
+    const endTime = end.getTime();
+    const durationMs = endTime - startTime;
+    
+    if (durationMs < 0) return 'Invalid duration';
     
     // Less than an hour
     if (durationMs < 3600000) {
@@ -73,5 +150,12 @@ export class MissionDetailsComponent implements OnInit {
     const days = Math.floor(durationMs / 86400000);
     const hours = Math.round((durationMs % 86400000) / 3600000);
     return `${days} day${days !== 1 ? 's' : ''} ${hours} hour${hours !== 1 ? 's' : ''}`;
+  }
+
+  closeDialog() {
+    // Clear mission data first
+    this.mission = null;
+    // Then emit the close event
+    this.closeDialogEvent.emit();
   }
 }

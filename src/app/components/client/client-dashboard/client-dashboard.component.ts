@@ -65,6 +65,31 @@ export class ClientDashboardComponent implements OnInit {
     this.loadRecentDeliveries();
     this.loadActiveDiscounts();
   }
+  cancelDelivery(deliveryId: string) {
+    if (confirm('Are you sure you want to cancel this delivery?')) {
+      this.deliveryService.cancelDelivery(deliveryId).subscribe({
+        next: () => {
+          this.loadDashboardStats();
+          this.loadRecentDeliveries();
+          alert('Delivery cancelled successfully!');
+        },
+        error: (err) => alert('Error: ' + err.message)
+      });
+    }
+  }
+
+  checkExpiredDeliveries() {
+    this.deliveryService.checkExpiredDeliveries().subscribe({
+      next: () => {
+        console.log('Expired deliveries checked successfully');
+        this.loadRecentDeliveries();
+      },
+      error: (err) => {
+        console.error('Error checking expired deliveries:', err.message);
+        // يمكنك عرض رسالة للمستخدم هنا
+      }
+    });
+  }
 
   private loadDashboardStats(): void {
     if (!this.clientId || typeof this.clientId !== 'string') {

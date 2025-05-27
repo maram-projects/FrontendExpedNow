@@ -1,4 +1,6 @@
 <!-- payment-dialog.component.html -->
+ <!-- أضف في الأعلى -->
+<app-pricing-details [pricing]="data.delivery.pricingDetails"></app-pricing-details>
 <div class="p-4">
     <h2 class="mb-4">Payment for Delivery #{{data.delivery.id.slice(0, 8)}}</h2>
     

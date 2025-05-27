@@ -18,11 +18,14 @@ updatedAt: string|number|Date;
   deliveryAddress: string;
   packageDescription: string;  // Not packageType
   packageWeight: number;
-
+  pickupLatitude: number;
+  pickupLongitude: number;
+  deliveryLatitude: number;
+  deliveryLongitude: number;
+  status: string; 
   vehicleId?: string;
   scheduledDate: string;  // Will be in Java's format "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
   additionalInstructions?: string;
-  status?: string;  // Not enum since Java sends raw string
   createdAt?: string;
   clientId?: string;
   processing?: boolean;
@@ -92,6 +95,35 @@ export class DeliveryService {
     );
   }
 
+  // في ملف delivery-service.service.ts
+cancelDelivery(deliveryId: string): Observable<void> {
+  const userId = this.authService.getCurrentUser()?.userId;
+  return this.http.delete<void>(
+    `${this.apiUrl}/client/${deliveryId}?clientId=${userId}`,
+    { headers: this.getAuthHeaders() }
+  ).pipe(
+    catchError(error => {
+      console.error('Error canceling delivery:', error);
+      return throwError(() => new Error('Failed to cancel delivery'));
+    })
+  );
+}
+
+// في delivery.service.ts
+checkExpiredDeliveries(): Observable<void> {
+  return this.http.post<void>(`${this.apiUrl}/expire-old`, {}).pipe(
+    catchError(error => {
+      if (error.status === 403) {
+        return throwError(() => new Error('You do not have permission to perform this action'));
+      } else if (error.status === 500) {
+        return throwError(() => new Error('Server error while expiring deliveries'));
+      } else {
+        return throwError(() => new Error('Failed to check expired deliveries'));
+      }
+    })
+  );
+}
+
   checkDeliveryPersonStatus(): Observable<any> {
     const userId = this.authService.getCurrentUser()?.userId;
     console.log('Checking delivery person status for user:', userId);
@@ -141,15 +173,7 @@ export class DeliveryService {
     );
   }
 
-  cancelDelivery(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`, { headers: this.getAuthHeaders() })
-      .pipe(
-        catchError(error => {
-          console.error('Error canceling delivery:', error);
-          return throwError(() => new Error('Failed to cancel delivery'));
-        })
-      );
-  }
+ 
 
   updateLocation(latitude: number, longitude: number): Observable<any> {
     return this.http.post(

@@ -1,0 +1,205 @@
+/* payment-method.component.css */
+.payment-method-container {
+    font-family: 'Poppins', sans-serif;
+    animation: fadeIn 0.6s ease-out;
+  }
+  
+  .card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+  
+  .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+  }
+  
+  .card-header {
+    background: linear-gradient(135deg, #4361ee, #3a0ca3);
+    color: white;
+    padding: 1.2rem 1.5rem;
+  }
+  
+  .card-header h5 {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1.3rem;
+  }
+  
+  .list-group {
+    border-radius: 12px !important;
+    overflow: hidden;
+  }
+  
+  .list-group-item {
+    border: none;
+    margin-bottom: 0.5rem;
+    border-radius: 12px !important;
+    transition: all 0.3s ease;
+    padding: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    background-color: #f8f9fa;
+  }
+  
+  .list-group-item:hover {
+    transform: translateX(5px);
+    background-color: rgba(67, 97, 238, 0.1);
+    box-shadow: 0 5px 15px rgba(67, 97, 238, 0.1);
+  }
+  
+  .list-group-item.active {
+    background: linear-gradient(135deg, #4361ee, #3a0ca3);
+    color: white;
+    box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+  }
+  
+  .list-group-item.active .bi {
+    color: white;
+  }
+  
+  .list-group-item.active .small {
+    color: rgba(255, 255, 255, 0.8) !important;
+  }
+  
+  .bi {
+    font-size: 1.8rem;
+    color: #4361ee;
+    margin-right: 15px;
+    transition: all 0.3s ease;
+  }
+  
+  .list-group-item:hover .bi {
+    animation: bounce 0.5s ease;
+  }
+  
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  
+  .payment-method-info {
+    flex: 1;
+  }
+  
+  .payment-method-info strong {
+    display: block;
+    margin-bottom: 0.2rem;
+    font-size: 1.1rem;
+  }
+  
+  .payment-method-info .small {
+    color: #6c757d;
+    font-size: 0.85rem;
+  }
+  
+  .bi-check-circle-fill {
+    color: #4361ee;
+    font-size: 1.3rem;
+    margin-left: 10px;
+  }
+  
+  .list-group-item.active .bi-check-circle-fill {
+    color: white;
+  }
+  
+  .order-summary-card {
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    padding: 1.5rem;
+  }
+  
+  .order-summary-card h5 {
+    color: #2b2d42;
+    font-weight: 600;
+    margin-bottom: 1.2rem;
+    font-size: 1.2rem;
+  }
+  
+  .order-summary-card .card-text {
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .order-summary-card strong {
+    color: #4361ee;
+    font-size: 1.3rem;
+  }
+  
+  .form-control {
+    border-radius: 12px;
+    padding: 0.8rem 1rem;
+    border: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+  }
+  
+  .form-control:focus {
+    border-color: #4361ee;
+    box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.25);
+  }
+  
+  .btn-primary {
+    background: linear-gradient(135deg, #4361ee, #3a0ca3);
+    border: none;
+    padding: 0.8rem 1.5rem;
+    border-radius: 50px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+  }
+  
+  .btn-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(67, 97, 238, 0.4);
+  }
+  
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+  
+  .btn-primary::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(45deg);
+    animation: shine 3s infinite;
+  }
+  
+  @keyframes shine {
+    0% { left: -50%; }
+    20% { left: 100%; }
+    100% { left: 100%; }
+  }
+  
+  .complete-order-btn {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.1rem;
+    border-radius: 12px;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .card-body {
+      padding: 1rem;
+    }
+    
+    .list-group-item {
+      padding: 1rem;
+    }
+    
+    .bi {
+      font-size: 1.5rem;
+      margin-right: 10px;
+    }
+  }

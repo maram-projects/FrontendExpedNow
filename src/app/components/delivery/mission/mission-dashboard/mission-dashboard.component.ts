@@ -10,7 +10,9 @@ import { MissionDetailsComponent } from "../mission-details/mission-details.comp
 @Component({
   selector: 'app-mission-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, DatePipe, MissionDetailsComponent],
+  imports: [CommonModule, RouterModule, DatePipe,MissionDetailsComponent  
+    
+  ],
   templateUrl: './mission-dashboard.component.html',
   styleUrls: ['./mission-dashboard.component.css']
 })
@@ -90,6 +92,12 @@ export class MissionDashboardComponent implements OnInit {
       }
     });
   }
+
+  // In your parent component
+closeMissionDialog() {
+  this.showMissionDialog = false;
+  this.selectedMissionId = null; // This is important!
+}
   
   completeMission(missionId: string) {
     this.missionService.completeMission(missionId).subscribe({
@@ -117,11 +125,7 @@ export class MissionDashboardComponent implements OnInit {
     this.showMissionDialog = true;
   }
   
-  closeMissionDialog() {
-    this.showMissionDialog = false;
-    this.selectedMissionId = null;
-  }
-  
+
   onMissionUpdated(mission: any) {
     const index = this.missions.findIndex(m => m.id === mission.id);
     if (index !== -1) {

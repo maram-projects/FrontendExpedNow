@@ -1,47 +1,59 @@
 <!-- client-dashboard.component.html -->
-<div class="container mt-4">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Client Dashboard</h2>
-    <button (click)="goToDeliveryRequest()" class="btn btn-primary">
+<div class="container-fluid dashboard-container">
+  <div class="dashboard-header">
+    <h2 class="dashboard-title">Client Dashboard</h2>
+    <button (click)="goToDeliveryRequest()" class="btn btn-primary btn-create-delivery">
       <i class="fas fa-plus me-2"></i> Create Delivery Request
     </button>
   </div>
   
-  <div class="row">
+  <div class="row g-4">
     <!-- Profile Section -->
-    <div class="col-md-3">
-      <div class="card shadow-sm mb-4">
+    <div class="col-xl-3 col-lg-4">
+      <div class="profile-card card-modern">
         <div class="card-body">
-          <h5 class="card-title">Profile</h5>
-          <p class="card-text">Welcome, <span class="fw-bold text-capitalize">{{ userType }}</span>!</p>
-          <div class="d-grid gap-2">
-            <a routerLink="/profile" class="btn btn-outline-primary">View Profile</a>
-            <a routerLink="/profile/edit" class="btn btn-outline-secondary">Edit Profile</a>
+          <div class="profile-header">
+            <div class="profile-avatar">
+              <i class="fas fa-user-circle"></i>
+            </div>
+            <h5 class="card-title">Profile</h5>
+            <p class="welcome-text">Welcome, <span class="user-type">{{ userType }}</span>!</p>
+          </div>
+          <div class="profile-actions">
+            <a routerLink="/profile" class="btn btn-outline-primary btn-profile">
+              <i class="fas fa-user me-2"></i>View Profile
+            </a>
+            <a routerLink="/profile/edit" class="btn btn-outline-secondary btn-profile">
+              <i class="fas fa-edit me-2"></i>Edit Profile
+            </a>
           </div>
         </div>
       </div>
 
       <!-- Discounts Section -->
-      <div class="card shadow-sm mb-4">
+      <div class="discounts-card card-modern">
         <div class="card-body">
-          <h5 class="card-title">My Discounts</h5>
-          <div *ngIf="activeDiscounts.length > 0; else noDiscounts">
-            <div class="list-group">
-              <div *ngFor="let discount of activeDiscounts" class="list-group-item py-2">
-                <div class="d-flex justify-content-between">
-                  <div>
-                    <small class="fw-bold">{{discount.percentage}}% OFF</small>
-                    <p class="mb-0 small">{{discount.description}}</p>
-                  </div>
-                  <span class="badge bg-primary">{{discount.code}}</span>
-                </div>
+          <div class="section-header">
+            <h5 class="card-title">
+              <i class="fas fa-tags me-2"></i>My Discounts
+            </h5>
+          </div>
+          <div *ngIf="activeDiscounts.length > 0; else noDiscounts" class="discounts-list">
+            <div *ngFor="let discount of activeDiscounts" class="discount-item">
+              <div class="discount-content">
+                <div class="discount-percentage">{{discount.percentage}}% OFF</div>
+                <p class="discount-description">{{discount.description}}</p>
               </div>
+              <span class="discount-code">{{discount.code}}</span>
             </div>
           </div>
           <ng-template #noDiscounts>
-            <p class="small text-muted">No active discounts available</p>
+            <div class="no-discounts">
+              <i class="fas fa-percentage"></i>
+              <p>No active discounts available</p>
+            </div>
           </ng-template>
-          <a routerLink="/client/discounts" class="btn btn-sm btn-outline-primary w-100 mt-2">
+          <a routerLink="/client/discounts" class="btn btn-outline-primary w-100 btn-view-discounts">
             View All Discounts
           </a>
         </div>
@@ -49,135 +61,162 @@
     </div>
     
     <!-- Main Dashboard Content -->
-    <div class="col-md-9">
+    <div class="col-xl-9 col-lg-8">
       <!-- Stats Cards -->
-      <div class="row mb-4">
-        <div class="col-md-4">
-          <div class="card bg-primary text-white shadow-sm">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 class="card-subtitle mb-2">Total Orders</h6>
-                  <h3 class="card-title mb-0">{{ stats.totalOrders }}</h3>
-                </div>
-                <i class="fas fa-shopping-bag fa-2x"></i>
-              </div>
+      <div class="stats-grid">
+        <div class="stat-card stat-primary">
+          <div class="stat-content">
+            <div class="stat-info">
+              <h6 class="stat-label">Total Orders</h6>
+              <h3 class="stat-value">{{ stats.totalOrders }}</h3>
+            </div>
+            <div class="stat-icon">
+              <i class="fas fa-shopping-bag"></i>
             </div>
           </div>
+          <div class="stat-wave"></div>
         </div>
         
-        <div class="col-md-4">
-          <div class="card bg-warning text-dark shadow-sm">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 class="card-subtitle mb-2">Pending Orders</h6>
-                  <h3 class="card-title mb-0">{{ stats.pendingOrders }}</h3>
-                </div>
-                <i class="fas fa-clock fa-2x"></i>
-              </div>
+        <div class="stat-card stat-warning">
+          <div class="stat-content">
+            <div class="stat-info">
+              <h6 class="stat-label">Pending Orders</h6>
+              <h3 class="stat-value">{{ stats.pendingOrders }}</h3>
+            </div>
+            <div class="stat-icon">
+              <i class="fas fa-clock"></i>
             </div>
           </div>
+          <div class="stat-wave"></div>
         </div>
         
-        <div class="col-md-4">
-          <div class="card bg-success text-white shadow-sm">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 class="card-subtitle mb-2">Completed Orders</h6>
-                  <h3 class="card-title mb-0">{{ stats.completedOrders }}</h3>
-                </div>
-                <i class="fas fa-check-circle fa-2x"></i>
-              </div>
+        <div class="stat-card stat-success">
+          <div class="stat-content">
+            <div class="stat-info">
+              <h6 class="stat-label">Completed Orders</h6>
+              <h3 class="stat-value">{{ stats.completedOrders }}</h3>
+            </div>
+            <div class="stat-icon">
+              <i class="fas fa-check-circle"></i>
             </div>
           </div>
+          <div class="stat-wave"></div>
         </div>
       </div>
       
       <!-- Recent Deliveries -->
-      <div class="card shadow-sm">
-        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">Recent Delivery Requests</h5>
-          <div *ngIf="unpaidDeliveries > 0" class="badge bg-danger">
+      <div class="deliveries-card card-modern">
+        <div class="card-header-modern">
+          <h5 class="section-title">
+            <i class="fas fa-truck me-2"></i>Recent Delivery Requests
+          </h5>
+          <div *ngIf="unpaidDeliveries > 0" class="unpaid-badge">
+            <i class="fas fa-exclamation-triangle me-1"></i>
             {{unpaidDeliveries}} unpaid
           </div>
         </div>
         <div class="card-body">
-          <div *ngIf="isLoading" class="text-center p-4">
-            <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">Loading...</span>
+          <div *ngIf="isLoading" class="loading-container">
+            <div class="loading-spinner">
+              <div class="spinner"></div>
+              <p>Loading your deliveries...</p>
             </div>
           </div>
           
-          <div *ngIf="!isLoading && recentDeliveries.length === 0" class="text-center p-4">
-            <p class="text-muted">No delivery requests found.</p>
-            <button (click)="goToDeliveryRequest()" class="btn btn-primary">
+          <div *ngIf="!isLoading && recentDeliveries.length === 0" class="empty-state">
+            <div class="empty-icon">
+              <i class="fas fa-truck"></i>
+            </div>
+            <h4>No delivery requests found</h4>
+            <p>Start by creating your first delivery request</p>
+            <button (click)="goToDeliveryRequest()" class="btn btn-primary btn-create-first">
               <i class="fas fa-plus me-2"></i> Create Delivery Request
             </button>
           </div>
           
-          <div *ngIf="!isLoading && recentDeliveries.length > 0" class="table-responsive">
-            <table class="table table-hover">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Delivery To</th>
-                  <th>Date</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                  <th>Payment</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let delivery of recentDeliveries">
-                  <td>#{{ delivery.id.slice(0, 8) }}</td>
-                  <td>{{ delivery.deliveryAddress }}</td>
-                  <td>{{ delivery.scheduledDate | date:'mediumDate' }}</td>
-                  <td>{{ delivery.amount | currency:'TND' }}</td>
-                  <td>
-                    <span class="badge"
-                          [ngClass]="{
-                            'bg-success': delivery.status === 'DELIVERED',
-                            'bg-primary': delivery.status === 'APPROVED',
-                            'bg-warning text-dark': delivery.status === 'PENDING',
-                            'bg-info': delivery.status === 'IN_TRANSIT',
-                            'bg-danger': delivery.status === 'CANCELLED'
-                          }">
-                      {{ delivery.status }}
-                    </span>
-                  </td>
-                  <td>
-                    <span *ngIf="delivery.status === 'DELIVERED'" class="badge"
-                          [ngClass]="{
-                            'bg-success': delivery.paymentStatus === 'PAID',
-                            'bg-warning': delivery.paymentStatus === 'PENDING',
-                            'bg-danger': !delivery.paymentStatus || delivery.paymentStatus === 'UNPAID'
-                          }">
-                      {{ delivery.paymentStatus || 'UNPAID' }}
-                    </span>
-                    <span *ngIf="delivery.status !== 'DELIVERED'">-</span>
-                  </td>
-                  <td>
-                    <div class="d-flex gap-2">
-                      <a [routerLink]="['/client/orders', delivery.id]" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-eye"></i>
-                      </a>
-                      <button *ngIf="delivery.status === 'DELIVERED' && (!delivery.paymentStatus || delivery.paymentStatus === 'UNPAID')"
-                              class="btn btn-sm btn-success"
-                              (click)="openPaymentDialog(delivery)">
-                        <i class="fas fa-money-bill-wave me-1"></i> Pay
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          
-          <div class="text-center mt-3" *ngIf="recentDeliveries.length > 0">
-            <a routerLink="/client/orders" class="btn btn-outline-primary">View All Orders</a>
+          <div *ngIf="!isLoading && recentDeliveries.length > 0" class="table-container">
+            <div class="table-responsive">
+              <table class="table table-modern">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Delivery To</th>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Payment</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let delivery of recentDeliveries" class="table-row-animated">
+                    <td class="id-cell">#{{ delivery.id.slice(0, 8) }}</td>
+                    <td class="address-cell">{{ delivery.deliveryAddress }}</td>
+                    <td class="date-cell">{{ delivery.scheduledDate | date:'mediumDate' }}</td>
+                    <td class="amount-cell">{{ delivery.amount | currency:'TND' }}</td>
+                    <td>
+                      <span class="status-badge"
+      [ngClass]="{
+        'status-delivered': delivery.status === 'DELIVERED',
+        'status-approved': delivery.status === 'APPROVED',
+        'status-pending': delivery.status === 'PENDING',
+        'status-assigned': delivery.status === 'ASSIGNED',
+        'status-transit': delivery.status === 'IN_TRANSIT',
+        'status-cancelled': delivery.status === 'CANCELLED',
+        'status-expired': delivery.status === 'EXPIRED'
+      }">
+  {{ delivery.status }}
+</span>
+                    </td>
+                    <td>
+                      <span *ngIf="delivery.status === 'DELIVERED'" class="payment-badge"
+                            [ngClass]="{
+                              'payment-paid': delivery.paymentStatus === 'PAID',
+                              'payment-pending': delivery.paymentStatus === 'PENDING',
+                              'payment-unpaid': !delivery.paymentStatus || delivery.paymentStatus === 'UNPAID'
+                            }">
+                        {{ delivery.paymentStatus || 'UNPAID' }}
+                      </span>
+                      <span *ngIf="delivery.status !== 'DELIVERED'" class="payment-na">-</span>
+                    </td>
+                    <td>
+                      <div class="action-buttons">
+                        <!-- View Button -->
+                        <a [routerLink]="['/client/orders', delivery.id]" 
+                           class="btn btn-action btn-view" 
+                           title="View Details">
+                          <i class="fas fa-eye"></i>
+                        </a>
+                        
+                        <!-- Pay Button (shown only for delivered/unpaid) -->
+                        <button *ngIf="delivery.status === 'DELIVERED' && (!delivery.paymentStatus || delivery.paymentStatus === 'UNPAID')"
+                                class="btn btn-action btn-pay"
+                                (click)="openPaymentDialog(delivery)"
+                                title="Make Payment">
+                          <i class="fas fa-money-bill-wave"></i>
+                        </button>
+                        
+                        <!-- Cancel Button (shown only for pending/assigned) -->
+                        <button *ngIf="delivery.status && ['PENDING', 'ASSIGNED'].includes(delivery.status)"
+                                class="btn btn-action btn-cancel"
+                                (click)="cancelDelivery(delivery.id)"
+                                [disabled]="delivery.processing"
+                                title="Cancel Order">
+                          <i *ngIf="!delivery.processing" class="fas fa-times"></i>
+                          <i *ngIf="delivery.processing" class="fas fa-spinner fa-spin"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="table-footer">
+              <a routerLink="/client/orders" class="btn btn-outline-primary btn-view-all">
+                <i class="fas fa-list me-2"></i>View All Orders
+              </a>
+            </div>
           </div>
         </div>
       </div>

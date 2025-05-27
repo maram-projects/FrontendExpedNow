@@ -1,0 +1,76 @@
+<!-- pricing-details.component.html -->
+<div class="pricing-breakdown-container" @fadeInOut *ngIf="pricing">
+    <div class="pricing-card">
+      <div class="card-header">
+        <h3 class="card-title">تفاصيل التسعير</h3>
+        <div class="card-subtitle">Pricing Details</div>
+      </div>
+      
+      <div class="pricing-content">
+        <div class="pricing-row">
+          <div class="pricing-column" @slideIn>
+            <div class="pricing-item">
+              <span class="item-label">المسافة:</span>
+              <span class="item-value">{{pricing.distance || 0}} كم</span>
+            </div>
+            <div class="pricing-item">
+              <span class="item-label">السعر الأساسي:</span>
+              <span class="item-value">{{pricing.basePrice || 0}} TND</span>
+            </div>
+            <div class="pricing-item">
+              <span class="item-label">تكلفة المسافة:</span>
+              <span class="item-value">{{pricing.distanceCost || 0}} TND</span>
+            </div>
+            <div class="pricing-item">
+              <span class="item-label">تكلفة الوزن:</span>
+              <span class="item-value">{{pricing.weightCost || 0}} TND</span>
+            </div>
+          </div>
+          
+          <div class="pricing-column" @slideIn>
+            <div class="pricing-item" [class.highlight]="(pricing.urgencyFee || 0) > 0">
+              <span class="item-label">رسوم الاستعجال:</span>
+              <span class="item-value">{{pricing.urgencyFee || 0}} TND</span>
+            </div>
+            <div class="pricing-item" [class.highlight]="(pricing.peakSurcharge || 0) > 0">
+              <span class="item-label">رسوم الذروة:</span>
+              <span class="item-value">{{pricing.peakSurcharge || 0}} TND</span>
+            </div>
+            <div class="pricing-item" [class.highlight]="(pricing.holidaySurcharge || 0) > 0">
+              <span class="item-label">رسوم العطل:</span>
+              <span class="item-value">{{pricing.holidaySurcharge || 0}} TND</span>
+            </div>
+            <div class="pricing-item discount" *ngIf="(pricing.discountAmount || 0) > 0">
+              <span class="item-label">الخصم:</span>
+              <span class="item-value">-{{pricing.discountAmount || 0}} TND</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="total-amount">
+        <div class="divider"></div>
+        <div class="total-wrapper pulse-animation">
+          <span class="total-label">المبلغ الإجمالي:</span>
+          <span class="total-value">{{pricing.totalAmount || 0}} TND</span>
+        </div>
+      </div>
+      
+      <div class="applied-rules" *ngIf="pricing?.appliedRules?.length">
+        <div class="rules-header" (click)="toggleRules()">
+          <h4>القواعد المطبقة <i class="fa" [class.fa-chevron-up]="showRules" [class.fa-chevron-down]="!showRules"></i></h4>
+        </div>
+        
+        <div [@expandCollapse]="animationState" class="rules-content">
+          <ul class="rules-list">
+            <li *ngFor="let rule of pricing.appliedRules; let i = index" 
+                class="rule-item fade-in"
+                [style.animation-delay]="i * 100 + 'ms'">
+              <span class="rule-description">{{rule.description}}</span>
+              <span class="rule-amount">{{rule.amount}} TND</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>

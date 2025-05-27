@@ -32,7 +32,7 @@ deleteDiscount(discountId: string): Observable<void> {
 }
   // التحقق من صحة كود الخصم
   validateDiscount(code: string, clientId: string): Observable<Discount> {
-    return this.http.post<Discount>(`${this.apiUrl}/validate`, { code, clientId }); // ✅
+    return this.http.post<Discount>(`${this.apiUrl}/validate`, { code, clientId });
   }
 
   // استخدام الخصم
