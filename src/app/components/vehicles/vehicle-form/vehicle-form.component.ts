@@ -13,12 +13,14 @@ import { VehicleService } from '../../../services/vehicle-service.service';
   styleUrls: ['./vehicle-form.component.css']
 })
 export class VehicleFormComponent implements OnInit {
+
+     photoFile: File | null = null;
+    photoPreview: string | ArrayBuffer | null = null;
   vehicleForm!: FormGroup;
   vehicleTypes = Object.values(VehicleType);
   isEditMode = false;
   vehicleId?: string;
-  photoFile: File | null = null;
-  photoPreview: string | ArrayBuffer | null = null;
+  
   isSubmitting = false; // Add this flag to prevent duplicate submissions
   
   constructor(
@@ -86,20 +88,21 @@ export class VehicleFormComponent implements OnInit {
     });
   }
 
-  onFileChange(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    
-    if (input.files && input.files.length) {
-      this.photoFile = input.files[0];
-      
-      // Create a preview
-      const reader = new FileReader();
-      reader.onload = () => {
-        this.photoPreview = reader.result;
-      };
-      reader.readAsDataURL(this.photoFile);
+   onFileChange(event: Event): void {
+        const input = event.target as HTMLInputElement;
+        
+        if (input.files && input.files.length) {
+            this.photoFile = input.files[0];
+            
+            // Create preview
+            const reader = new FileReader();
+            reader.onload = () => {
+                this.photoPreview = reader.result;
+            };
+            reader.readAsDataURL(this.photoFile);
+        }
     }
-  }
+
 
   onSubmit(): void {
     if (this.vehicleForm.invalid) {

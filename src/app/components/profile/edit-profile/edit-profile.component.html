@@ -9,7 +9,6 @@
 
   @if (error) {
     <div class="error-message">
-  
       <mat-icon>error</mat-icon>
       {{ error }}
     </div>
@@ -84,31 +83,63 @@
 
           <!-- Admin Only Section -->
           @if (isAdminMode) {
-            <!-- Add this to your admin section -->
-<div class="form-section admin-section" *ngIf="isAdminMode">
-  <h3>
-    <mat-icon>admin_panel_settings</mat-icon>
-    User Roles
-  </h3>
+            <div class="form-section admin-section">
+              <h3>
+                <mat-icon>admin_panel_settings</mat-icon>
+                User Management
+              </h3>
 
-  <!-- Multiple roles selection -->
-  <mat-form-field appearance="outline" class="full-width">
-    <mat-label>User Roles</mat-label>
-    <mat-select formControlName="roles" multiple>
-      <mat-option *ngFor="let role of availableRoles" [value]="role.value">
-        {{ role.display }}
-      </mat-option>
-    </mat-select>
-    <mat-icon matSuffix>security</mat-icon>
-  </mat-form-field>
+              <!-- User Type Selection (Required) -->
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>User Type</mat-label>
+                <mat-select formControlName="userType" required>
+                  <mat-option *ngFor="let type of userTypes" [value]="type.value">
+                    {{ type.label }}
+                  </mat-option>
+                </mat-select>
+                <mat-icon matSuffix>category</mat-icon>
+                @if (isFieldInvalid('userType')) {
+                  <mat-error>{{ getFieldError('userType') }}</mat-error>
+                }
+              </mat-form-field>
 
-  <!-- User Type (read-only, derived from roles) -->
-  <mat-form-field appearance="outline" class="full-width">
-    <mat-label>User Type</mat-label>
-    <input matInput formControlName="userType" readonly>
-    <mat-icon matSuffix>category</mat-icon>
-  </mat-form-field>
-</div>
+              <!-- Simplified Roles Selection -->
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>User Roles</mat-label>
+                <mat-select formControlName="roles" multiple>
+                  <mat-option *ngFor="let role of availableRoles" [value]="role.value">
+                    {{ role.display }}
+                  </mat-option>
+                </mat-select>
+                <mat-icon matSuffix>security</mat-icon>
+                <mat-hint>Select the appropriate role(s) for this user</mat-hint>
+              </mat-form-field>
+
+              <!-- Role Description Help Text -->
+              <div class="role-descriptions">
+                <p><strong>Role Descriptions:</strong></p>
+                <ul>
+                  <li><strong>Client:</strong> Can access client services for both Individual and Enterprise users</li>
+                  <li><strong>Driver:</strong> Can access driver features for both Professional and Temporary drivers</li>
+                </ul>
+              </div>
+
+              <!-- Account Status Controls -->
+              <div class="form-section">
+                <h4>Account Status</h4>
+                <div class="checkbox-group">
+                  <mat-checkbox formControlName="enabled">
+                    <mat-icon>toggle_on</mat-icon>
+                    Account Enabled
+                  </mat-checkbox>
+                  
+                  <mat-checkbox formControlName="approved">
+                    <mat-icon>check_circle</mat-icon>
+                    Account Approved
+                  </mat-checkbox>
+                </div>
+              </div>
+            </div>
           }
         </form>
       </mat-card-content>

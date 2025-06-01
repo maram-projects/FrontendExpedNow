@@ -213,34 +213,34 @@ export class VehicleService {
   createVehicle(vehicle: Vehicle, photo: File | null): Observable<Vehicle> {
     const formData = new FormData();
     
-    // Convert to DTO if needed
     const vehicleForSending = convertVehicleToDto(vehicle);
-    const vehicleBlob = new Blob([JSON.stringify(vehicleForSending)], { type: 'application/json' });
+    formData.append('vehicle', new Blob([JSON.stringify(vehicleForSending)], {
+        type: 'application/json'
+    }));
     
-    formData.append('vehicle', vehicleBlob);
     if (photo) {
-      formData.append('photo', photo);
+        formData.append('photo', photo);
     }
     
-    return this.http.post<any>(this.apiUrl, formData).pipe(
-      map(response => {
-        // Convert response if needed
-        if (response && 'vehicleBrand' in response) {
-          return convertDtoToVehicle(response as VehicleDTO);
-        }
-        return response as Vehicle;
-      }),
-      tap(newVehicle => {
-        if (newVehicle.id) {
-          this.updateCache(newVehicle.id, newVehicle);
-        }
-      }),
-      catchError(error => {
-        console.error('Error creating vehicle:', error);
-        return throwError(() => new Error(`Failed to create vehicle: ${error.message}`));
-      })
+    return this.http.post<VehicleDTO>(this.apiUrl, formData).pipe(
+        map(response => convertDtoToVehicle(response)),
+        catchError(error => {
+            console.error('Error creating vehicle:', error);
+            return throwError(() => new Error('Failed to create vehicle'));
+        })
     );
-  }
+}
+
+getVehiclePhotoUrl(photoPath: string | undefined): string {
+    if (!photoPath) {
+        return '/assets/images/no-vehicle-photo.png';
+    }
+    if (photoPath.startsWith('http')) {
+        return photoPath;
+    }
+    // Construct proper URL
+    return `${environment.apiUrl}/uploads/vehicle-photos/${photoPath}`;
+}
 
   updateVehicle(id: string, vehicle: Vehicle, photo: File | null): Observable<Vehicle> {
     const formData = new FormData();
@@ -334,14 +334,6 @@ export class VehicleService {
     this.cacheTimestamps.delete(id);
   }
 
-  getVehiclePhotoUrl(photoPath: string | undefined): string {
-    if (!photoPath) {
-        return '/assets/images/no-vehicle-photo.png';
-    }
-    if (photoPath.startsWith('http')) {
-        return photoPath;
-    }
-    return `${environment.uploadsUrl}/vehicle-photos/${photoPath}`;
-}
+
 
 }

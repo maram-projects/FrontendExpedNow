@@ -33,10 +33,9 @@
       </div>
 
       <div class="vehicle-photo-container">
-        <img 
-  [src]="vehicle.photoPath | vehiclePhoto" 
-  alt="{{ vehicle.make }} {{ vehicle.model }}"
-  class="vehicle-photo"
+       <img [src]="getVehiclePhotoUrl(vehicle.photoPath)" 
+     alt="{{ vehicle.make }} {{ vehicle.model }}"
+     class="vehicle-photo">
 >
         <div *ngIf="!vehicle.photoPath" class="no-photo">
           No Photo Available

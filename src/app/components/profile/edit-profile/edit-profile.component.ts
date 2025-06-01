@@ -44,22 +44,19 @@ export class EditProfileComponent implements OnInit {
   loading = true;
   error = '';
   isCurrentUser = false;
+  
+  // Updated available roles - removed ROLE_ADMIN and merged client roles
   availableRoles = [
-    { value: 'ROLE_ADMIN', display: 'Admin' },
-    { value: 'ROLE_CLIENT', display: 'Client' },
-    { value: 'ROLE_INDIVIDUAL', display: 'Individual' },
-    { value: 'ROLE_ENTERPRISE', display: 'Enterprise' },
-    { value: 'ROLE_PROFESSIONAL', display: 'Professional Driver' },
-    { value: 'ROLE_TEMPORARY', display: 'Temporary Driver' }
+    { value: 'ROLE_CLIENT', display: 'Client (Individual/Enterprise)' },
+    { value: 'ROLE_DRIVER', display: 'Driver (Professional/Temporary)' }
   ];
   
-  // User types for admin dropdown
+  // Updated user types - simplified structure
   userTypes = [
     { value: USER_TYPES.INDIVIDUAL, label: 'Individual' },
     { value: USER_TYPES.ENTERPRISE, label: 'Enterprise' },
     { value: USER_TYPES.TEMPORARY, label: 'Temporary Driver' },
-    { value: USER_TYPES.PROFESSIONAL, label: 'Professional Driver' },
-    { value: USER_TYPES.ADMIN, label: 'Admin' }
+    { value: USER_TYPES.PROFESSIONAL, label: 'Professional Driver' }
   ];
 
   constructor(
@@ -134,7 +131,7 @@ export class EditProfileComponent implements OnInit {
                 enabled: user.enabled ?? true,
                 approved: user.approved ?? true,
                 rejected: user.rejected ?? false,
-                roles: user.roles || []
+                roles: this.mapRolesToSimplifiedRoles(user.roles) || []
             });
             this.loading = false;
         },
@@ -146,9 +143,52 @@ export class EditProfileComponent implements OnInit {
     });
   }
 
+  // Map existing roles to simplified role structure
+  private mapRolesToSimplifiedRoles(roles?: string[]): string[] {
+    if (!roles || roles.length === 0) return [];
+    
+    const simplifiedRoles: string[] = [];
+    
+    // Check for client roles (individual, enterprise, or client)
+    if (roles.includes('ROLE_INDIVIDUAL') || roles.includes('ROLE_ENTERPRISE') || roles.includes('ROLE_CLIENT')) {
+      simplifiedRoles.push('ROLE_CLIENT');
+    }
+    
+    // Check for driver roles (professional, temporary)
+    if (roles.includes('ROLE_PROFESSIONAL') || roles.includes('ROLE_TEMPORARY')) {
+      simplifiedRoles.push('ROLE_DRIVER');
+    }
+    
+    return simplifiedRoles;
+  }
+
+  // Map simplified roles back to specific roles based on user type
+  private mapSimplifiedRolesToSpecificRoles(simplifiedRoles: string[], userType: string): string[] {
+    const specificRoles: string[] = [];
+    
+    if (simplifiedRoles.includes('ROLE_CLIENT')) {
+      if (userType === USER_TYPES.INDIVIDUAL) {
+        specificRoles.push('ROLE_INDIVIDUAL');
+      } else if (userType === USER_TYPES.ENTERPRISE) {
+        specificRoles.push('ROLE_ENTERPRISE');
+      } else {
+        specificRoles.push('ROLE_CLIENT'); // Default fallback
+      }
+    }
+    
+    if (simplifiedRoles.includes('ROLE_DRIVER')) {
+      if (userType === USER_TYPES.PROFESSIONAL) {
+        specificRoles.push('ROLE_PROFESSIONAL');
+      } else if (userType === USER_TYPES.TEMPORARY) {
+        specificRoles.push('ROLE_TEMPORARY');
+      }
+    }
+    
+    return specificRoles;
+  }
+
   private getUserTypeFromRoles(roles?: string[]): string {
     if (!roles || roles.length === 0) return '';
-    if (roles.includes('ROLE_ADMIN')) return USER_TYPES.ADMIN;
     if (roles.includes('ROLE_PROFESSIONAL')) return USER_TYPES.PROFESSIONAL;
     if (roles.includes('ROLE_TEMPORARY')) return USER_TYPES.TEMPORARY;
     if (roles.includes('ROLE_ENTERPRISE')) return USER_TYPES.ENTERPRISE;
@@ -173,9 +213,10 @@ export class EditProfileComponent implements OnInit {
   onSubmit(): void {
     if (this.editProfileForm.valid) {
         const formValue = this.editProfileForm.value;
+        const selectedUserType = formValue.userType;
         
-        // Update userType based on selected roles
-        const updatedUserType = this.getUserTypeFromRoles(formValue.roles);
+        // Map simplified roles back to specific roles based on user type
+        const specificRoles = this.mapSimplifiedRolesToSpecificRoles(formValue.roles, selectedUserType);
         
         const updatedUserData = {
             firstName: this.editProfileForm.get('firstName')?.value,
@@ -183,8 +224,8 @@ export class EditProfileComponent implements OnInit {
             email: this.editProfileForm.get('email')?.value,
             phone: this.editProfileForm.get('phone')?.value,
             address: this.editProfileForm.get('address')?.value,
-            roles: formValue.roles || [],
-            userType: updatedUserType, // This will be sent to backend
+            roles: specificRoles, // Send specific roles to backend
+            userType: selectedUserType,
             ...(this.isAdminMode && {
                 enabled: this.editProfileForm.get('enabled')?.value,
                 approved: this.editProfileForm.get('approved')?.value,
