@@ -1,0 +1,379 @@
+<div class="user-details-container">
+    @if (loading) {
+      <div class="loading-spinner">
+        <mat-spinner diameter="50"></mat-spinner>
+        <p>Loading user details...</p>
+      </div>
+    } @else if (error) {
+      <div class="error-message mat-elevation-z1" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ error }}</span>
+      </div>
+    } @else if (user) {
+      <div class="user-header mat-elevation-z1">
+        <div class="user-avatar">
+          <mat-icon class="avatar-icon" aria-hidden="true">account_circle</mat-icon>
+        </div>
+        <div class="user-info">
+          <h1 class="mat-headline-5">{{ user.firstName }} {{ user.lastName }}</h1>
+          <div class="user-meta">
+            <mat-chip class="user-type">{{ getUserTypeDisplay() }}</mat-chip>
+            <mat-chip-option class="user-status" [color]="getUserStatusColor()" [selected]="true">
+                {{ getUserStatus() | titlecase }}
+              </mat-chip-option>              {{ getUserStatus() | titlecase }}
+            
+            <div class="contact-info">
+              <span class="user-email">
+                <mat-icon aria-hidden="true">email</mat-icon>
+                <a href="mailto:{{ user.email }}">{{ user.email }}</a>
+              </span>
+              @if (user.phone) {
+                <span class="user-phone">
+                  <mat-icon aria-hidden="true">phone</mat-icon>
+                  <a href="tel:{{ user.phone }}">{{ user.phone }}</a>
+                </span>
+              }
+            </div>
+          </div>
+        </div>
+        <div class="user-actions">
+          @if (getUserStatus() === 'pending') {
+            <button mat-raised-button color="primary" (click)="approveUser()" aria-label="Approve user">
+              <mat-icon>check_circle</mat-icon>
+              Approve
+            </button>
+            <button mat-raised-button color="warn" (click)="rejectUser()" aria-label="Reject user">
+              <mat-icon>cancel</mat-icon>
+              Reject
+            </button>
+          }
+          @if (getUserStatus() === 'active' || getUserStatus() === 'disabled') {
+            <button mat-raised-button 
+                    [color]="user.enabled ? 'warn' : 'primary'" 
+                    (click)="toggleUserStatus()"
+                    [attr.aria-label]="user.enabled ? 'Disable user' : 'Enable user'">
+              <mat-icon>{{ user.enabled ? 'lock' : 'lock_open' }}</mat-icon>
+              {{ user.enabled ? 'Disable' : 'Enable' }}
+            </button>
+          }
+        </div>
+      </div>
+  
+      <mat-tab-group [(selectedIndex)]="activeTab" animationDuration="0ms">
+        <mat-tab label="Profile">
+          <div class="tab-content">
+            <section class="profile-section">
+              <h2 class="mat-subtitle-1">Basic Information</h2>
+              <div class="profile-grid">
+                <div class="profile-item">
+                  <span class="label mat-body-2">First Name</span>
+                  <span class="value mat-body-1">{{ user.firstName }}</span>
+                </div>
+                <div class="profile-item">
+                  <span class="label mat-body-2">Last Name</span>
+                  <span class="value mat-body-1">{{ user.lastName }}</span>
+                </div>
+                <div class="profile-item">
+                  <span class="label mat-body-2">Email</span>
+                  <span class="value mat-body-1">{{ user.email }}</span>
+                </div>
+                <div class="profile-item">
+                  <span class="label mat-body-2">Phone</span>
+                  <span class="value mat-body-1">{{ user.phone || 'Not provided' }}</span>
+                </div>
+                <div class="profile-item">
+                  <span class="label mat-body-2">Address</span>
+                  <span class="value mat-body-1">{{ user.address || 'Not provided' }}</span>
+                </div>
+                <div class="profile-item">
+                  <span class="label mat-body-2">Registration Date</span>
+                  <span class="value mat-body-1">{{ user.dateOfRegistration | date:'mediumDate' }}</span>
+                </div>
+              </div>
+            </section>
+  
+            <!-- Enterprise User Details -->
+            @if (user.userType === USER_TYPES.ENTERPRISE) {
+              <section class="profile-section">
+                <h2 class="mat-subtitle-1">Enterprise Information</h2>
+                <div class="profile-grid">
+                  <div class="profile-item">
+                    <span class="label mat-body-2">Company Name</span>
+                    <span class="value mat-body-1">{{ user.companyName || 'Not provided' }}</span>
+                  </div>
+                  <div class="profile-item">
+                    <span class="label mat-body-2">Business Type</span>
+                    <span class="value mat-body-1">{{ user.businessType || 'Not provided' }}</span>
+                  </div>
+                  <div class="profile-item">
+                    <span class="label mat-body-2">VAT Number</span>
+                    <span class="value mat-body-1">{{ user.vatNumber || 'Not provided' }}</span>
+                  </div>
+                  <div class="profile-item">
+                    <span class="label mat-body-2">Business Phone</span>
+                    <span class="value mat-body-1">{{ user.businessPhone || 'Not provided' }}</span>
+                  </div>
+                  <div class="profile-item">
+                    <span class="label mat-body-2">Business Address</span>
+                    <span class="value mat-body-1">{{ user.businessAddress || 'Not provided' }}</span>
+                  </div>
+                  <div class="profile-item">
+                    <span class="label mat-body-2">Delivery Radius</span>
+                    <span class="value mat-body-1">{{ user.deliveryRadius ? user.deliveryRadius + ' km' : 'Not provided' }}</span>
+                  </div>
+                </div>
+              </section>
+            }
+  
+            <!-- Professional/Temporary Driver Details -->
+            @if (user.userType === USER_TYPES.PROFESSIONAL || user.userType === USER_TYPES.TEMPORARY) {
+              <section class="profile-section">
+                <h2 class="mat-subtitle-1">Driver Information</h2>
+                <div class="profile-grid">
+                  <div class="profile-item">
+                    <span class="label mat-body-2">License Number</span>
+                    <span class="value mat-body-1">{{ user.driverLicenseNumber || 'Not provided' }}</span>
+                  </div>
+                  <div class="profile-item">
+                    <span class="label mat-body-2">License Category</span>
+                    <span class="value mat-body-1">{{ user.driverLicenseCategory || 'Not provided' }}</span>
+                  </div>
+                  <div class="profile-item">
+                    <span class="label mat-body-2">License Issue Date</span>
+                    <span class="value mat-body-1">{{ user.driverLicenseIssueDate ? (user.driverLicenseIssueDate | date:'mediumDate') : 'Not provided' }}</span>
+                  </div>
+                  <div class="profile-item">
+                    <span class="label mat-body-2">License Expiry Date</span>
+                    <span class="value mat-body-1">{{ user.driverLicenseExpiryDate ? (user.driverLicenseExpiryDate | date:'mediumDate') : 'Not provided' }}</span>
+                  </div>
+                  <div class="profile-item">
+                    <span class="label mat-body-2">Preferred Zones</span>
+                    <span class="value mat-body-1">{{ user.preferredZones || 'Not provided' }}</span>
+                  </div>
+                  <div class="profile-item">
+                    <span class="label mat-body-2">Availability</span>
+                    <span class="value mat-body-1">{{ user.availabilitySchedule || 'Not provided' }}</span>
+                  </div>
+                </div>
+              </section>
+  
+              <section class="profile-section">
+                <h2 class="mat-subtitle-1">Vehicle Information</h2>
+                <div class="profile-grid">
+                  <div class="profile-item">
+                    <span class="label mat-body-2">Vehicle Type</span>
+                    <span class="value mat-body-1">{{ user.vehicleType || 'Not provided' }}</span>
+                  </div>
+                  <div class="profile-item">
+                    <span class="label mat-body-2">Vehicle Brand</span>
+                    <span class="value mat-body-1">{{ user.vehicleBrand || 'Not provided' }}</span>
+                  </div>
+                  <div class="profile-item">
+                    <span class="label mat-body-2">Vehicle Model</span>
+                    <span class="value mat-body-1">{{ user.vehicleModel || 'Not provided' }}</span>
+                  </div>
+                  <div class="profile-item">
+                    <span class="label mat-body-2">License Plate</span>
+                    <span class="value mat-body-1">{{ user.vehiclePlateNumber || 'Not provided' }}</span>
+                  </div>
+                  <div class="profile-item">
+                    <span class="label mat-body-2">Vehicle Year</span>
+                    <span class="value mat-body-1">{{ user.vehicleYear || 'Not provided' }}</span>
+                  </div>
+                  <div class="profile-item">
+                    <span class="label mat-body-2">Capacity (kg)</span>
+                    <span class="value mat-body-1">{{ user.vehicleCapacityKg || 'Not provided' }}</span>
+                  </div>
+                  <div class="profile-item">
+                    <span class="label mat-body-2">Volume (m³)</span>
+                    <span class="value mat-body-1">{{ user.vehicleVolumeM3 || 'Not provided' }}</span>
+                  </div>
+                  <div class="profile-item">
+                    <span class="label mat-body-2">Has Fridge</span>
+                    <span class="value mat-body-1">{{ user.vehicleHasFridge ? 'Yes' : 'No' }}</span>
+                  </div>
+                </div>
+              </section>
+            }
+          </div>
+        </mat-tab>
+  
+        <mat-tab label="Activity">
+          <div class="tab-content">
+            <section class="activity-section">
+              <h2 class="mat-subtitle-1">Performance Metrics</h2>
+              <div class="metrics-grid">
+                <mat-card class="metric-card">
+                  <div class="metric-value">{{ user.rating || 0 }}</div>
+                  <div class="metric-label mat-caption">Rating</div>
+                </mat-card>
+                <mat-card class="metric-card">
+                  <div class="metric-value">{{ user.completedDeliveries || 0 }}</div>
+                  <div class="metric-label mat-caption">Completed Deliveries</div>
+                </mat-card>
+                <mat-card class="metric-card">
+                  <div class="metric-value">{{ user.totalDeliveries || 0 }}</div>
+                  <div class="metric-label mat-caption">Total Deliveries</div>
+                </mat-card>
+                <mat-card class="metric-card">
+                  <div class="metric-value">{{ user.successScore || 0 }}%</div>
+                  <div class="metric-label mat-caption">Success Score</div>
+                </mat-card>
+                <mat-card class="metric-card">
+                  <div class="metric-value">{{ user.averageDeliveryTime || 0 }} min</div>
+                  <div class="metric-label mat-caption">Avg. Delivery Time</div>
+                </mat-card>
+                <mat-card class="metric-card">
+                  <div class="metric-value">{{ user.lastActive ? (user.lastActive | date:'medium') : 'Never' }}</div>
+                  <div class="metric-label mat-caption">Last Active</div>
+                </mat-card>
+              </div>
+            </section>
+  
+            @if (user.userType === USER_TYPES.PROFESSIONAL || user.userType === USER_TYPES.TEMPORARY) {
+              <section class="activity-section">
+                <h2 class="mat-subtitle-1">Assigned Vehicle</h2>
+                @if (user.assignedVehicle) {
+                  <mat-card class="vehicle-card">
+                    <div class="vehicle-image">
+                      <img [src]="user.assignedVehicle.photoPath || 'assets/default-vehicle.png'" 
+                           alt="{{ user.assignedVehicle.make }} {{ user.assignedVehicle.model }}">
+                    </div>
+                    <div class="vehicle-details">
+                      <h3 class="mat-subtitle-1">{{ user.assignedVehicle.make }} {{ user.assignedVehicle.model }}</h3>
+                      <p class="mat-body-1">Type: {{ user.assignedVehicle.vehicleType }}</p>
+                      <p class="mat-body-1">Year: {{ user.assignedVehicle.year }}</p>
+                      <p class="mat-body-1">Plate: {{ user.assignedVehicle.licensePlate }}</p>
+                      <p class="mat-body-1">Capacity: {{ user.assignedVehicle.maxLoad }} kg</p>
+                    </div>
+                  </mat-card>
+                } @else {
+                  <p class="mat-body-1">No vehicle currently assigned</p>
+                }
+              </section>
+            }
+          </div>
+        </mat-tab>
+  
+        <mat-tab label="Documents">
+          <div class="tab-content">
+            <section class="documents-section">
+              <h2 class="mat-subtitle-1">User Documents</h2>
+              <div class="documents-grid">
+                <!-- Identity Document -->
+                <mat-card class="document-card">
+                  <div class="document-icon">
+                    <mat-icon>badge</mat-icon>
+                  </div>
+                  <div class="document-info">
+                    <h3 class="mat-subtitle-1">Identity Document</h3>
+                    @if (user.identityPhotoUrl) {
+                      <a [href]="user.identityPhotoUrl" target="_blank" mat-button color="primary" aria-label="View identity document">
+                        <mat-icon>visibility</mat-icon>
+                        View Document
+                      </a>
+                    } @else {
+                      <p class="mat-body-1">Not provided</p>
+                    }
+                  </div>
+                </mat-card>
+  
+                <!-- Driver License -->
+                @if (user.userType === USER_TYPES.PROFESSIONAL || user.userType === USER_TYPES.TEMPORARY) {
+                  <mat-card class="document-card">
+                    <div class="document-icon">
+                      <mat-icon>directions_car</mat-icon>
+                    </div>
+                    <div class="document-info">
+                      <h3 class="mat-subtitle-1">Driver License</h3>
+                      @if (user.driverLicenseNumber) {
+                        <p class="mat-body-1">Number: {{ user.driverLicenseNumber }}</p>
+                        <p class="mat-body-1">Category: {{ user.driverLicenseCategory }}</p>
+                        <p class="mat-body-1">Expires: {{ user.driverLicenseExpiryDate ? (user.driverLicenseExpiryDate | date:'mediumDate') : 'Not provided' }}</p>
+                      } @else {
+                        <p class="mat-body-1">Not provided</p>
+                      }
+                    </div>
+                  </mat-card>
+                }
+  
+                <!-- Criminal Record -->
+                @if (user.userType === USER_TYPES.PROFESSIONAL || user.userType === USER_TYPES.TEMPORARY) {
+                  <mat-card class="document-card">
+                    <div class="document-icon">
+                      <mat-icon>gavel</mat-icon>
+                    </div>
+                    <div class="document-info">
+                      <h3 class="mat-subtitle-1">Criminal Record</h3>
+                      @if (user.criminalRecordDocumentUrl) {
+                        <a [href]="user.criminalRecordDocumentUrl" target="_blank" mat-button color="primary" aria-label="View criminal record">
+                          <mat-icon>visibility</mat-icon>
+                          View Document
+                        </a>
+                      } @else {
+                        <p class="mat-body-1">Not provided</p>
+                      }
+                    </div>
+                  </mat-card>
+                }
+  
+                <!-- Medical Certificate -->
+                @if (user.userType === USER_TYPES.PROFESSIONAL || user.userType === USER_TYPES.TEMPORARY) {
+                  <mat-card class="document-card">
+                    <div class="document-icon">
+                      <mat-icon>medical_services</mat-icon>
+                    </div>
+                    <div class="document-info">
+                      <h3 class="mat-subtitle-1">Medical Certificate</h3>
+                      @if (user.medicalCertificateUrl) {
+                        <a [href]="user.medicalCertificateUrl" target="_blank" mat-button color="primary" aria-label="View medical certificate">
+                          <mat-icon>visibility</mat-icon>
+                          View Document
+                        </a>
+                      } @else {
+                        <p class="mat-body-1">Not provided</p>
+                      }
+                    </div>
+                  </mat-card>
+                }
+  
+                <!-- Vehicle Insurance -->
+                @if (user.userType === USER_TYPES.PROFESSIONAL || user.userType === USER_TYPES.TEMPORARY) {
+                  <mat-card class="document-card">
+                    <div class="document-icon">
+                      <mat-icon>assignment</mat-icon>
+                    </div>
+                    <div class="document-info">
+                      <h3 class="mat-subtitle-1">Vehicle Insurance</h3>
+                      @if (user.vehicleInsuranceExpiry) {
+                        <p class="mat-body-1">Expires: {{ user.vehicleInsuranceExpiry | date:'mediumDate' }}</p>
+                      } @else {
+                        <p class="mat-body-1">Not provided</p>
+                      }
+                    </div>
+                  </mat-card>
+                }
+  
+                <!-- Vehicle Inspection -->
+                @if (user.userType === USER_TYPES.PROFESSIONAL || user.userType === USER_TYPES.TEMPORARY) {
+                  <mat-card class="document-card">
+                    <div class="document-icon">
+                      <mat-icon>car_repair</mat-icon>
+                    </div>
+                    <div class="document-info">
+                      <h3 class="mat-subtitle-1">Vehicle Inspection</h3>
+                      @if (user.vehicleInspectionExpiry) {
+                        <p class="mat-body-1">Expires: {{ user.vehicleInspectionExpiry | date:'mediumDate' }}</p>
+                      } @else {
+                        <p class="mat-body-1">Not provided</p>
+                      }
+                    </div>
+                  </mat-card>
+                }
+              </div>
+            </section>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    }
+  </div>

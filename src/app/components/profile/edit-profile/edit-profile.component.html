@@ -1,26 +1,137 @@
-<div class="container mt-4">
-  <h2>Edit Profile</h2>
-  <form [formGroup]="editProfileForm" (ngSubmit)="onSubmit()">
-    <div class="mb-3">
-      <label for="firstName" class="form-label">First Name</label>
-      <input type="text" class="form-control" id="firstName" formControlName="firstName">
+<div class="edit-profile-container">
+  <div class="header">
+    <h2>
+      <mat-icon>{{ isAdminMode ? 'admin_panel_settings' : 'person' }}</mat-icon>
+      {{ isAdminMode ? 'Edit User' : 'Edit Profile' }}
+    </h2>
+    <p>{{ isAdminMode ? 'Manage user account details' : 'Update your personal information' }}</p>
+  </div>
+
+  @if (error) {
+    <div class="error-message">
+  
+      <mat-icon>error</mat-icon>
+      {{ error }}
     </div>
-    <div class="mb-3">
-      <label for="lastName" class="form-label">Last Name</label>
-      <input type="text" class="form-control" id="lastName" formControlName="lastName">
+  }
+
+  @if (loading) {
+    <div class="loading-container">
+      <mat-spinner diameter="50"></mat-spinner>
+      <p>Loading user data...</p>
     </div>
-    <div class="mb-3">
-      <label for="email" class="form-label">Email</label>
-      <input type="email" class="form-control" id="email" formControlName="email">
-    </div>
-    <div class="mb-3">
-      <label for="phone" class="form-label">Phone</label>
-      <input type="text" class="form-control" id="phone" formControlName="phone">
-    </div>
-    <div class="mb-3">
-      <label for="address" class="form-label">Address</label>
-      <input type="text" class="form-control" id="address" formControlName="address">
-    </div>
-    <button type="submit" class="btn btn-primary" [disabled]="editProfileForm.invalid">Save Changes</button>
-  </form>
+  } @else {
+    <mat-card class="profile-card">
+      <mat-card-header>
+        <mat-card-title>
+          {{ isAdminMode ? 'User Information' : 'Personal Information' }}
+        </mat-card-title>
+        <mat-card-subtitle>
+          {{ isAdminMode ? 'Edit user account details and permissions' : 'Keep your information up to date' }}
+        </mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <form [formGroup]="editProfileForm" (ngSubmit)="onSubmit()" class="profile-form">
+          
+          <!-- Basic Information Section -->
+          <div class="form-section">
+            <h3>Basic Information</h3>
+            
+            <div class="form-row">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>First Name</mat-label>
+                <input matInput formControlName="firstName" placeholder="Enter first name">
+                <mat-icon matSuffix>person</mat-icon>
+                @if (isFieldInvalid('firstName')) {
+                  <mat-error>{{ getFieldError('firstName') }}</mat-error>
+                }
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Last Name</mat-label>
+                <input matInput formControlName="lastName" placeholder="Enter last name">
+                <mat-icon matSuffix>person</mat-icon>
+                @if (isFieldInvalid('lastName')) {
+                  <mat-error>{{ getFieldError('lastName') }}</mat-error>
+                }
+              </mat-form-field>
+            </div>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Email Address</mat-label>
+              <input matInput type="email" formControlName="email" placeholder="Enter email address">
+              <mat-icon matSuffix>email</mat-icon>
+              @if (isFieldInvalid('email')) {
+                <mat-error>{{ getFieldError('email') }}</mat-error>
+              }
+            </mat-form-field>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Phone Number</mat-label>
+                <input matInput formControlName="phone" placeholder="Enter phone number">
+                <mat-icon matSuffix>phone</mat-icon>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Address</mat-label>
+                <input matInput formControlName="address" placeholder="Enter address">
+                <mat-icon matSuffix>location_on</mat-icon>
+              </mat-form-field>
+            </div>
+          </div>
+
+          <!-- Admin Only Section -->
+          @if (isAdminMode) {
+            <!-- Add this to your admin section -->
+<div class="form-section admin-section" *ngIf="isAdminMode">
+  <h3>
+    <mat-icon>admin_panel_settings</mat-icon>
+    User Roles
+  </h3>
+
+  <!-- Multiple roles selection -->
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>User Roles</mat-label>
+    <mat-select formControlName="roles" multiple>
+      <mat-option *ngFor="let role of availableRoles" [value]="role.value">
+        {{ role.display }}
+      </mat-option>
+    </mat-select>
+    <mat-icon matSuffix>security</mat-icon>
+  </mat-form-field>
+
+  <!-- User Type (read-only, derived from roles) -->
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>User Type</mat-label>
+    <input matInput formControlName="userType" readonly>
+    <mat-icon matSuffix>category</mat-icon>
+  </mat-form-field>
+</div>
+          }
+        </form>
+      </mat-card-content>
+
+      <mat-card-actions class="action-buttons">
+        <button 
+          mat-raised-button 
+          color="primary" 
+          type="submit" 
+          [disabled]="editProfileForm.invalid"
+          (click)="onSubmit()">
+          <mat-icon>save</mat-icon>
+          Save Changes
+        </button>
+        
+        <button 
+          mat-stroked-button 
+          type="button"
+          (click)="onCancel()">
+          <mat-icon>cancel</mat-icon>
+          Cancel
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  }
 </div>

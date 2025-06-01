@@ -147,21 +147,34 @@
   forgotPassword(email: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/forgot-password`, { email }).pipe(
       catchError(error => {
-        let errorMsg = 'Password reset failed';
+        let errorMsg = 'Failed to send reset email';
         if (error.error?.error) {
-          errorMsg += `: ${error.error.error}`;
+          errorMsg = error.error.error;
+        } else if (error.status === 0) {
+          errorMsg = 'Network error - please check your connection';
         }
         return throwError(() => new Error(errorMsg));
       })
     );
   }
 
+
   resetPassword(token: string, newPassword: string, confirmPassword: string): Observable<any> {
-      return this.http.post(`${this.apiUrl}/reset-password`, { 
-          token, 
-          newPassword, 
-          confirmPassword 
-      });
+    return this.http.post(`${this.apiUrl}/reset-password`, { 
+      token, 
+      newPassword, 
+      confirmPassword 
+    }).pipe(
+      catchError(error => {
+        let errorMsg = 'Failed to reset password';
+        if (error.error?.error) {
+          errorMsg = error.error.error;
+        } else if (error.status === 0) {
+          errorMsg = 'Network error - please check your connection';
+        }
+        return throwError(() => new Error(errorMsg));
+      })
+    );
   }
 
     private buildRegistrationPayload(user: User, userType: string): any {

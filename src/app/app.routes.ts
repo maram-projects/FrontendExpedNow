@@ -23,6 +23,7 @@ import { DeliveryPersonnelManagementComponent } from './components/admin-dashboa
 import { ProfessionalRegisterComponent } from './components/registers/professional-register/professional-register.component';
 import { ForgetPasswordComponent } from './components/forget-password/forget-password.component';
 import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
+import { UserDetailsComponent } from './components/profile/user-details/user-details.component';
 
 export const routes: Routes = [
   // Public routes
@@ -81,12 +82,14 @@ export const routes: Routes = [
       { path: 'users', component: UserManagementComponent },
       { path: 'roles', component: RoleManagementComponent },
       { path: 'settings', component: SettingsComponent },
+      { path: 'users/edit/:id', component: EditProfileComponent },
       { path: 'availability', component: ScheduleComponent },
       { path: 'DeliveryPersonnel', component: DeliveryPersonnelManagementComponent },
       { path: 'vehicles', component: VehicleListComponent },
       { path: 'vehicles/create', component: VehicleFormComponent },
       { path: 'vehicles/edit/:id', component: VehicleFormComponent },
       { path: 'vehicles/:id', component: VehicleDetailComponent },
+      { path: 'users/view/:id', component: UserDetailsComponent },
       { 
         path: 'discounts', 
         loadComponent: () => import('./components/admin-dashboard/admin-discount/admin-discount.component').then(m => m.AdminDiscountComponent) 

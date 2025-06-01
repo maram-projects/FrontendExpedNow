@@ -1,6 +1,7 @@
 import { Vehicle } from "./Vehicle.model";
 
 export interface User {
+  rejected?: any; 
   id?: string;
   firstName: string;
   lastName: string;
@@ -10,7 +11,6 @@ export interface User {
   phone: string;
   address: string;
   dateOfRegistration?: Date;
-  
   // Enterprise fields
   companyName?: string;
   businessType?: string;
@@ -113,3 +113,5 @@ export const BUSINESS_TYPES = [
   { value: 'manufacturing', display: 'Fabrication' },
   { value: 'other', display: 'Autre' }
 ];
+
+
