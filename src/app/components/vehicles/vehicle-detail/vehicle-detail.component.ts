@@ -4,7 +4,9 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Vehicle, VehicleStatistics } from '../../../models/Vehicle.model';
 import { VehicleService } from '../../../services/vehicle-service.service';
+import { UserService } from '../../../services/user.service'; // Add this import
 import { VehiclePhotoPipe } from "../../../shared/pipes/vehicle-photo.pipe";
+import { User } from '../../../models/user.model';
 
 @Component({
   selector: 'app-vehicle-detail',
@@ -16,24 +18,42 @@ import { VehiclePhotoPipe } from "../../../shared/pipes/vehicle-photo.pipe";
 export class VehicleDetailComponent implements OnInit {
   vehicle: Vehicle | null = null;
   vehicleStats: VehicleStatistics | null = null;
+  assignedUser: User | null = null; // Add this property
   loading = true;
   error: string | null = null;
   
+  // Add these properties to track the context
+  fromUserManagement = false;
+  userId: string | null = null;
+
   constructor(
     private vehicleService: VehicleService,
+    private userService: UserService, // Add this service
     private route: ActivatedRoute,
     private router: Router
   ) { }
 
   ngOnInit(): void {
     this.route.params.subscribe(params => {
-      const id = params['id'];
-      if (id) {
-        this.loadVehicleData(id);
-      } else {
-        this.error = 'No vehicle ID provided';
-        this.loading = false;
-      }
+      const vehicleId = params['id'];
+      
+      // Check query parameters for user context
+      this.route.queryParams.subscribe(queryParams => {
+        this.userId = queryParams['userId'];
+        this.fromUserManagement = queryParams['from'] === 'user-management';
+        
+        if (vehicleId) {
+          this.loadVehicleData(vehicleId);
+          
+          // If coming from user management, load user data too
+          if (this.userId) {
+            this.loadUserData(this.userId);
+          }
+        } else {
+          this.error = 'No vehicle ID provided';
+          this.loading = false;
+        }
+      });
     });
   }
 
@@ -62,8 +82,19 @@ export class VehicleDetailComponent implements OnInit {
       },
       error: (err) => {
         console.error('Error loading vehicle statistics:', err);
-        // Don't set an error, just log it - we still have the vehicle data
         this.loading = false;
+      }
+    });
+  }
+
+  // Add this method to load user data
+  loadUserData(userId: string): void {
+    this.userService.getUserById(userId).subscribe({
+      next: (user) => {
+        this.assignedUser = user;
+      },
+      error: (err) => {
+        console.error('Error loading user data:', err);
       }
     });
   }
@@ -95,13 +126,27 @@ export class VehicleDetailComponent implements OnInit {
     }
   }
 
+  // Add method to check if user is professional
+  isProfessional(user: User): boolean {
+    return user.roles?.some(role => role === 'PROFESSIONAL') || false;
+  }
+
+  // Update back navigation based on context
+  goBack(): void {
+    if (this.fromUserManagement) {
+      this.router.navigate(['/admin/delivery-management']);
+    } else {
+      this.router.navigate(['/admin/vehicles']);
+    }
+  }
+
   deleteVehicle(): void {
     if (!this.vehicle?.id) return;
     
     if (confirm('Are you sure you want to delete this vehicle?')) {
       this.vehicleService.deleteVehicle(this.vehicle.id).subscribe({
         next: () => {
-          this.router.navigate(['/admin/vehicles']);
+          this.goBack();
         },
         error: (err) => {
           console.error('Error deleting vehicle:', err);

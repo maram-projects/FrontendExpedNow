@@ -11,6 +11,7 @@ export interface User {
   phone: string;
   address: string;
   dateOfRegistration?: Date;
+  
   // Enterprise fields
   companyName?: string;
   businessType?: string;
@@ -32,7 +33,8 @@ export interface User {
   vehiclePhotoUrl?: string;
   vehicleInsuranceExpiry?: Date;
   vehicleInspectionExpiry?: Date;
-  
+    vehicleLoading?: boolean; // For UI loading states
+
   // Professional fields
   driverLicenseNumber?: string;
   driverLicenseCategory?: string;
@@ -45,7 +47,7 @@ export interface User {
   availabilitySchedule?: string;
   hasCompanyAffiliation?: boolean;
   
-  // Account status
+  // Account status - Fix: Make these explicitly boolean or undefined
   verified?: boolean;
   approved?: boolean;
   enabled?: boolean;
@@ -59,8 +61,11 @@ export interface User {
   totalDeliveries?: number;
   averageDeliveryTime?: number;
 
-  assignedVehicleId?: string;
-  assignedVehicle?: Vehicle;
+  // Fix: Make vehicle assignment consistent with null handling
+  assignedVehicleId?: string | null;
+  assigned_vehicle_id?: string | null;
+  vehicleId?: string | null;
+  assignedVehicle?: Vehicle | null; // Changed to allow null
   
   // Roles
   roles?: string[];

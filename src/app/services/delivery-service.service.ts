@@ -265,38 +265,30 @@ checkExpiredDeliveries(): Observable<void> {
     );
   }
 
-  getAssignedPendingDeliveries(): Observable<DeliveryRequest[]> {
-    const userId = this.authService.getCurrentUser()?.userId;
-    console.log('Fetching assigned pending deliveries for user:', userId);
-    
-    // You might need to include the userId as a query parameter if backend requires it
-    const url = `${this.apiUrl}/assigned-pending?userId=${userId}`;
-    console.log('Request URL:', url);
-    
-    return this.http.get<DeliveryRequest[]>(
-      url,
-      { 
-        headers: this.getAuthHeaders(),
-        observe: 'response' // Get full response with headers
-      }
-    ).pipe(
-      tap(response => {
-        console.log('Response status:', response.status);
-        console.log('Response headers:', response.headers);
-        console.log('Raw response body:', response.body);
-      }),
-      map(response => response.body || []),
-      tap(deliveries => {
-        console.log('Assigned pending deliveries count:', deliveries.length);
-        console.log('Assigned pending deliveries:', deliveries);
-      }),
-      catchError(error => {
-        console.error('Error fetching assigned pending deliveries:', error);
-        console.error('Request URL was:', url);
-        return throwError(() => new Error('Failed to load assigned pending deliveries'));
-      })
-    );
-  }
+getAssignedPendingDeliveries(): Observable<DeliveryRequest[]> {
+  const userId = this.authService.getCurrentUser()?.userId;
+  console.log('Fetching assigned pending deliveries for user:', userId);
+  
+  const url = `${this.apiUrl}/assigned-pending`; // Define the url variable
+  
+  return this.http.get<DeliveryRequest[]>(
+    url,
+    { 
+      headers: this.getAuthHeaders(),
+      params: { userId: userId || '' }
+    }
+  ).pipe(
+    tap(deliveries => {
+      console.log('Assigned pending deliveries count:', deliveries.length);
+      console.log('Assigned pending deliveries:', deliveries);
+    }),
+    catchError(error => {
+      console.error('Error fetching assigned pending deliveries:', error);
+      console.error('Request URL was:', url);
+      return throwError(() => new Error('Failed to load assigned pending deliveries'));
+    })
+  );
+}
 
 /**
  * Gets the history of accepted and rejected deliveries for the current delivery person

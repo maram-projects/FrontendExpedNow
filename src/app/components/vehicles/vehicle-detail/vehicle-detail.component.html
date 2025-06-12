@@ -3,8 +3,9 @@
   <div class="detail-header">
     <h2>Vehicle Details</h2>
     <div class="header-actions">
-      <button class="back-button" routerLink="/admin/vehicles">
-        <i class="back-icon">←</i> Back to Vehicles
+      <button class="back-button" (click)="goBack()">
+        <i class="back-icon">←</i> 
+        {{ fromUserManagement ? 'Back to Delivery Management' : 'Back to Vehicles' }}
       </button>
     </div>
   </div>
@@ -16,13 +17,48 @@
 
   <div class="error-container" *ngIf="error">
     <p class="error-message">{{ error }}</p>
-    <button routerLink="/admin/vehicles" class="back-btn">Return to Vehicles</button>
+    <button (click)="goBack()" class="back-btn">Return to Previous Page</button>
   </div>
 
   <div class="vehicle-detail-content" *ngIf="!loading && !error && vehicle">
+    
+    <!-- User Information Section (only shown when coming from user management) -->
+    <div class="assigned-user-card" *ngIf="fromUserManagement && assignedUser">
+      <div class="card-header">
+        <h3>👤 Assigned to Delivery Person</h3>
+      </div>
+      
+      <div class="user-info-section">
+        <div class="user-avatar">
+          <i class="fas fa-user-circle"></i>
+        </div>
+        <div class="user-details">
+          <h4>{{ assignedUser.firstName }} {{ assignedUser.lastName }}</h4>
+          <div class="user-meta">
+            <span class="role-badge" 
+                  [ngClass]="{'role-professional': isProfessional(assignedUser), 'role-temporary': !isProfessional(assignedUser)}">
+              <i [class]="isProfessional(assignedUser) ? 'fas fa-user-tie' : 'fas fa-user-clock'"></i>
+              {{ isProfessional(assignedUser) ? 'Professional' : 'Temporary' }}
+            </span>
+          </div>
+          <div class="contact-info">
+            <div class="contact-item">
+              <i class="fas fa-envelope"></i>
+              <span>{{ assignedUser.email }}</span>
+            </div>
+            <div class="contact-item">
+              <i class="fas fa-phone"></i>
+              <span>{{ assignedUser.phone }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vehicle Details Card -->
     <div class="vehicle-detail-card">
       <div class="card-header">
-        <h3>{{ vehicle.make }} {{ vehicle.model }} ({{ vehicle.year }})</h3>
+        <h3>🚗 {{ vehicle.make }} {{ vehicle.model }} ({{ vehicle.year }})</h3>
         <div class="vehicle-status" [ngClass]="getVehicleStatusClass()">
           {{ getVehicleStatusText() }}
         </div>
@@ -36,7 +72,8 @@
             class="vehicle-photo"
           >
           <div *ngIf="!vehicle.photoPath" class="no-photo">
-            No Photo Available
+            <i class="fas fa-car" style="font-size: 48px; color: #ccc;"></i>
+            <p>No Photo Available</p>
           </div>
         </div>
 
@@ -78,7 +115,7 @@
       </div>
 
       <div class="vehicle-statistics" *ngIf="vehicleStats">
-        <h4>Usage Statistics</h4>
+        <h4>📊 Usage Statistics</h4>
         <div class="stats-grid">
           <div class="stat-item">
             <div class="stat-value">{{ vehicleStats.totalTrips || 0 }}</div>
@@ -99,14 +136,86 @@
         </div>
       </div>
 
-      <!-- Maintenance history section removed because the property doesn't exist in VehicleStatistics model -->
-      <!-- Add this section later if you add maintenance history to your model -->
-
-
       <div class="card-actions">
-        <button class="edit-btn" [routerLink]="['/admin/vehicles/edit', vehicle.id]">Edit Vehicle</button>
-        <button class="delete-btn" (click)="deleteVehicle()">Delete Vehicle</button>
+        <button class="edit-btn" [routerLink]="['/admin/vehicles/edit', vehicle.id]">
+          <i class="fas fa-edit"></i> Edit Vehicle
+        </button>
+        <button class="delete-btn" (click)="deleteVehicle()">
+          <i class="fas fa-trash"></i> Delete Vehicle
+        </button>
       </div>
     </div>
   </div>
 </div>
+
+<style>
+.assigned-user-card {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.user-info-section {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.user-avatar i {
+  font-size: 48px;
+  color: #6c757d;
+}
+
+.user-details h4 {
+  margin: 0 0 10px 0;
+  font-size: 1.2em;
+  color: #333;
+}
+
+.user-meta {
+  margin-bottom: 15px;
+}
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
+.role-badge.role-professional {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.role-badge.role-temporary {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6c757d;
+  font-size: 0.9em;
+}
+
+.contact-item i {
+  width: 16px;
+  color: #495057;
+}
+</style>
