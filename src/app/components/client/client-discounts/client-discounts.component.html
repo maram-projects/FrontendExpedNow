@@ -1,47 +1,198 @@
 <!-- client-discounts.component.html -->
 <div class="card">
-    <div class="card-header">
-      <h5>My Discounts</h5>
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">My Discounts</h5>
+    <button 
+      class="btn btn-sm btn-outline-primary" 
+      (click)="loadClientDiscounts()" 
+      [disabled]="loading">
+      <i class="bi bi-arrow-clockwise"></i> Refresh
+    </button>
+  </div>
+  
+  <div class="card-body">
+    <!-- Loading Spinner -->
+    <div *ngIf="loading" class="d-flex justify-content-center my-4">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
     </div>
-    <div class="card-body">
-      <!-- Apply Discount Form -->
-      <div class="card mb-4">
-        <div class="card-body">
-          <h5 class="card-title">Apply Discount Code</h5>
-          <div class="input-group">
-            <input type="text" class="form-control" [(ngModel)]="newDiscountCode" placeholder="Enter discount code">
-            <button class="btn btn-primary" (click)="applyDiscount()">Apply</button>
+
+    <!-- Error Alert -->
+    <div *ngIf="error" class="alert alert-danger alert-dismissible fade show" role="alert">
+      {{ error }}
+      <button 
+        type="button" 
+        class="btn-close" 
+        (click)="clearError()" 
+        aria-label="Close">
+      </button>
+    </div>
+
+    <!-- Apply Discount Form -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title">
+          <i class="bi bi-plus-circle-fill text-primary me-2"></i>
+          Apply Discount Code
+        </h5>
+        <div class="input-group">
+          <input 
+            type="text" 
+            class="form-control" 
+            [(ngModel)]="newDiscountCode" 
+            placeholder="Enter discount code"
+            [disabled]="loading"
+            (keyup.enter)="applyDiscount()">
+          <button 
+            class="btn btn-primary" 
+            (click)="applyDiscount()"
+            [disabled]="loading || !newDiscountCode.trim()">
+            <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+            Apply
+          </button>
+        </div>
+        <small class="form-text text-muted mt-1">
+          Enter a valid discount code to add it to your account
+        </small>
+      </div>
+    </div>
+
+    <!-- Discounts Statistics -->
+    <div *ngIf="discounts.length > 0" class="row mb-4">
+      <div class="col-md-4">
+        <div class="card border-primary">
+          <div class="card-body text-center">
+            <h3 class="text-primary mb-0">{{ discounts.length }}</h3>
+            <small class="text-muted">Total Discounts</small>
           </div>
         </div>
       </div>
-  
-      <!-- Discounts List -->
-      <div *ngIf="discounts.length > 0; else noDiscounts">
+      <div class="col-md-4">
+        <div class="card border-success">
+          <div class="card-body text-center">
+            <h3 class="text-success mb-0">{{ validDiscounts.length }}</h3>
+            <small class="text-muted">Active Discounts</small>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card border-warning">
+          <div class="card-body text-center">
+            <h3 class="text-warning mb-0">{{ discounts.length - validDiscounts.length }}</h3>
+            <small class="text-muted">Used/Expired</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Discounts List -->
+    <div *ngIf="discounts.length > 0; else noDiscounts">
+      <!-- Active Discounts -->
+      <div *ngIf="validDiscounts.length > 0" class="mb-4">
+        <h6 class="text-success mb-3">
+          <i class="bi bi-check-circle-fill me-2"></i>
+          Active Discounts
+        </h6>
         <div class="list-group">
-          <div *ngFor="let discount of discounts" class="list-group-item">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <h6 class="mb-1">{{discount.description || 'Discount'}}</h6>
-                <small class="text-muted">
-                  Valid until: {{discount.validUntil | date}} | 
-                  Code: <span class="fw-bold">{{discount.code}}</span>
-                </small>
+          <div *ngFor="let discount of validDiscounts" class="list-group-item">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="flex-grow-1">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h6 class="mb-0">{{ discount.description || 'Discount' }}</h6>
+                  <span class="badge {{ getDiscountBadgeClass(discount) }} fs-6">
+                    {{ getDiscountValue(discount) }}
+                  </span>
+                </div>
+                
+                <div class="row text-muted small">
+                  <div class="col-md-6">
+                    <i class="bi bi-calendar-check me-1"></i>
+                    Valid until: {{ discount.validUntil | date:'short' }}
+                  </div>
+                  <div class="col-md-6">
+                    <i class="bi bi-tag me-1"></i>
+                    Code: <span class="fw-bold text-primary">{{ discount.code }}</span>
+                  </div>
+                </div>
+                
+                <!-- Discount Preview -->
+                <div class="mt-2 small text-info">
+                  <i class="bi bi-info-circle me-1"></i>
+                  Preview: Save {{ calculateDiscountPreview(discount, 100) | number:'1.2-2' }} DT on 100 DT order
+                </div>
               </div>
-              <div class="text-end">
-                <span class="badge bg-primary fs-6">{{discount.percentage}}% OFF</span>
-                <button class="btn btn-sm btn-outline-secondary ms-2" (click)="copyToClipboard(discount.code)">
-                  <i class="bi bi-clipboard"></i> Copy
+              
+              <div class="ms-3">
+                <button 
+                  class="btn btn-sm btn-outline-secondary" 
+                  (click)="copyToClipboard(discount.code)"
+                  title="Copy discount code">
+                  <i class="bi bi-clipboard"></i>
                 </button>
               </div>
             </div>
           </div>
         </div>
       </div>
-  
-      <ng-template #noDiscounts>
-        <div class="alert alert-info">
-          You don't have any active discounts. Keep shopping to earn loyalty discounts!
+
+      <!-- Used/Expired Discounts -->
+      <div *ngIf="discounts.length > validDiscounts.length">
+        <h6 class="text-muted mb-3">
+          <i class="bi bi-archive me-2"></i>
+          Used & Expired Discounts
+        </h6>
+        <div class="list-group">
+          <div *ngFor="let discount of discounts" 
+               class="list-group-item"
+               [ngClass]="{'opacity-75': !isDiscountValid(discount)}">
+            <div *ngIf="!isDiscountValid(discount)" class="d-flex justify-content-between align-items-start">
+              <div class="flex-grow-1">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h6 class="mb-0">{{ discount.description || 'Discount' }}</h6>
+                  <div>
+                    <span class="badge {{ getDiscountBadgeClass(discount) }} me-2">
+                      {{ getDiscountStatus(discount) }}
+                    </span>
+                    <span class="badge bg-light text-dark">
+                      {{ getDiscountValue(discount) }}
+                    </span>
+                  </div>
+                </div>
+                
+                <div class="row text-muted small">
+                  <div class="col-md-6" *ngIf="discount.validUntil">
+                    <i class="bi bi-calendar-x me-1"></i>
+                    Expired: {{ discount.validUntil | date:'short' }}
+                  </div>
+                  <div class="col-md-6" *ngIf="discount.usedAt">
+                    <i class="bi bi-check-circle me-1"></i>
+                    Used: {{ discount.usedAt | date:'short' }}
+                  </div>
+                  <div class="col-12 mt-1">
+                    <i class="bi bi-tag me-1"></i>
+                    Code: <span class="fw-bold">{{ discount.code }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </ng-template>
+      </div>
     </div>
+
+    <!-- No Discounts Template -->
+    <ng-template #noDiscounts>
+      <div class="text-center py-5">
+        <i class="bi bi-percent display-1 text-muted mb-3"></i>
+        <div class="alert alert-info border-0">
+          <h5 class="alert-heading">No discounts yet!</h5>
+          <p class="mb-0">
+            You don't have any discounts. Keep shopping to earn loyalty discounts or 
+            enter a discount code above to get started!
+          </p>
+        </div>
+      </div>
+    </ng-template>
   </div>
+</div>

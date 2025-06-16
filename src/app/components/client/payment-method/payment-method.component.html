@@ -1,63 +1,151 @@
-<div class="card">
-    <div class="card-header">
-      <h5>Select Payment Method</h5>
+<div class="payment-container">
+  <div class="payment-card">
+    <!-- Header -->
+    <div class="payment-header">
+      <h2 class="payment-title">Choose Payment Method</h2>
+      <div class="total-amount">
+        <span class="amount-label">Total:</span>
+        <span class="amount-value">{{ totalAmount }} {{ currency }}</span>
+      </div>
     </div>
-    <div class="card-body">
-      <div class="row">
-        <div class="col-md-6">
-          <div class="list-group">
-            <button *ngFor="let method of paymentMethods" 
-                    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                    [class.active]="selectedMethod === method.id"
-                    (click)="selectMethod(method.id)">
-              <div>
-                <i class="bi bi-{{method.icon}} me-2"></i>
-                <strong>{{method.name}}</strong>
-                <p class="mb-0 small">{{method.description}}</p>
-              </div>
-              <i *ngIf="selectedMethod === method.id" class="bi bi-check-circle-fill"></i>
-            </button>
+
+    <!-- Payment Methods -->
+    <div class="payment-methods">
+      <h3 class="section-title">Payment Options</h3>
+      <div class="methods-grid">
+        <div 
+          *ngFor="let method of paymentMethods" 
+          class="method-card"
+          [class.selected]="selectedMethod === method.id"
+          [class.disabled]="isLoading || paymentProcessing"
+          (click)="selectMethod(method.id)"
+        >
+          <div class="method-icon">
+            <i [class]="method.icon"></i>
           </div>
-        </div>
-        
-        <div class="col-md-6">
-          <div class="card">
-            <div class="card-body">
-              <h5 class="card-title">Order Summary</h5>
-              <p class="card-text">Total Amount: <strong>{{totalAmount | currency:'TND'}}</strong></p>
-              
-              <!-- Card Form (shown only for credit card) -->
-              <form *ngIf="showCardForm" (submit)="processPayment()">
-                <div class="mb-3">
-                  <label class="form-label">Card Number</label>
-                  <input type="text" class="form-control" [(ngModel)]="cardDetails.number" name="number" placeholder="1234 5678 9012 3456" required>
-                </div>
-                <div class="row mb-3">
-                  <div class="col-md-6">
-                    <label class="form-label">Expiry Date</label>
-                    <input type="text" class="form-control" [(ngModel)]="cardDetails.expiry" name="expiry" placeholder="MM/YY" required>
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">CVV</label>
-                    <input type="text" class="form-control" [(ngModel)]="cardDetails.cvv" name="cvv" placeholder="123" required>
-                  </div>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Cardholder Name</label>
-                  <input type="text" class="form-control" [(ngModel)]="cardDetails.name" name="name" placeholder="John Doe" required>
-                </div>
-                <button type="submit" class="btn btn-primary w-100">Pay {{totalAmount | currency:'TND'}}</button>
-              </form>
-              
-              <!-- Other payment methods -->
-              <div *ngIf="selectedMethod && !showCardForm" class="text-center mt-4">
-                <button (click)="processPayment()" class="btn btn-primary btn-lg">
-                  Complete Order with {{getMethodName(selectedMethod)}}
-                </button>
-              </div>
-            </div>
+          <div class="method-info">
+            <h4 class="method-name">{{ method.name }}</h4>
+            <p class="method-description">{{ method.description }}</p>
+          </div>
+          <div class="selection-indicator">
+            <div class="radio-button"></div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Card Form (for Credit Card) -->
+    <div class="card-form-section" *ngIf="showCardForm" [@slideIn]>
+      <h3 class="section-title">Card Information</h3>
+      
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="cardholderName">Cardholder Name</label>
+          <input 
+            id="cardholderName"
+            type="text" 
+            [(ngModel)]="billingDetails.name"
+            placeholder="John Doe"
+            class="form-input"
+            [disabled]="paymentProcessing"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input 
+            id="email"
+            type="email" 
+            [(ngModel)]="billingDetails.email"
+            placeholder="john@example.com"
+            class="form-input"
+            [disabled]="paymentProcessing"
+          />
+        </div>
+
+        <div class="form-group full-width">
+          <label for="card-element">Card Details</label>
+          <div id="card-element" class="stripe-element">
+            <!-- Stripe Elements will be mounted here -->
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="address">Address</label>
+          <input 
+            id="address"
+            type="text" 
+            [(ngModel)]="billingDetails.address.line1"
+            placeholder="123 Main Street"
+            class="form-input"
+            [disabled]="paymentProcessing"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="city">City</label>
+          <input 
+            id="city"
+            type="text" 
+            [(ngModel)]="billingDetails.address.city"
+            placeholder="Tunis"
+            class="form-input"
+            [disabled]="paymentProcessing"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Error Message -->
+    <div class="error-message" *ngIf="paymentError" [@fadeIn]>
+      <i class="error-icon">⚠️</i>
+      <span>{{ paymentError }}</span>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+   <button 
+  type="button"
+  class="btn btn-secondary"
+  (click)="navigateToCart()"
+  [disabled]="paymentProcessing"
+>
+  <i class="btn-icon">←</i>
+  Back to Cart
+</button>
+
+      <button 
+        type="button"
+        class="btn btn-primary"
+        [disabled]="!selectedMethod || paymentProcessing || isLoading"
+        (click)="processPayment()"
+      >
+        <span *ngIf="!paymentProcessing && !isLoading">
+          <i class="btn-icon">💳</i>
+          Pay {{ totalAmount }} {{ currency }}
+        </span>
+        <span *ngIf="paymentProcessing || isLoading" class="loading-content">
+          <mat-spinner diameter="20"></mat-spinner>
+          Processing...
+        </span>
+      </button>
+    </div>
+
+    <!-- Security Info -->
+    <div class="security-info">
+      <div class="security-badge">
+        <i class="security-icon">🔒</i>
+        <span>Secure Payment</span>
+      </div>
+      <p class="security-text">Your payment information is encrypted and secure</p>
+    </div>
   </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" *ngIf="isLoading" [@fadeIn]>
+    <div class="loading-content">
+      <mat-spinner diameter="50"></mat-spinner>
+      <p>Initializing payment...</p>
+    </div>
+  </div>
+</div>

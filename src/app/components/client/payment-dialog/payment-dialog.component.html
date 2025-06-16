@@ -1,70 +1,276 @@
 <!-- payment-dialog.component.html -->
- <!-- أضف في الأعلى -->
-<app-pricing-details [pricing]="data.delivery.pricingDetails"></app-pricing-details>
-<div class="p-4">
-    <h2 class="mb-4">Payment for Delivery #{{data.delivery.id.slice(0, 8)}}</h2>
-    
-    <div class="card mb-4">
-      <div class="card-body">
-        <h5 class="card-title">Order Summary</h5>
-        <div class="d-flex justify-content-between mb-2">
-          <span>Delivery Amount:</span>
-          <strong>{{data.delivery.amount | currency:'TND'}}</strong>
-        </div>
-        <div *ngIf="discountApplied" class="d-flex justify-content-between text-success mb-2">
-          <span>Discount Applied:</span>
-          <strong>-{{data.delivery.amount - data.delivery.finalAmountAfterDiscount | currency:'TND'}}</strong>
-        </div>
-        <div class="d-flex justify-content-between fw-bold fs-5">
-          <span>Total Amount:</span>
-          <strong>{{data.delivery.finalAmountAfterDiscount || data.delivery.amount | currency:'TND'}}</strong>
-        </div>
-      </div>
-    </div>
-  
-    <!-- Discount Section -->
-    <div class="card mb-4">
-      <div class="card-body">
-        <h5 class="card-title">Apply Discount</h5>
-        <div class="input-group mb-3">
-          <input type="text" class="form-control" [(ngModel)]="discountCode" placeholder="Enter discount code">
-          <button class="btn btn-outline-primary" (click)="applyDiscount()" [disabled]="!discountCode || loading">
-            Apply
-          </button>
-        </div>
-        <div *ngIf="discountError" class="alert alert-danger">{{discountError}}</div>
-      </div>
-    </div>
-  
-    <!-- Payment Method -->
-    <div class="card mb-4">
-      <div class="card-body">
-        <h5 class="card-title">Select Payment Method</h5>
-        <div class="list-group">
-          <button *ngFor="let method of paymentMethods" 
-                  class="list-group-item list-group-item-action"
-                  [class.active]="selectedMethod === method.id"
-                  (click)="selectedMethod = method.id">
-            <div class="d-flex align-items-center">
-              <i class="bi bi-{{method.icon}} me-3 fs-4"></i>
-              <div>
-                <h6 class="mb-1">{{method.name}}</h6>
-                <small class="text-muted">{{method.description}}</small>
-              </div>
-            </div>
-          </button>
-        </div>
-      </div>
-    </div>
-  
-    <!-- Actions -->
-    <div class="d-flex justify-content-end gap-2">
-      <button class="btn btn-outline-secondary" (click)="close()">Cancel</button>
-      <button class="btn btn-primary" 
-              (click)="processPayment()"
-              [disabled]="!selectedMethod || loading">
-        <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
-        Pay Now
+<div class="payment-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <button class="back-button" (click)="navigateToDashboard()" type="button">
+        <i class="fas fa-arrow-left"></i>
       </button>
+      <div class="header-info">
+        <h1><i class="fas fa-credit-card me-2"></i>Payment</h1>
+        <div class="order-id">Order #{{ getOrderId() }}</div>
+      </div>
     </div>
   </div>
+
+  <!-- Main Content -->
+  <div class="payment-content">
+    <div class="container">
+      <div class="row">
+        <!-- Left Column - Payment Details -->
+        <div class="col-lg-8 col-md-12">
+          <!-- Payment Status Banner -->
+          <div *ngIf="paymentStatus !== 'PENDING'" class="status-banner" [class.success]="paymentStatus === 'COMPLETED'"
+               [class.warning]="paymentStatus === 'PROCESSING' || paymentStatus === 'PENDING_VERIFICATION'"
+               [class.error]="paymentStatus === 'FAILED'">
+            <i class="fas" 
+               [class.fa-check-circle]="paymentStatus === 'COMPLETED'"
+               [class.fa-spinner]="paymentStatus === 'PROCESSING'"
+               [class.fa-exclamation-circle]="paymentStatus === 'FAILED'"></i>
+            <span>
+              {{ getPaymentStatusMessage(paymentStatus) }}
+              <span *ngIf="paymentId">(ID: {{ paymentId.slice(0, 8) }})</span>
+            </span>
+          </div>
+
+          <!-- Pricing Details Section -->
+          <div class="section-card">
+            <div class="section-header">
+              <i class="fas fa-calculator"></i>
+              <h5>Pricing Breakdown</h5>
+            </div>
+            <div class="section-body">
+              <ng-container *ngIf="delivery && delivery.pricingDetails; else loadingPricing">
+                <app-pricing-details [pricing]="delivery.pricingDetails"></app-pricing-details>
+              </ng-container>
+              
+              <ng-template #loadingPricing>
+                <div *ngIf="loading" class="text-center p-4">
+                  <mat-spinner diameter="40"></mat-spinner>
+                  <p class="mt-2">Loading pricing details...</p>
+                </div>
+                <div *ngIf="!loading && (!delivery || !delivery.pricingDetails)" class="alert alert-warning">
+                  <i class="fas fa-exclamation-triangle"></i>
+                  Could not load pricing details. Please try again.
+                </div>
+              </ng-template>
+            </div>
+          </div>
+
+          <!-- Discount Section -->
+          <div class="section-card">
+            <div class="section-header">
+              <i class="fas fa-tags"></i>
+              <h5>Apply Discount Code</h5>
+            </div>
+            <div class="section-body">
+              <div class="discount-input-group input-group">
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  [(ngModel)]="discountCode" 
+                  placeholder="Enter your discount code"
+                  [disabled]="discountApplied || discountLoading">
+                <button 
+                  class="btn btn-primary" 
+                  (click)="applyDiscount()" 
+                  [disabled]="!discountCode || discountLoading || discountApplied">
+                  <i *ngIf="!discountLoading" class="fas fa-check me-1"></i>
+                  <i *ngIf="discountLoading" class="fas fa-spinner fa-spin me-1"></i>
+                  Apply
+                </button>
+                <button 
+                  *ngIf="discountApplied"
+                  class="btn btn-outline-danger" 
+                  (click)="removeDiscount()">
+                  <i class="fas fa-times me-1"></i>
+                  Remove
+                </button>
+              </div>
+              
+              <div *ngIf="discountApplied" class="discount-success">
+                <i class="fas fa-check-circle"></i>
+                <strong>Discount applied successfully!</strong>
+                <span class="discount-amount">-{{ getDiscountAmount() | currency:'TND' }}</span>
+              </div>
+              
+              <div *ngIf="discountError" class="alert alert-danger mt-2">
+                <i class="fas fa-exclamation-triangle me-1"></i>
+                {{ discountError }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Payment Method Section -->
+          <div class="section-card" *ngIf="paymentStatus === 'PENDING'">
+            <div class="section-header">
+              <i class="fas fa-credit-card"></i>
+              <h5>Select Payment Method</h5>
+            </div>
+            <div class="section-body">
+              <div class="payment-methods">
+                <div *ngFor="let method of paymentMethods" 
+                     class="payment-method"
+                     [class.active]="selectedMethod === method.id"
+                     (click)="selectPaymentMethod(method.id)">
+                  <div class="payment-method-content">
+                    <div class="payment-method-icon">
+                      <i class="fas" [class.fa-credit-card]="method.id === 'CREDIT_CARD'"
+                         [class.fa-university]="method.id === 'BANK_TRANSFER'"
+                         [class.fa-wallet]="method.id === 'WALLET'"></i>
+                    </div>
+                    <div class="payment-method-info">
+                      <h6>{{ method.name }}</h6>
+                      <small>{{ method.description }}</small>
+                    </div>
+                    <div class="payment-method-check">
+                      <i class="fas fa-check-circle"></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card Form Section -->
+          <div *ngIf="showCardForm" class="section-card">
+            <div class="section-header">
+              <i class="fas fa-credit-card"></i>
+              <h5>Card Information</h5>
+            </div>
+            <div class="section-body">
+              <div class="billing-form">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="cardholderName">Cardholder Name *</label>
+                    <input 
+                      id="cardholderName"
+                      type="text" 
+                      class="form-control"
+                      [(ngModel)]="billingDetails.name"
+                      placeholder="John Doe"
+                      [disabled]="paymentProcessing"
+                      required>
+                  </div>
+                  <div class="form-group">
+                    <label for="email">Email Address *</label>
+                    <input 
+                      id="email"
+                      type="email" 
+                      class="form-control"
+                      [(ngModel)]="billingDetails.email"
+                      placeholder="john@example.com"
+                      [disabled]="paymentProcessing"
+                      required>
+                  </div>
+                </div>
+                
+                <div class="form-group">
+                  <label for="card-element">Card Details *</label>
+                  <div id="card-element" class="stripe-card-element">
+                    <!-- Stripe Elements will mount here -->
+                  </div>
+                  <div id="card-errors" class="stripe-card-errors" role="alert"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bank Transfer Instructions -->
+          <div *ngIf="showBankDetails" class="section-card">
+            <div class="section-header">
+              <i class="fas fa-university"></i>
+              <h5>Bank Transfer Instructions</h5>
+            </div>
+            <div class="section-body">
+              <div class="bank-details">
+                <p>Please transfer the amount of <strong>{{ getFinalAmount() | currency:'TND' }}</strong> to:</p>
+                <div class="bank-info">
+                  <div class="bank-row">
+                    <span class="bank-label">Bank Name:</span>
+                    <span class="bank-value">Tunisian International Bank</span>
+                  </div>
+                  <div class="bank-row">
+                    <span class="bank-label">Account Name:</span>
+                    <span class="bank-value">ExpedNow Services</span>
+                  </div>
+                  <div class="bank-row">
+                    <span class="bank-label">IBAN:</span>
+                    <span class="bank-value">TN59 1000 1234 5678 9012 3456</span>
+                  </div>
+                  <div class="bank-row">
+                    <span class="bank-label">Reference:</span>
+                    <span class="bank-value">DEL-{{ getOrderId() }}</span>
+                  </div>
+                </div>
+                <p class="note">Your order will be processed once we receive and verify your payment.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column - Order Summary -->
+        <div class="col-lg-4 col-md-12">
+          <div class="sticky-summary">
+            <!-- Order Summary Section -->
+            <div class="section-card">
+              <div class="section-header">
+                <i class="fas fa-receipt"></i>
+                <h5>Order Summary</h5>
+              </div>
+              <div class="section-body">
+                <div class="pricing-summary">
+                  <div class="pricing-row">
+                    <span class="pricing-label">Delivery Amount:</span>
+                    <span class="pricing-value">{{ delivery?.amount | currency:'TND' }}</span>
+                  </div>
+                  <div *ngIf="discountApplied" class="pricing-row">
+                    <span class="pricing-label">Discount Applied:</span>
+                    <span class="pricing-value discount-applied">-{{ getDiscountAmount() | currency:'TND' }}</span>
+                  </div>
+                  <hr class="pricing-divider">
+                  <div class="pricing-row total-row">
+                    <span class="pricing-label">Total Amount:</span>
+                    <span class="pricing-value total-amount">{{ getFinalAmount() | currency:'TND' }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Payment Error -->
+            <div *ngIf="paymentError" class="alert alert-danger">
+              <i class="fas fa-exclamation-triangle me-1"></i>
+              {{ paymentError }}
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons" *ngIf="paymentStatus === 'PENDING'">
+              <button class="btn btn-cancel" (click)="navigateToDashboard()" [disabled]="paymentProcessing">
+                <i class="fas fa-times me-2"></i>Cancel
+              </button>
+              <button 
+                class="btn btn-pay" 
+                (click)="processPayment()"
+                [disabled]="!selectedMethod || paymentProcessing || (showCardForm && (!billingDetails.name || !billingDetails.email))">
+                <span *ngIf="paymentProcessing" class="spinner-border spinner-border-sm me-2"></span>
+                <i *ngIf="!paymentProcessing" class="fas fa-lock me-2"></i>
+                <span *ngIf="paymentProcessing">Processing...</span>
+                <span *ngIf="!paymentProcessing">Pay {{ getFinalAmount() | currency:'TND' }}</span>
+              </button>
+            </div>
+
+            <!-- Payment Status Actions -->
+            <div *ngIf="paymentStatus !== 'PENDING'" class="status-actions">
+              <button *ngIf="paymentStatus === 'FAILED'" class="btn btn-retry" (click)="resetPayment()">
+                <i class="fas fa-redo me-2"></i>Retry Payment
+              </button>
+              <button class="btn btn-dashboard" (click)="navigateToDashboard()">
+                <i class="fas fa-home me-2"></i>Go to Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

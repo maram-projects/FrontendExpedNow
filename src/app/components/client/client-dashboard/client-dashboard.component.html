@@ -30,6 +30,38 @@
         </div>
       </div>
 
+      <!-- Payment Summary Card -->
+      <div class="payment-summary-card card-modern">
+        <div class="card-body">
+          <div class="section-header">
+            <h5 class="card-title">
+              <i class="fas fa-credit-card me-2"></i>Payment Summary
+            </h5>
+          </div>
+          <div class="payment-stats">
+            <div class="payment-stat-item">
+              <div class="payment-stat-label">Total Paid</div>
+              <div class="payment-stat-value success">{{ stats.totalPaidAmount | currency:'TND' }}</div>
+            </div>
+            <div class="payment-stat-item">
+              <div class="payment-stat-label">Pending Payment</div>
+              <div class="payment-stat-value warning">{{ stats.totalUnpaidAmount | currency:'TND' }}</div>
+            </div>
+            <div class="payment-stat-item">
+              <div class="payment-stat-label">Total Saved</div>
+              <div class="payment-stat-value info">{{ stats.totalSavings | currency:'TND' }}</div>
+            </div>
+          </div>
+          <div *ngIf="unpaidDeliveries > 0" class="unpaid-alert">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>{{ unpaidDeliveries }} orders need payment</span>
+            <button (click)="showUnpaidOrders()" class="btn btn-sm btn-warning">
+              Pay Now
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Discounts Section -->
       <div class="discounts-card card-modern">
         <div class="card-body">
@@ -43,6 +75,10 @@
               <div class="discount-content">
                 <div class="discount-percentage">{{discount.percentage}}% OFF</div>
                 <p class="discount-description">{{discount.description}}</p>
+                <div class="discount-expiry">
+                  <i class="fas fa-clock"></i>
+                  Expires: {{ discount.validUntil | date:'shortDate' }}
+                </div>
               </div>
               <span class="discount-code">{{discount.code}}</span>
             </div>
@@ -69,6 +105,10 @@
             <div class="stat-info">
               <h6 class="stat-label">Total Orders</h6>
               <h3 class="stat-value">{{ stats.totalOrders }}</h3>
+              <p class="stat-trend">
+                <i class="fas fa-arrow-up text-success"></i>
+                {{ stats.thisMonthOrders }} this month
+              </p>
             </div>
             <div class="stat-icon">
               <i class="fas fa-shopping-bag"></i>
@@ -82,6 +122,10 @@
             <div class="stat-info">
               <h6 class="stat-label">Pending Orders</h6>
               <h3 class="stat-value">{{ stats.pendingOrders }}</h3>
+              <p class="stat-trend">
+                <i class="fas fa-clock text-warning"></i>
+                In progress
+              </p>
             </div>
             <div class="stat-icon">
               <i class="fas fa-clock"></i>
@@ -95,9 +139,30 @@
             <div class="stat-info">
               <h6 class="stat-label">Completed Orders</h6>
               <h3 class="stat-value">{{ stats.completedOrders }}</h3>
+              <p class="stat-trend">
+                <i class="fas fa-check text-success"></i>
+                {{ stats.paidOrders }} paid
+              </p>
             </div>
             <div class="stat-icon">
               <i class="fas fa-check-circle"></i>
+            </div>
+          </div>
+          <div class="stat-wave"></div>
+        </div>
+
+        <div class="stat-card stat-info">
+          <div class="stat-content">
+            <div class="stat-info">
+              <h6 class="stat-label">Payment Rate</h6>
+              <h3 class="stat-value">{{ stats.paymentRate }}%</h3>
+              <p class="stat-trend">
+                <i class="fas fa-credit-card text-info"></i>
+                {{ stats.paidOrders }}/{{ stats.completedOrders }} paid
+              </p>
+            </div>
+            <div class="stat-icon">
+              <i class="fas fa-percentage"></i>
             </div>
           </div>
           <div class="stat-wave"></div>
@@ -110,9 +175,28 @@
           <h5 class="section-title">
             <i class="fas fa-truck me-2"></i>Recent Delivery Requests
           </h5>
-          <div *ngIf="unpaidDeliveries > 0" class="unpaid-badge">
-            <i class="fas fa-exclamation-triangle me-1"></i>
-            {{unpaidDeliveries}} unpaid
+          <div class="header-actions">
+            <div *ngIf="unpaidDeliveries > 0" class="unpaid-badge">
+              <i class="fas fa-exclamation-triangle me-1"></i>
+              {{unpaidDeliveries}} unpaid
+            </div>
+            <div class="filter-buttons">
+              <button class="btn btn-sm btn-outline-primary" 
+                      [class.active]="selectedFilter === 'all'"
+                      (click)="filterDeliveries('all')">
+                All
+              </button>
+              <button class="btn btn-sm btn-outline-warning" 
+                      [class.active]="selectedFilter === 'unpaid'"
+                      (click)="filterDeliveries('unpaid')">
+                Unpaid
+              </button>
+              <button class="btn btn-sm btn-outline-success" 
+                      [class.active]="selectedFilter === 'paid'"
+                      (click)="filterDeliveries('paid')">
+                Paid
+              </button>
+            </div>
           </div>
         </div>
         <div class="card-body">
@@ -123,18 +207,20 @@
             </div>
           </div>
           
-          <div *ngIf="!isLoading && recentDeliveries.length === 0" class="empty-state">
+          <div *ngIf="!isLoading && filteredDeliveries.length === 0" class="empty-state">
             <div class="empty-icon">
               <i class="fas fa-truck"></i>
             </div>
-            <h4>No delivery requests found</h4>
-            <p>Start by creating your first delivery request</p>
-            <button (click)="goToDeliveryRequest()" class="btn btn-primary btn-create-first">
+            <h4>{{ getEmptyStateMessage() }}</h4>
+            <p>{{ getEmptyStateDescription() }}</p>
+            <button *ngIf="selectedFilter === 'all'" 
+                    (click)="goToDeliveryRequest()" 
+                    class="btn btn-primary btn-create-first">
               <i class="fas fa-plus me-2"></i> Create Delivery Request
             </button>
           </div>
           
-          <div *ngIf="!isLoading && recentDeliveries.length > 0" class="table-container">
+          <div *ngIf="!isLoading && filteredDeliveries.length > 0" class="table-container">
             <div class="table-responsive">
               <table class="table table-modern">
                 <thead>
@@ -145,39 +231,74 @@
                     <th>Amount</th>
                     <th>Status</th>
                     <th>Payment</th>
+                    <th>Payment Method</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr *ngFor="let delivery of recentDeliveries" class="table-row-animated">
+                  <tr *ngFor="let delivery of filteredDeliveries" class="table-row-animated">
                     <td class="id-cell">#{{ delivery.id.slice(0, 8) }}</td>
                     <td class="address-cell">{{ delivery.deliveryAddress }}</td>
                     <td class="date-cell">{{ delivery.scheduledDate | date:'mediumDate' }}</td>
-                    <td class="amount-cell">{{ delivery.amount | currency:'TND' }}</td>
-                    <td>
-                      <span class="status-badge"
-      [ngClass]="{
-        'status-delivered': delivery.status === 'DELIVERED',
-        'status-approved': delivery.status === 'APPROVED',
-        'status-pending': delivery.status === 'PENDING',
-        'status-assigned': delivery.status === 'ASSIGNED',
-        'status-transit': delivery.status === 'IN_TRANSIT',
-        'status-cancelled': delivery.status === 'CANCELLED',
-        'status-expired': delivery.status === 'EXPIRED'
-      }">
-  {{ delivery.status }}
-</span>
+                    <td class="amount-cell">
+                      <div class="amount-info">
+                        <span class="original-amount" *ngIf="delivery.discountAmount && delivery.discountAmount > 0">
+                          <s>{{ delivery.originalAmount | currency:'TND' }}</s>
+                        </span>
+                        <span class="final-amount">{{ delivery.amount | currency:'TND' }}</span>
+                        <span class="savings" *ngIf="delivery.discountAmount && delivery.discountAmount > 0">
+                          <i class="fas fa-tag"></i> -{{ delivery.discountAmount | currency:'TND' }}
+                        </span>
+                      </div>
                     </td>
                     <td>
-                      <span *ngIf="delivery.status === 'DELIVERED'" class="payment-badge"
+                      <span class="status-badge"
                             [ngClass]="{
-                              'payment-paid': delivery.paymentStatus === 'PAID',
-                              'payment-pending': delivery.paymentStatus === 'PENDING',
-                              'payment-unpaid': !delivery.paymentStatus || delivery.paymentStatus === 'UNPAID'
+                              'status-delivered': delivery.status === 'DELIVERED',
+                              'status-approved': delivery.status === 'APPROVED',
+                              'status-pending': delivery.status === 'PENDING',
+                              'status-assigned': delivery.status === 'ASSIGNED',
+                              'status-transit': delivery.status === 'IN_TRANSIT',
+                              'status-cancelled': delivery.status === 'CANCELLED',
+                              'status-expired': delivery.status === 'EXPIRED'
                             }">
-                        {{ delivery.paymentStatus || 'UNPAID' }}
+                        {{ delivery.status }}
                       </span>
-                      <span *ngIf="delivery.status !== 'DELIVERED'" class="payment-na">-</span>
+                    </td>
+                    <td>
+                      <div class="payment-status-cell">
+                        <span *ngIf="delivery.status === 'DELIVERED'" class="payment-badge"
+                              [ngClass]="{
+                                'payment-paid': delivery.paymentStatus === 'PAID',
+                                'payment-pending': delivery.paymentStatus === 'PENDING',
+                                'payment-unpaid': !delivery.paymentStatus || delivery.paymentStatus === 'UNPAID'
+                              }">
+                          <i class="fas" [ngClass]="{
+                            'fa-check-circle': delivery.paymentStatus === 'PAID',
+                            'fa-clock': delivery.paymentStatus === 'PENDING',
+                            'fa-exclamation-circle': !delivery.paymentStatus || delivery.paymentStatus === 'UNPAID'
+                          }"></i>
+                          {{ delivery.paymentStatus || 'UNPAID' }}
+                        </span>
+                        <span *ngIf="delivery.status !== 'DELIVERED'" class="payment-na">-</span>
+                        
+                        <!-- Payment Date -->
+                        <small *ngIf="delivery.paymentStatus === 'PAID' && delivery.paymentDate" class="payment-date">
+                          {{ delivery.paymentDate | date:'shortDate' }}
+                        </small>
+                      </div>
+                    </td>
+                    <td>
+                      <span *ngIf="delivery.paymentMethod" class="payment-method">
+                        <i class="fas" [ngClass]="{
+                          'fa-credit-card': delivery.paymentMethod === 'CREDIT_CARD',
+                          'fa-money-bill-wave': delivery.paymentMethod === 'CASH_ON_DELIVERY',
+                          'fa-mobile-alt': delivery.paymentMethod === 'MOBILE_MONEY',
+                          'fa-university': delivery.paymentMethod === 'BANK_TRANSFER'
+                        }"></i>
+                        {{ getPaymentMethodLabel(delivery.paymentMethod) }}
+                      </span>
+                      <span *ngIf="!delivery.paymentMethod" class="payment-method-na">-</span>
                     </td>
                     <td>
                       <div class="action-buttons">
@@ -194,6 +315,14 @@
                                 (click)="openPaymentDialog(delivery)"
                                 title="Make Payment">
                           <i class="fas fa-money-bill-wave"></i>
+                        </button>
+                        
+                        <!-- Receipt Button (shown only for paid orders) -->
+                        <button *ngIf="delivery.paymentStatus === 'PAID'"
+                                class="btn btn-action btn-receipt"
+                                (click)="downloadReceipt(delivery)"
+                                title="Download Receipt">
+                          <i class="fas fa-receipt"></i>
                         </button>
                         
                         <!-- Cancel Button (shown only for pending/assigned) -->
@@ -213,9 +342,20 @@
             </div>
             
             <div class="table-footer">
-              <a routerLink="/client/orders" class="btn btn-outline-primary btn-view-all">
-                <i class="fas fa-list me-2"></i>View All Orders
-              </a>
+              <div class="table-info">
+                <span>Showing {{ filteredDeliveries.length }} of {{ recentDeliveries.length }} deliveries</span>
+              </div>
+              <div class="table-actions">
+                <button *ngIf="unpaidDeliveries > 0 && selectedFilter !== 'unpaid'" 
+                        (click)="payAllUnpaid()" 
+                        class="btn btn-warning me-2">
+                  <i class="fas fa-credit-card me-1"></i>
+                  Pay All Unpaid ({{ unpaidDeliveries }})
+                </button>
+                <a routerLink="/client/orders" class="btn btn-outline-primary btn-view-all">
+                  <i class="fas fa-list me-2"></i>View All Orders
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -223,3 +363,188 @@
     </div>
   </div>
 </div>
+
+<style>
+.payment-summary-card {
+  margin-bottom: 1.5rem;
+}
+
+.payment-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.payment-stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: var(--bs-light);
+  border-radius: 0.5rem;
+}
+
+.payment-stat-label {
+  font-size: 0.875rem;
+  color: var(--bs-secondary);
+  font-weight: 500;
+}
+
+.payment-stat-value {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.payment-stat-value.success { color: var(--bs-success); }
+.payment-stat-value.warning { color: var(--bs-warning); }
+.payment-stat-value.info { color: var(--bs-info); }
+
+.unpaid-alert {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.filter-buttons .btn.active {
+  background-color: var(--bs-primary);
+  color: white;
+  border-color: var(--bs-primary);
+}
+
+.amount-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.original-amount {
+  font-size: 0.8rem;
+  color: var(--bs-secondary);
+}
+
+.final-amount {
+  font-weight: 600;
+}
+
+.savings {
+  font-size: 0.75rem;
+  color: var(--bs-success);
+  font-weight: 500;
+}
+
+.payment-status-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.payment-date {
+  color: var(--bs-secondary);
+  font-size: 0.75rem;
+}
+
+.payment-method {
+  font-size: 0.85rem;
+  color: var(--bs-secondary);
+}
+
+.payment-method i {
+  margin-right: 0.25rem;
+}
+
+.payment-method-na {
+  color: var(--bs-secondary);
+}
+
+.btn-receipt {
+  background-color: var(--bs-info);
+  border-color: var(--bs-info);
+  color: white;
+}
+
+.btn-receipt:hover {
+  background-color: #0056b3;
+  border-color: #0056b3;
+}
+
+.table-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 1rem;
+  border-top: 1px solid var(--bs-border-color);
+  margin-top: 1rem;
+}
+
+.table-info {
+  color: var(--bs-secondary);
+  font-size: 0.875rem;
+}
+
+.table-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-trend {
+  font-size: 0.8rem;
+  margin: 0;
+  color: var(--bs-secondary);
+}
+
+.discount-expiry {
+  font-size: 0.75rem;
+  color: var(--bs-secondary);
+  margin-top: 0.25rem;
+}
+
+.discount-expiry i {
+  margin-right: 0.25rem;
+}
+
+@media (max-width: 768px) {
+  .header-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+  
+  .table-footer {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .payment-stats {
+    gap: 0.75rem;
+  }
+  
+  .payment-stat-item {
+    padding: 0.5rem;
+  }
+}
+</style>

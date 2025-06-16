@@ -6,30 +6,32 @@ import { environment } from '../../environments/environment';
 import { AuthService } from './auth.service';
 import { Mission } from '../models/mission.model';
 
-// Current Angular interface (problematic)
 // Updated to match Java DeliveryResponseDTO
 export interface DeliveryRequest {
-amount: string|number;
+  amount: string | number;
   paymentStatus: string;
-actionTime: string|number|Date;
-updatedAt: string|number|Date;
+  actionTime: string | number | Date;
+  updatedAt: string | number | Date;
   id: string;
   pickupAddress: string;
   deliveryAddress: string;
-  packageDescription: string;  // Not packageType
+  packageDescription: string;
   packageWeight: number;
   pickupLatitude: number;
   pickupLongitude: number;
   deliveryLatitude: number;
   deliveryLongitude: number;
+   paymentDate?: string | number | Date;
+  originalAmount?: number | string;
+  paymentMethod?: string;
   status: string; 
   vehicleId?: string;
-  scheduledDate: string;  // Will be in Java's format "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+  scheduledDate: string;
   additionalInstructions?: string;
   createdAt?: string;
   clientId?: string;
   processing?: boolean;
-  // Remove latitude/longitude if not in Java DTO
+  discountAmount?: number; // Added missing property
 }
 
 @Injectable({ providedIn: 'root' })
@@ -38,7 +40,7 @@ export class DeliveryService {
 
   constructor(
     private http: HttpClient,
-    public authService: AuthService // Changed to public for component access
+    public authService: AuthService
   ) {}
 
   createDeliveryRequest(delivery: Omit<DeliveryRequest, 'id'>): Observable<DeliveryRequest> {
@@ -47,7 +49,6 @@ export class DeliveryService {
       scheduledDate: new Date(delivery.scheduledDate).toISOString()
     };
     
-    // Log the request for debugging
     console.log('Delivery request payload:', formattedDelivery);
   
     const url = `${this.apiUrl}/request${delivery.clientId ? `?clientId=${delivery.clientId}` : ''}`;
@@ -57,7 +58,7 @@ export class DeliveryService {
         catchError(error => {
           console.error('Error creating delivery:', error);
           console.error('Request payload was:', formattedDelivery);
-          console.error('Server response:', error.error); // Add this to see server error message
+          console.error('Server response:', error.error);
           return throwError(() => new Error(`Failed to create delivery request: ${error.message || error.error || 'Unknown error'}`));
         })
       );
@@ -70,7 +71,7 @@ export class DeliveryService {
   getAllDeliveries(): Observable<DeliveryRequest[]> {
     console.log('Fetching all deliveries for debugging');
     return this.http.get<DeliveryRequest[]>(
-      `${this.apiUrl}/all`, // Make sure this endpoint exists on your backend
+      `${this.apiUrl}/all`,
       { headers: this.getAuthHeaders() }
     ).pipe(
       tap(deliveries => console.log('All deliveries:', deliveries)),
@@ -84,7 +85,7 @@ export class DeliveryService {
   getPendingDeliveriesUnassigned(): Observable<DeliveryRequest[]> {
     console.log('Fetching unassigned pending deliveries');
     return this.http.get<DeliveryRequest[]>(
-      `${this.apiUrl}/pending-unassigned`, // Make sure this endpoint exists
+      `${this.apiUrl}/pending-unassigned`,
       { headers: this.getAuthHeaders() }
     ).pipe(
       tap(deliveries => console.log('Unassigned pending deliveries:', deliveries)),
@@ -95,34 +96,32 @@ export class DeliveryService {
     );
   }
 
-  // في ملف delivery-service.service.ts
-cancelDelivery(deliveryId: string): Observable<void> {
-  const userId = this.authService.getCurrentUser()?.userId;
-  return this.http.delete<void>(
-    `${this.apiUrl}/client/${deliveryId}?clientId=${userId}`,
-    { headers: this.getAuthHeaders() }
-  ).pipe(
-    catchError(error => {
-      console.error('Error canceling delivery:', error);
-      return throwError(() => new Error('Failed to cancel delivery'));
-    })
-  );
-}
+  cancelDelivery(deliveryId: string): Observable<void> {
+    const userId = this.authService.getCurrentUser()?.userId;
+    return this.http.delete<void>(
+      `${this.apiUrl}/client/${deliveryId}?clientId=${userId}`,
+      { headers: this.getAuthHeaders() }
+    ).pipe(
+      catchError(error => {
+        console.error('Error canceling delivery:', error);
+        return throwError(() => new Error('Failed to cancel delivery'));
+      })
+    );
+  }
 
-// في delivery.service.ts
-checkExpiredDeliveries(): Observable<void> {
-  return this.http.post<void>(`${this.apiUrl}/expire-old`, {}).pipe(
-    catchError(error => {
-      if (error.status === 403) {
-        return throwError(() => new Error('You do not have permission to perform this action'));
-      } else if (error.status === 500) {
-        return throwError(() => new Error('Server error while expiring deliveries'));
-      } else {
-        return throwError(() => new Error('Failed to check expired deliveries'));
-      }
-    })
-  );
-}
+  checkExpiredDeliveries(): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/expire-old`, {}).pipe(
+      catchError(error => {
+        if (error.status === 403) {
+          return throwError(() => new Error('You do not have permission to perform this action'));
+        } else if (error.status === 500) {
+          return throwError(() => new Error('Server error while expiring deliveries'));
+        } else {
+          return throwError(() => new Error('Failed to check expired deliveries'));
+        }
+      })
+    );
+  }
 
   checkDeliveryPersonStatus(): Observable<any> {
     const userId = this.authService.getCurrentUser()?.userId;
@@ -173,8 +172,6 @@ checkExpiredDeliveries(): Observable<void> {
     );
   }
 
- 
-
   updateLocation(latitude: number, longitude: number): Observable<any> {
     return this.http.post(
       `${environment.apiUrl}/api/deliveriesperson/location`,
@@ -195,6 +192,19 @@ checkExpiredDeliveries(): Observable<void> {
     );
   }
 
+  // Added the missing downloadReceipt method
+  downloadReceipt(deliveryId: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/${deliveryId}/receipt`, {
+      headers: this.getAuthHeaders(),
+      responseType: 'blob'
+    }).pipe(
+      catchError(error => {
+        console.error('Error downloading receipt:', error);
+        return throwError(() => new Error('Failed to download receipt'));
+      })
+    );
+  }
+
   private handleError(error: any): Observable<never> {
     console.error('An error occurred:', error);
     if (error.status === 0) {
@@ -212,7 +222,6 @@ checkExpiredDeliveries(): Observable<void> {
         return throwError(() => new Error('User ID is missing!'));
     }
 
-    // Make sure data is sent as JSON
     const body = { deliveryPersonId: userId };
     console.log('Request body:', body);
 
@@ -221,7 +230,7 @@ checkExpiredDeliveries(): Observable<void> {
         body,
         { 
             headers: this.getAuthHeaders(),
-            withCredentials: true // If using cookies
+            withCredentials: true
         }
     ).pipe(
         catchError(error => {
@@ -236,7 +245,7 @@ checkExpiredDeliveries(): Observable<void> {
     const userId = this.authService.getCurrentUser()?.userId;
     return this.http.post<void>(
       `${this.apiUrl}/${deliveryId}/reject?deliveryPersonId=${userId}`,
-      {},  // Empty body
+      {},
       { headers: this.getAuthHeaders() }
     ).pipe(
       catchError(error => {
@@ -246,7 +255,6 @@ checkExpiredDeliveries(): Observable<void> {
     );
   }
 
-  // Add this to the getAuthHeaders method in DeliveryService
   private getAuthHeaders(): HttpHeaders {
     const token = this.authService.getToken();
     console.log('Current user ID:', this.authService.getCurrentUser()?.userId);
@@ -258,58 +266,61 @@ checkExpiredDeliveries(): Observable<void> {
 
   getAssignedDeliveries(): Observable<DeliveryRequest[]> {
     return this.http.get<DeliveryRequest[]>(
-      `${this.apiUrl}/assigned-pending`,  // Changed to match Spring endpoint
+      `${this.apiUrl}/assigned-pending`,
       { headers: this.getAuthHeaders() }
     ).pipe(
       catchError(this.handleError)
     );
   }
 
-getAssignedPendingDeliveries(): Observable<DeliveryRequest[]> {
-  const userId = this.authService.getCurrentUser()?.userId;
-  console.log('Fetching assigned pending deliveries for user:', userId);
-  
-  const url = `${this.apiUrl}/assigned-pending`; // Define the url variable
-  
-  return this.http.get<DeliveryRequest[]>(
-    url,
-    { 
-      headers: this.getAuthHeaders(),
-      params: { userId: userId || '' }
-    }
-  ).pipe(
-    tap(deliveries => {
-      console.log('Assigned pending deliveries count:', deliveries.length);
-      console.log('Assigned pending deliveries:', deliveries);
-    }),
-    catchError(error => {
-      console.error('Error fetching assigned pending deliveries:', error);
-      console.error('Request URL was:', url);
-      return throwError(() => new Error('Failed to load assigned pending deliveries'));
-    })
-  );
-}
+  getAssignedPendingDeliveries(): Observable<DeliveryRequest[]> {
+    const userId = this.authService.getCurrentUser()?.userId;
+    console.log('Fetching assigned pending deliveries for user:', userId);
+    
+    const url = `${this.apiUrl}/assigned-pending`;
+    
+    return this.http.get<DeliveryRequest[]>(
+      url,
+      { 
+        headers: this.getAuthHeaders(),
+        params: { userId: userId || '' }
+      }
+    ).pipe(
+      tap(deliveries => {
+        console.log('Assigned pending deliveries count:', deliveries.length);
+        console.log('Assigned pending deliveries:', deliveries);
+      }),
+      catchError(error => {
+        console.error('Error fetching assigned pending deliveries:', error);
+        console.error('Request URL was:', url);
+        return throwError(() => new Error('Failed to load assigned pending deliveries'));
+      })
+    );
+  }
 
-/**
- * Gets the history of accepted and rejected deliveries for the current delivery person
- */
-getDeliveryHistory(): Observable<DeliveryRequest[]> {
-  const userId = this.authService.getCurrentUser()?.userId;
-  console.log('Fetching delivery history for user:', userId);
-  
-  return this.http.get<DeliveryRequest[]>(
-    `${this.apiUrl}/history`,
-    { headers: this.getAuthHeaders() }
-  ).pipe(
-    tap(history => {
-      console.log('Delivery history count:', history.length);
-      console.log('Delivery history:', history);
-    }),
-    catchError(error => {
-      console.error('Error fetching delivery history:', error);
-      return throwError(() => new Error('Failed to load delivery history'));
-    })
-  );
-}
+  getDeliveryHistory(): Observable<DeliveryRequest[]> {
+    const userId = this.authService.getCurrentUser()?.userId;
+    console.log('Fetching delivery history for user:', userId);
+    
+    return this.http.get<DeliveryRequest[]>(
+      `${this.apiUrl}/history`,
+      { headers: this.getAuthHeaders() }
+    ).pipe(
+      tap(history => {
+        console.log('Delivery history count:', history.length);
+        console.log('Delivery history:', history);
+      }),
+      catchError(error => {
+        console.error('Error fetching delivery history:', error);
+        return throwError(() => new Error('Failed to load delivery history'));
+      })
+    );
+  }
 
+
+   getDeliveryById(deliveryId: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${deliveryId}`, { 
+      headers: this.getAuthHeaders() 
+    });
+  }
 }

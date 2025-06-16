@@ -1,49 +1,175 @@
 <!-- admin-payment.component.html -->
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h5>Payment Management</h5>
-      <div class="d-flex gap-2">
-        <input type="text" class="form-control" placeholder="Search..." [(ngModel)]="searchTerm" (input)="filterPayments()">
-        <select class="form-select" [(ngModel)]="selectedStatus" (change)="filterPayments()">
-          <option value="ALL">All Statuses</option>
-          <option *ngFor="let status of getEnumValues(PaymentStatus)" [value]="status">{{status}}</option>
-        </select>
+<div class="payment-management-container" @slideInUp>
+  <!-- Header Section -->
+  <div class="header-section" @fadeInScale>
+    <div class="header-content">
+      <div class="header-title">
+        <h1>💳 Payment Management</h1>
+        <p>Monitor and manage all payment transactions</p>
       </div>
-    </div>
-    <div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-hover">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Client</th>
-              <th>Amount</th>
-              <th>Method</th>
-              <th>Status</th>
-              <th>Date</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let payment of filteredPayments">
-              <td>{{payment.id | shorten: 8}}</td>
-              <td>{{payment.clientId | shorten: 8}}</td>
-              <td>{{payment.finalAmountAfterDiscount | currency:'TND'}}</td>
-              <td>{{payment.method}}</td>
-              <td><span [class]="getStatusClass(payment.status)">{{payment.status}}</span></td>
-              <td>{{payment.paymentDate | date:'medium'}}</td>
-              <td>
-                <button *ngIf="payment.status === PaymentStatus.PAID" class="btn btn-sm btn-danger" 
-                        (click)="refundPayment(payment.id)">
-                  Refund
-                </button>
-                <a [routerLink]="['/admin/payments', payment.id]" class="btn btn-sm btn-info ms-2">
-                  Details
-                </a>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="header-stats">
+        <div class="stat-card">
+          <div class="stat-value">{{payments.length}}</div>
+          <div class="stat-label">Total Payments</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{getTotalAmount() | currency:'TND':'symbol':'1.2-2'}}</div>
+          <div class="stat-label">Total Revenue</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{getStatusCount(PaymentStatus.COMPLETED)}}</div>
+          <div class="stat-label">Completed</div>
+        </div>
       </div>
     </div>
   </div>
+
+  <!-- Filters Section -->
+  <div class="filters-section" @fadeInScale>
+    <div class="filters-container">
+      <div class="search-container">
+        <div class="search-input-wrapper">
+          <span class="search-icon">🔍</span>
+          <input 
+            type="text" 
+            [(ngModel)]="searchTerm" 
+            (input)="filterPayments()"
+            placeholder="Search by ID, Client, or Transaction..."
+            class="search-input">
+        </div>
+      </div>
+      
+      <div class="status-filter">
+        <select 
+          [(ngModel)]="selectedStatus" 
+          (change)="filterPayments()"
+          class="status-select">
+          <option value="ALL">All Statuses</option>
+          <option *ngFor="let status of getEnumValues(PaymentStatus)" [value]="status">
+            {{status}}
+          </option>
+        </select>
+      </div>
+
+      <button 
+        class="export-btn"
+        (click)="exportPayments()"
+        (mouseenter)="onButtonHover('export', true)"
+        (mouseleave)="onButtonHover('export', false)"
+        [@buttonHover]="buttonStates['export'] || 'normal'">
+        📊 Export
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading Spinner -->
+  <div *ngIf="isLoading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading payments...</p>
+  </div>
+
+  <!-- Payments Table -->
+  <div *ngIf="!isLoading" class="table-container" @staggerList>
+    <div class="table-wrapper">
+      <table class="payments-table">
+        <thead>
+          <tr>
+            <th>Payment ID</th>
+            <th>Client</th>
+            <th>Amount</th>
+            <th>Method</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let payment of filteredPayments; trackBy: trackByPaymentId" 
+              class="payment-row" 
+              @fadeInScale>
+            <td>
+              <div class="payment-id">
+                <span class="id-text">{{payment.id | shorten: 8}}</span>
+                <span *ngIf="payment.transactionId" class="transaction-id">
+                  Txn: {{payment.transactionId | shorten: 6}}
+                </span>
+              </div>
+            </td>
+            
+            <td>
+              <div class="client-info">
+                <span class="client-id">{{payment.clientId | shorten: 8}}</span>
+                <span class="delivery-id">Del: {{payment.deliveryId | shorten: 6}}</span>
+              </div>
+            </td>
+            
+            <td>
+              <div class="amount-info">
+                <span class="final-amount">{{payment.finalAmountAfterDiscount | currency:'TND':'symbol':'1.2-2'}}</span>
+                <span *ngIf="payment.discountAmount && payment.discountAmount > 0" class="discount-info">
+                  -{{payment.discountAmount | currency:'TND':'symbol':'1.2-2'}} 
+                  <small>({{payment.discountCode}})</small>
+                </span>
+              </div>
+            </td>
+            
+            <td>
+              <div class="payment-method">
+                <span class="method-icon">{{getPaymentMethodIcon(payment.method)}}</span>
+                <span class="method-text">{{payment.method}}</span>
+                <div *ngIf="payment.cardLast4" class="card-info">
+                  {{payment.cardBrand}} ****{{payment.cardLast4}}
+                </div>
+              </div>
+            </td>
+            
+            <td>
+              <span class="status-badge" [ngClass]="getStatusClass(payment.status)">
+                {{payment.status}}
+              </span>
+            </td>
+            
+            <td>
+              <div class="date-info">
+                <span class="date">{{payment.paymentDate | date:'MMM dd, yyyy'}}</span>
+                <span class="time">{{payment.paymentDate | date:'HH:mm'}}</span>
+              </div>
+            </td>
+            
+            <td>
+              <div class="actions-container">
+                <button 
+                  *ngIf="payment.status === PaymentStatus.COMPLETED" 
+                  class="action-btn refund-btn"
+                  (click)="refundPayment(payment.id)"
+                  (mouseenter)="onButtonHover('refund-' + payment.id, true)"
+                  (mouseleave)="onButtonHover('refund-' + payment.id, false)"
+                  [@buttonHover]="buttonStates['refund-' + payment.id] || 'normal'">
+                  🔄 Refund
+                </button>
+                
+                <button 
+                  class="action-btn details-btn"
+                  [routerLink]="['/admin/payment-details', payment.id]"
+                  (mouseenter)="onButtonHover('details-' + payment.id, true)"
+                  (mouseleave)="onButtonHover('details-' + payment.id, false)"
+                  [@buttonHover]="buttonStates['details-' + payment.id] || 'normal'">
+                  👁️ Details
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!isLoading && filteredPayments.length === 0" class="empty-state" @fadeInScale>
+    <div class="empty-content">
+      <div class="empty-icon">📭</div>
+      <h3>No payments found</h3>
+      <p>Try adjusting your search criteria or filters</p>
+    </div>
+  </div>
+</div>

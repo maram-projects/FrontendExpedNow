@@ -1,76 +1,188 @@
 <!-- pricing-details.component.html -->
 <div class="pricing-breakdown-container" @fadeInOut *ngIf="pricing">
-    <div class="pricing-card">
-      <div class="card-header">
-        <h3 class="card-title">تفاصيل التسعير</h3>
-        <div class="card-subtitle">Pricing Details</div>
-      </div>
-      
-      <div class="pricing-content">
-        <div class="pricing-row">
-          <div class="pricing-column" @slideIn>
-            <div class="pricing-item">
-              <span class="item-label">المسافة:</span>
-              <span class="item-value">{{pricing.distance || 0}} كم</span>
+  <div class="pricing-card">
+    <div class="card-header">
+      <h3 class="card-title">
+        <i class="fas fa-calculator"></i>
+        Pricing Breakdown
+      </h3>
+      <div class="card-subtitle">Delivery Cost Details</div>
+    </div>
+    
+    <div class="pricing-content">
+      <!-- Basic Pricing Information -->
+      <div class="pricing-section">
+        <h4 class="section-title">Base Costs</h4>
+        <div class="pricing-grid">
+          <div class="pricing-item" @slideIn>
+            <div class="item-icon">
+              <i class="fas fa-route"></i>
             </div>
-            <div class="pricing-item">
-              <span class="item-label">السعر الأساسي:</span>
-              <span class="item-value">{{pricing.basePrice || 0}} TND</span>
-            </div>
-            <div class="pricing-item">
-              <span class="item-label">تكلفة المسافة:</span>
-              <span class="item-value">{{pricing.distanceCost || 0}} TND</span>
-            </div>
-            <div class="pricing-item">
-              <span class="item-label">تكلفة الوزن:</span>
-              <span class="item-value">{{pricing.weightCost || 0}} TND</span>
+            <div class="item-details">
+              <span class="item-label">Distance</span>
+              <span class="item-value">{{ formatDistance(pricing.distance) }}</span>
             </div>
           </div>
           
-          <div class="pricing-column" @slideIn>
-            <div class="pricing-item" [class.highlight]="(pricing.urgencyFee || 0) > 0">
-              <span class="item-label">رسوم الاستعجال:</span>
-              <span class="item-value">{{pricing.urgencyFee || 0}} TND</span>
+          <div class="pricing-item" @slideIn>
+            <div class="item-icon">
+              <i class="fas fa-tag"></i>
             </div>
-            <div class="pricing-item" [class.highlight]="(pricing.peakSurcharge || 0) > 0">
-              <span class="item-label">رسوم الذروة:</span>
-              <span class="item-value">{{pricing.peakSurcharge || 0}} TND</span>
+            <div class="item-details">
+              <span class="item-label">Base Price</span>
+              <span class="item-value">{{ formatCurrency(pricing.basePrice) }}</span>
             </div>
-            <div class="pricing-item" [class.highlight]="(pricing.holidaySurcharge || 0) > 0">
-              <span class="item-label">رسوم العطل:</span>
-              <span class="item-value">{{pricing.holidaySurcharge || 0}} TND</span>
+          </div>
+          
+          <div class="pricing-item" @slideIn>
+            <div class="item-icon">
+              <i class="fas fa-road"></i>
             </div>
-            <div class="pricing-item discount" *ngIf="(pricing.discountAmount || 0) > 0">
-              <span class="item-label">الخصم:</span>
-              <span class="item-value">-{{pricing.discountAmount || 0}} TND</span>
+            <div class="item-details">
+              <span class="item-label">Distance Cost</span>
+              <span class="item-value">{{ formatCurrency(pricing.distanceCost) }}</span>
+            </div>
+          </div>
+          
+          <div class="pricing-item" @slideIn>
+            <div class="item-icon">
+              <i class="fas fa-weight-hanging"></i>
+            </div>
+            <div class="item-details">
+              <span class="item-label">Weight Cost</span>
+              <span class="item-value">{{ formatCurrency(pricing.weightCost) }}</span>
             </div>
           </div>
         </div>
       </div>
       
-      <div class="total-amount">
-        <div class="divider"></div>
-        <div class="total-wrapper pulse-animation">
-          <span class="total-label">المبلغ الإجمالي:</span>
-          <span class="total-value">{{pricing.totalAmount || 0}} TND</span>
+      <!-- Additional Fees Section -->
+      <div class="pricing-section" *ngIf="hasAdditionalFees()">
+        <h4 class="section-title">Additional Fees</h4>
+        <div class="pricing-grid">
+          <div class="pricing-item highlight" 
+               *ngIf="hasValue(pricing.urgencyFee)" 
+               @slideIn>
+            <div class="item-icon urgent">
+              <i class="fas fa-clock"></i>
+            </div>
+            <div class="item-details">
+              <span class="item-label">Urgency Fee</span>
+              <span class="item-value">{{ formatCurrency(pricing.urgencyFee) }}</span>
+            </div>
+          </div>
+          
+          <div class="pricing-item highlight" 
+               *ngIf="hasValue(pricing.peakSurcharge)" 
+               @slideIn>
+            <div class="item-icon peak">
+              <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="item-details">
+              <span class="item-label">Peak Hours Surcharge</span>
+              <span class="item-value">{{ formatCurrency(pricing.peakSurcharge) }}</span>
+            </div>
+          </div>
+          
+          <div class="pricing-item highlight" 
+               *ngIf="hasValue(pricing.holidaySurcharge)" 
+               @slideIn>
+            <div class="item-icon holiday">
+              <i class="fas fa-calendar-day"></i>
+            </div>
+            <div class="item-details">
+              <span class="item-label">Holiday Surcharge</span>
+              <span class="item-value">{{ formatCurrency(pricing.holidaySurcharge) }}</span>
+            </div>
+          </div>
         </div>
       </div>
       
-      <div class="applied-rules" *ngIf="pricing?.appliedRules?.length">
-        <div class="rules-header" (click)="toggleRules()">
-          <h4>القواعد المطبقة <i class="fa" [class.fa-chevron-up]="showRules" [class.fa-chevron-down]="!showRules"></i></h4>
+      <!-- Discount Section -->
+      <div class="pricing-section" *ngIf="hasValue(pricing.discountAmount)">
+        <div class="pricing-item discount" @slideIn>
+          <div class="item-icon discount-icon">
+            <i class="fas fa-percentage"></i>
+          </div>
+          <div class="item-details">
+            <span class="item-label">Applied Discount</span>
+            <span class="item-value">-{{ formatCurrency(pricing.discountAmount) }}</span>
+          </div>
         </div>
-        
-        <div [@expandCollapse]="animationState" class="rules-content">
-          <ul class="rules-list">
-            <li *ngFor="let rule of pricing.appliedRules; let i = index" 
-                class="rule-item fade-in"
-                [style.animation-delay]="i * 100 + 'ms'">
-              <span class="rule-description">{{rule.description}}</span>
-              <span class="rule-amount">{{rule.amount}} TND</span>
-            </li>
-          </ul>
+      </div>
+    </div>
+    
+    <!-- Total Amount -->
+    <div class="total-section">
+      <div class="divider"></div>
+      <div class="total-wrapper" @fadeInOut>
+        <div class="total-content">
+          <div class="total-icon">
+            <i class="fas fa-receipt"></i>
+          </div>
+          <div class="total-details">
+            <span class="total-label">Total Amount</span>
+            <span class="total-sublabel">Final Price</span>
+          </div>
+          <div class="total-amount">
+            <span class="total-value">{{ formatCurrency(pricing.totalAmount) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Applied Rules Section -->
+    <div class="applied-rules-section" *ngIf="getAppliedRules().length > 0">
+      <div class="rules-header" 
+           (click)="toggleRules()" 
+           [class.active]="showRules"
+           role="button"
+           tabindex="0"
+           (keydown.enter)="toggleRules()"
+           (keydown.space)="toggleRules()">
+        <div class="rules-title">
+          <i class="fas fa-list-check"></i>
+          <h4>Applied Pricing Rules ({{ getAppliedRules().length }})</h4>
+        </div>
+        <div class="rules-toggle">
+          <i class="fas fa-chevron-down" 
+             [class.rotated]="showRules"></i>
+        </div>
+      </div>
+      
+      <div [@expandCollapse]="animationState" class="rules-content">
+        <div *ngIf="getAppliedRules().length > 0" class="rules-list">
+          <div *ngFor="let rule of getAppliedRules(); let i = index; trackBy: trackByRule"
+               class="rule-item"
+               @slideIn
+               [style.animation-delay]="getAnimationDelay(i)">
+            <div class="rule-content">
+              <div class="rule-icon">
+                <i class="fas" 
+                   [class.fa-check-circle]="rule.amount >= 0"
+                   [class.fa-minus-circle]="rule.amount < 0"></i>
+              </div>
+              <div class="rule-details">
+                <span class="rule-description">{{ rule.description }}</span>
+                <span class="rule-amount" 
+                      [class.positive]="rule.amount > 0"
+                      [class.negative]="rule.amount < 0">
+                  {{ rule.amount > 0 ? '+' : '' }}{{ formatCurrency(Math.abs(rule.amount)) }}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
+</div>
+
+<!-- Error State -->
+<div class="error-state" *ngIf="!pricing" @fadeInOut>
+  <div class="error-content">
+    <i class="fas fa-exclamation-triangle"></i>
+    <h4>No Pricing Data Available</h4>
+    <p>Please try again later or contact support</p>
+  </div>
+</div>

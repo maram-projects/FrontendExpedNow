@@ -8,7 +8,7 @@ import { VehiclePhotoPipe } from "../../../shared/pipes/vehicle-photo.pipe";
 @Component({
   selector: 'app-vehicle-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, VehiclePhotoPipe],
+imports: [CommonModule, RouterModule],
   templateUrl: './vehicle-list.component.html',
   styleUrls: ['./vehicle-list.component.css']
 })

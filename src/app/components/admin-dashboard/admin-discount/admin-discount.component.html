@@ -1,122 +1,376 @@
-<div class="card">
+<!-- admin-discount.component.html -->
+<div class="container-fluid p-4">
+  <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-      <h5>Discount Management</h5>
-      <button class="btn btn-primary" (click)="showCreateForm = !showCreateForm">
-        {{showCreateForm ? 'Cancel' : 'Create Discount'}}
-      </button>
+      <h5 class="mb-0">
+        <i class="fas fa-tags me-2"></i>
+        Discount Management
+      </h5>
+      <div class="btn-group">
+        <button class="btn btn-outline-secondary" 
+                (click)="loadDiscounts()" 
+                [disabled]="loading">
+          <i class="fas fa-sync-alt" [class.fa-spin]="loading"></i>
+          Refresh
+        </button>
+        <button class="btn btn-primary" 
+                (click)="showCreateForm = !showCreateForm"
+                [disabled]="loading">
+          <i class="fas" [class.fa-plus]="!showCreateForm" [class.fa-times]="showCreateForm"></i>
+          {{showCreateForm ? 'Cancel' : 'Create Discount'}}
+        </button>
+      </div>
     </div>
     
     <div class="card-body">
+      <!-- Loading Indicator -->
+      <div class="text-center py-3" *ngIf="loading">
+        <div class="spinner-border" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted">Loading discounts...</p>
+      </div>
+
+      <!-- Success Message -->
+      <div class="alert alert-success alert-dismissible fade show" *ngIf="successMessage">
+        <i class="fas fa-check-circle me-2"></i>
+        {{successMessage}}
+        <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+      </div>
+
+      <!-- Error Message -->
+      <div class="alert alert-danger alert-dismissible fade show" *ngIf="errorMessage">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        {{errorMessage}}
+        <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+      </div>
+
       <!-- Create Discount Form -->
       <div class="card mb-4" *ngIf="showCreateForm">
         <div class="card-body">
-          <h5 class="card-title">Create New Discount</h5>
-          <form (ngSubmit)="createDiscount()">
-            <div class="mb-3">
-              <label class="form-label">Client ID (optional)</label>
-              <input type="text" class="form-control" 
-                     [(ngModel)]="newDiscount.clientId" 
-                     name="clientId"
-                     placeholder="Leave empty for general discounts">
+          <h5 class="card-title">
+            <i class="fas fa-plus-circle me-2"></i>
+            Create New Discount
+          </h5>
+          <form (ngSubmit)="createDiscount()" #discountForm="ngForm">
+            <div class="row">
+              <!-- Client ID -->
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Client ID (optional)</label>
+                <input type="text" 
+                       class="form-control" 
+                       [(ngModel)]="newDiscount.clientId" 
+                       name="clientId"
+                       placeholder="Leave empty for general discounts">
+                <small class="form-text text-muted">
+                  If specified, discount will be available only to this client
+                </small>
+              </div>
+
+              <!-- Discount Type -->
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Type *</label>
+                <select class="form-select" 
+                        [(ngModel)]="newDiscount.type" 
+                        name="type" 
+                        (change)="onDiscountTypeChange()"
+                        required>
+                  <option *ngFor="let type of getEnumValues(discountTypeEnum)" 
+                          [value]="type">
+                    {{type | titlecase}}
+                  </option>
+                </select>
+              </div>
             </div>
-  
-            <div class="mb-3">
-              <label class="form-label">Percentage</label>
-              <input type="number" class="form-control" 
-                     [(ngModel)]="newDiscount.percentage" 
-                     name="percentage" 
-                     min="1" max="100" required>
+
+            <div class="row">
+              <!-- Percentage Field -->
+              <div class="col-md-6 mb-3" *ngIf="shouldShowPercentage()">
+                <label class="form-label">Percentage *</label>
+                <div class="input-group">
+                  <input type="number" 
+                         class="form-control" 
+                         [(ngModel)]="newDiscount.percentage" 
+                         name="percentage" 
+                         min="1" 
+                         max="100" 
+                         step="1"
+                         required>
+                  <span class="input-group-text">%</span>
+                </div>
+                <small class="form-text text-muted">
+                  Value between 1 and 100
+                </small>
+              </div>
+
+              <!-- Fixed Amount Field -->
+              <div class="col-md-6 mb-3" *ngIf="shouldShowFixedAmount()">
+                <label class="form-label">Fixed Amount *</label>
+                <div class="input-group">
+                  <input type="number" 
+                         class="form-control" 
+                         [(ngModel)]="newDiscount.fixedAmount" 
+                         name="fixedAmount" 
+                         min="0.01" 
+                         step="0.01"
+                         required>
+                  <span class="input-group-text">DT</span>
+                </div>
+                <small class="form-text text-muted">
+                  Fixed discount amount in Dinars
+                </small>
+              </div>
+
+              <!-- Valid Until -->
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Valid Until *</label>
+                <input type="datetime-local" 
+                       class="form-control" 
+                       [ngModel]="formatDateForInput(newDiscount.validUntil)"
+                       (ngModelChange)="newDiscount.validUntil = parseDate($event)"
+                       name="validUntil" 
+                       required>
+                <small class="form-text text-muted">
+                  Discount expiration date and time
+                </small>
+              </div>
             </div>
-  
+
+            <!-- Description -->
             <div class="mb-3">
-              <label class="form-label">Valid Until</label>
-              <input type="datetime-local" 
-                     class="form-control" 
-                     [ngModel]="newDiscount.validUntil | date:'yyyy-MM-ddTHH:mm'"
-                     (ngModelChange)="newDiscount.validUntil = parseDate($event)"
-                     name="validUntil" 
-                     required>
-            </div>
-  
-            <div class="mb-3">
-              <label class="form-label">Type</label>
-              <select class="form-select" 
-                      [(ngModel)]="newDiscount.type" 
-                      name="type" 
-                      required>
-                <option *ngFor="let type of getEnumValues(discountTypeEnum)" 
-                        [value]="type">
-                  {{type | titlecase}}
-                </option>
-              </select>
-            </div>
-  
-            <div class="mb-3">
-              <label class="form-label">Description</label>
+              <label class="form-label">Description *</label>
               <textarea class="form-control" 
                         [(ngModel)]="newDiscount.description" 
                         name="description"
-                        placeholder="Enter discount description"
+                        rows="3"
+                        placeholder="Enter discount description (e.g., Summer Sale, Loyalty Reward, etc.)"
                         required></textarea>
             </div>
-  
-            <div class="alert alert-danger" *ngIf="errorMessage">
-              {{errorMessage}}
-            </div>
-  
+
+            <!-- Form Actions -->
             <div class="d-flex justify-content-end gap-2">
-              <button type="button" class="btn btn-secondary" 
+              <button type="button" 
+                      class="btn btn-secondary" 
                       (click)="showCreateForm = false">
+                <i class="fas fa-times me-2"></i>
                 Cancel
               </button>
-              <button type="submit" class="btn btn-success">
+              <button type="submit" 
+                      class="btn btn-success"
+                      [disabled]="!discountForm.valid || loading">
+                <i class="fas fa-save me-2"></i>
                 Create Discount
               </button>
             </div>
           </form>
         </div>
       </div>
-  
+
       <!-- Discounts List -->
-      <div class="table-responsive">
+      <div class="table-responsive" *ngIf="!loading">
         <table class="table table-hover">
-          <thead>
+          <thead class="table-dark">
             <tr>
-              <th>Code</th>
-              <th>Client</th>
-              <th>Percentage</th>
-              <th>Type</th>
-              <th>Valid Until</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th><i class="fas fa-barcode me-1"></i>Code</th>
+              <th><i class="fas fa-user me-1"></i>Client</th>
+              <th><i class="fas fa-percentage me-1"></i>Value</th>
+              <th><i class="fas fa-tag me-1"></i>Type</th>
+              <th><i class="fas fa-calendar-alt me-1"></i>Valid Until</th>
+              <th><i class="fas fa-info-circle me-1"></i>Status</th>
+              <th><i class="fas fa-cogs me-1"></i>Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let discount of discounts">
-              <td>{{discount.code}}</td>
-              <td>{{discount.clientId ? (discount.clientId | shorten:8) : 'General'}}</td>
-              <td>{{discount.percentage}}%</td>
+            <tr *ngFor="let discount of discounts; trackBy: trackByDiscountId" 
+                [class.table-warning]="isDiscountExpired(discount)">
+              
+              <!-- Code -->
+              <td>
+                <code>{{discount.code || 'N/A'}}</code>
+              </td>
+              
+              <!-- Client -->
+              <td>
+                <span *ngIf="discount.clientId; else generalDiscount">
+                  <i class="fas fa-user-tag me-1"></i>
+                  {{discount.clientId | shorten:8}}
+                </span>
+                <ng-template #generalDiscount>
+                  <span class="text-muted">
+                    <i class="fas fa-globe me-1"></i>
+                    General
+                  </span>
+                </ng-template>
+              </td>
+              
+              <!-- Value -->
+              <td>
+                <strong>{{getDiscountValue(discount)}}</strong>
+              </td>
+              
+              <!-- Type -->
               <td>
                 <span [class]="getTypeClass(discount.type)">
                   {{discount.type | titlecase}}
                 </span>
               </td>
-              <td>{{discount.validUntil | date:'mediumDate'}}</td>
+              
+              <!-- Valid Until -->
               <td>
-                <span class="badge" [ngClass]="{'bg-success': !discount.used, 'bg-secondary': discount.used}">
-                  {{discount.used ? 'Used' : 'Active'}}
+                <div [class.text-danger]="isDiscountExpired(discount)">
+                  {{discount.validUntil | date:'medium'}}
+                  <i class="fas fa-exclamation-triangle ms-1 text-danger" 
+                     *ngIf="isDiscountExpired(discount)"
+                     title="Expired"></i>
+                </div>
+              </td>
+              
+              <!-- Status -->
+              <td>
+                <span class="badge" 
+                      [ngClass]="{
+                        'bg-success': isDiscountValid(discount),
+                        'bg-secondary': discount.used,
+                        'bg-danger': isDiscountExpired(discount) && !discount.used
+                      }">
+                  <i class="fas" 
+                     [class.fa-check]="isDiscountValid(discount)"
+                     [class.fa-times]="discount.used"
+                     [class.fa-clock]="isDiscountExpired(discount) && !discount.used"
+                     ></i>
+                  {{discount.used ? 'Used' : (isDiscountExpired(discount) ? 'Expired' : 'Active')}}
                 </span>
               </td>
+              
+              <!-- Actions -->
               <td>
-                <button class="btn btn-sm btn-danger" 
-                        (click)="deleteDiscount(discount.id)"
-                        [disabled]="discount.used">
-                  Delete
-                </button>
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-danger" 
+                          (click)="deleteDiscount(discount.id)"
+                          [disabled]="loading"
+                          title="Delete discount">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            
+            <!-- Empty State -->
+            <tr *ngIf="discounts.length === 0">
+              <td colspan="7" class="text-center py-4">
+                <div class="text-muted">
+                  <i class="fas fa-tags fa-2x mb-2"></i>
+                  <p>No discounts found</p>
+                  <button class="btn btn-primary" (click)="showCreateForm = true">
+                    Create your first discount
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
+
+      <!-- Statistics -->
+      <div class="row mt-4" *ngIf="discounts.length > 0">
+        <div class="col-md-3">
+          <div class="card text-center">
+            <div class="card-body">
+              <h5 class="card-title text-primary">{{discounts.length}}</h5>
+              <p class="card-text">Total Discounts</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-center">
+            <div class="card-body">
+              <h5 class="card-title text-success">{{getActiveDiscountsCount()}}</h5>
+              <p class="card-text">Active Discounts</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-center">
+            <div class="card-body">
+              <h5 class="card-title text-secondary">{{getUsedDiscountsCount()}}</h5>
+              <p class="card-text">Used Discounts</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-center">
+            <div class="card-body">
+              <h5 class="card-title text-danger">{{getExpiredDiscountsCount()}}</h5>
+              <p class="card-text">Expired Discounts</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
+</div>
+
+<style>
+.table-warning {
+  --bs-table-bg: #fff3cd;
+}
+
+.badge {
+  font-size: 0.75em;
+}
+
+.card-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.spinner-border {
+  width: 3rem;
+  height: 3rem;
+}
+
+code {
+  background-color: #f8f9fa;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.9em;
+}
+
+.btn-group-sm .btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.form-text {
+  margin-top: 0.25rem;
+}
+
+.alert {
+  border: none;
+  border-radius: 0.5rem;
+}
+
+.card {
+  border: none;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.table th {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.text-muted i {
+  opacity: 0.7;
+}
+
+@media (max-width: 768px) {
+  .btn-group {
+    flex-direction: column;
+  }
+  
+  .btn-group .btn {
+    margin-bottom: 0.25rem;
+  }
+}
+</style>

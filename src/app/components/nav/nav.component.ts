@@ -44,18 +44,25 @@ interface Message {
               </ng-container>
 
               <!-- Client Navigation -->
-              <ng-container *ngIf="user.userType === 'individual' || user.userType === 'enterprise'">
-                <li class="nav-item">
-                  <a class="nav-link" routerLink="/client/dashboard" routerLinkActive="active">
-                    <i class="fas fa-columns me-1"></i> Dashboard
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" routerLink="/client/orders" routerLinkActive="active">
-                    <i class="fas fa-shopping-cart me-1"></i> Orders
-                  </a>
-                </li>
-              </ng-container>
+             <!-- Client Navigation -->
+<ng-container *ngIf="user.userType === 'individual' || user.userType === 'enterprise'">
+  <li class="nav-item">
+    <a class="nav-link" routerLink="/client/dashboard" routerLinkActive="active">
+      <i class="fas fa-columns me-1"></i> Dashboard
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" routerLink="/client/orders" routerLinkActive="active">
+      <i class="fas fa-shopping-cart me-1"></i> Orders
+    </a>
+  </li>
+  <!-- Add this new payment link -->
+   <li class="nav-item">
+    <a class="nav-link" routerLink="/client/payment" routerLinkActive="active">
+      <i class="fas fa-credit-card me-1"></i> Payments
+    </a>
+  </li>
+</ng-container>
 
               <!-- Delivery Navigation -->
               <ng-container *ngIf="user.userType === 'temporary' || user.userType === 'professional'">
