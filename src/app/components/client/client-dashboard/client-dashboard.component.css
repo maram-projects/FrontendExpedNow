@@ -832,4 +832,64 @@
   animation: none;
   transform: none;
 }
+
+.payment-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
+
+.payment-paid {
+  background-color: #e6f7ee;
+  color: #28a745;
+}
+
+.payment-pending {
+  background-color: #fff8e6;
+  color: #ffc107;
+}
+
+.payment-unpaid {
+  background-color: #fee;
+  color: #dc3545;
+}
+
+.payment-na {
+  color: var(--bs-secondary);
+}
+
+.payment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.payment-paid {
+  background-color: #e6f7ee;
+  color: #28a745;
+}
+
+.payment-pending {
+  background-color: #fff8e6;
+  color: #ffc107;
+}
+
+.payment-unpaid {
+  background-color: #fce8e6;
+  color: #dc3545;
+}
+
+.payment-na {
+  color: #6c757d;
+  font-style: italic;
+}
+}
+

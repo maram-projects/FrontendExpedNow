@@ -460,32 +460,22 @@ private processDeliveryPersonnel(users: User[]) {
     this.selectedVehicleId = vehicleId;
   }
 
-// In delivery-personnel-management.component.ts
 assignSelectedVehicle(): void {
   if (!this.selectedVehicleId || !this.userForVehicle?.id) {
     this.showErrorMessage('Please select both a user and a vehicle');
     return;
   }
 
-  console.log('Starting assignment process...');
-  console.log('User ID:', this.userForVehicle.id);
-  console.log('Vehicle ID:', this.selectedVehicleId);
-
   this.vehicleSubmitting = true;
 
   this.userService.assignVehicleToUser(this.userForVehicle.id, this.selectedVehicleId)
     .pipe(
-      finalize(() => {
-        this.vehicleSubmitting = false;
-        console.log('Assignment process completed');
-      })
+      finalize(() => this.vehicleSubmitting = false)
     )
     .subscribe({
       next: (response) => {
-        console.log('Assignment successful! Response:', response);
-        
-        // Update the local user array
-        const userIndex = this.users.findIndex(u => u.id === response.user.id);
+        // Update the specific user in the users array
+        const userIndex = this.users.findIndex(u => u.id === this.userForVehicle?.id);
         if (userIndex !== -1) {
           this.users[userIndex] = {
             ...this.users[userIndex],
@@ -494,7 +484,7 @@ assignSelectedVehicle(): void {
           };
         }
 
-        // Update available vehicles
+        // Remove the assigned vehicle from available vehicles
         this.availableVehicles = this.availableVehicles.filter(
           v => v.id !== response.vehicle.id
         );
@@ -503,16 +493,8 @@ assignSelectedVehicle(): void {
         this.closeVehicleSelectionForm();
       },
       error: (err) => {
-        console.error('Assignment failed with error:', err);
-        let errorMessage = 'Failed to assign vehicle';
-        
-        if (err.message.includes('Invalid response structure')) {
-          errorMessage = 'Server returned invalid data format';
-        } else if (err.message.includes('Missing IDs')) {
-          errorMessage = 'Server response missing required IDs';
-        }
-        
-        this.showErrorMessage(errorMessage);
+        console.error('Assignment failed:', err);
+        this.showErrorMessage('Failed to assign vehicle. Please try again.');
       }
     });
 }

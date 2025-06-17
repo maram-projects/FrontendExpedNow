@@ -265,30 +265,30 @@
                         {{ delivery.status }}
                       </span>
                     </td>
-                    <td>
-                      <div class="payment-status-cell">
-                        <span *ngIf="delivery.status === 'DELIVERED'" class="payment-badge"
-                              [ngClass]="{
-                                'payment-paid': delivery.paymentStatus === 'PAID',
-                                'payment-pending': delivery.paymentStatus === 'PENDING',
-                                'payment-unpaid': !delivery.paymentStatus || delivery.paymentStatus === 'UNPAID'
-                              }">
-                          <i class="fas" [ngClass]="{
-                            'fa-check-circle': delivery.paymentStatus === 'PAID',
-                            'fa-clock': delivery.paymentStatus === 'PENDING',
-                            'fa-exclamation-circle': !delivery.paymentStatus || delivery.paymentStatus === 'UNPAID'
-                          }"></i>
-                          {{ delivery.paymentStatus || 'UNPAID' }}
-                        </span>
-                        <span *ngIf="delivery.status !== 'DELIVERED'" class="payment-na">-</span>
-                        
-                        <!-- Payment Date -->
-                        <small *ngIf="delivery.paymentStatus === 'PAID' && delivery.paymentDate" class="payment-date">
-                          {{ delivery.paymentDate | date:'shortDate' }}
-                        </small>
-                      </div>
-                    </td>
-                    <td>
+               <!-- In client-dashboard.component.html -->
+<td>
+  <div class="payment-status-cell">
+    <span *ngIf="delivery.status === 'DELIVERED'" class="payment-badge"
+          [ngClass]="{
+            'payment-paid': delivery.paymentStatus === 'PAID',
+            'payment-pending': delivery.paymentStatus === 'PENDING',
+            'payment-unpaid': !delivery.paymentStatus || delivery.paymentStatus === 'UNPAID'
+          }">
+      <i class="fas" [ngClass]="{
+        'fa-check-circle': delivery.paymentStatus === 'PAID',
+        'fa-clock': delivery.paymentStatus === 'PENDING',
+        'fa-exclamation-circle': !delivery.paymentStatus || delivery.paymentStatus === 'UNPAID'
+      }"></i>
+      {{ delivery.paymentStatus || 'UNPAID' }}
+    </span>
+    <span *ngIf="delivery.status !== 'DELIVERED'" class="payment-na">-</span>
+    
+    <!-- Payment Date -->
+    <small *ngIf="delivery.paymentStatus === 'PAID' && delivery.paymentDate" class="payment-date">
+      Paid on {{ delivery.paymentDate | date:'shortDate' }}
+    </small>
+  </div>
+</td>
                       <span *ngIf="delivery.paymentMethod" class="payment-method">
                         <i class="fas" [ngClass]="{
                           'fa-credit-card': delivery.paymentMethod === 'CREDIT_CARD',
@@ -299,7 +299,7 @@
                         {{ getPaymentMethodLabel(delivery.paymentMethod) }}
                       </span>
                       <span *ngIf="!delivery.paymentMethod" class="payment-method-na">-</span>
-                    </td>
+                    
                     <td>
                       <div class="action-buttons">
                         <!-- View Button -->

@@ -183,20 +183,28 @@ export class PaymentService {
   /**
    * Confirm a payment
    */
-  confirmPayment(transactionId: string, amount: number): Observable<PaymentResponse> {
-    const params = new HttpParams()
-      .set('transactionId', transactionId)
-      .set('amount', amount.toString());
+// In payment.service.ts
+confirmPayment(transactionId: string, amount: number): Observable<PaymentResponse> {
+  const params = new HttpParams()
+    .set('transactionId', transactionId)
+    .set('amount', amount.toString());
 
-    return this.http.post<PaymentResponse>(`${this.apiUrl}/confirm`, {}, {
+  return this.http.post<PaymentResponse>(
+    `${this.apiUrl}/confirm`, 
+    {}, 
+    { 
       params,
       headers: this.createHeaders(),
-      withCredentials: true
-    }).pipe(
-      tap(response => console.log('Confirm payment response:', response)),
-      catchError(this.handleError)
-    );
-  }
+      withCredentials: true 
+    }
+  ).pipe(
+    tap(response => {
+      console.log('Payment confirmed:', response);
+      // Update local state if needed
+    }),
+    catchError(this.handleError)
+  );
+}
 
   /**
    * Fail/Cancel a payment

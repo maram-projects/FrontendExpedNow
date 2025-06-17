@@ -401,39 +401,36 @@
     // Update the vehicle assignment method in VehicleService
   // Replace your existing assignVehicleToUser method with this fixed version:
 
-  assignVehicleToUser(userId: string, vehicleId: string): Observable<{user: User, vehicle: Vehicle}> {
-    return this.http.patch<{user: any, vehicle: any}>(
-      `${this.apiUrl}/${vehicleId}/assign`,
-      { userId }
-    ).pipe(
-      map(response => {
-        // Validate that we have the required response data
-        if (!response.vehicle) {
-          throw new Error('Vehicle data is missing from response');
-        }
-        
-        const convertedVehicle = convertDtoToVehicle(response.vehicle);
-        
-        // Ensure convertDtoToVehicle didn't return null
-        if (!convertedVehicle) {
-          throw new Error('Failed to convert vehicle DTO to vehicle');
-        }
-        
-        return {
-          user: {
-            ...response.user,
-            assignedVehicleId: response.user.assignedVehicleId || response.vehicle?.id
-          },
-          vehicle: convertedVehicle
-        };
-      }),
-      catchError(error => {
-        console.error(`Error assigning vehicle ${vehicleId} to user ${userId}:`, error);
-        return throwError(() => new Error(`Failed to assign vehicle: ${error.message || 'Unknown error'}`));
-      })
-    );
-  }
-
+assignVehicleToUser(userId: string, vehicleId: string): Observable<{user: User, vehicle: Vehicle}> {
+  return this.http.patch<{user: any, vehicle: any}>(
+    `${this.apiUrl}/${vehicleId}/assign-vehicle`, // Note: Using vehicleId in URL
+    { userId } // Sending userId in request body
+  ).pipe(
+    map(response => {
+      if (!response.vehicle) {
+        throw new Error('Vehicle data is missing from response');
+      }
+      
+      const convertedVehicle = convertDtoToVehicle(response.vehicle);
+      
+      if (!convertedVehicle) {
+        throw new Error('Failed to convert vehicle DTO to vehicle');
+      }
+      
+      return {
+        user: {
+          ...response.user,
+          assignedVehicleId: response.user.assignedVehicleId || response.vehicle?.id
+        },
+        vehicle: convertedVehicle
+      };
+    }),
+    catchError(error => {
+      console.error(`Error assigning vehicle ${vehicleId} to user ${userId}:`, error);
+      return throwError(() => new Error(`Failed to assign vehicle: ${error.message || 'Unknown error'}`));
+    })
+  );
+}
     private mapUserResponse(userData: any): User {
       if (!userData) {
         throw new Error('User data is required');

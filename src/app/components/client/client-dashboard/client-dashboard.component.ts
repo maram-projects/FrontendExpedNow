@@ -1,4 +1,3 @@
-// client-dashboard.component.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule, DatePipe, CurrencyPipe } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
@@ -8,6 +7,10 @@ import { DiscountService } from '../../../services/discount.service';
 import { Discount } from '../../../models/discount.model';
 import { MatDialog } from '@angular/material/dialog';
 import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
+import { ActivatedRoute } from '@angular/router';
+import { PaymentSuccessModalComponent } from '../../../shared/payment-success-modal/payment-success-modal.component';
+import { PaymentStatus } from '../../../models/Payment.model';
+
 interface DashboardStats {
   totalOrders: number;
   pendingOrders: number;
@@ -20,6 +23,12 @@ interface DashboardStats {
   totalPaidAmount: number;
   totalUnpaidAmount: number;
   totalSavings: number;
+  // Added new properties
+  expiredOrders?: number;
+  unpaidOrders?: number;
+  totalRevenue?: number;
+  averageOrderValue?: number;
+  deliveryRate?: number;
 }
 
 @Component({
@@ -61,7 +70,8 @@ export class ClientDashboardComponent implements OnInit {
     private deliveryService: DeliveryService,
     private discountService: DiscountService,
     private dialog: MatDialog,
-    private router: Router 
+    private router: Router,
+    private route: ActivatedRoute
   ) {
     const currentUser = this.authService.getCurrentUser();
     
@@ -79,11 +89,72 @@ export class ClientDashboardComponent implements OnInit {
     this.loadRecentDeliveries();
     this.loadActiveDiscounts();
     this.checkExpiredDeliveries();
+  
+    this.route.queryParams.subscribe(params => {
+      if (params['paymentSuccess'] === 'true' && params['deliveryId']) {
+        this.handlePaymentSuccess(params['deliveryId'], params['paymentId']);
+      }
+
+      if (params['refresh']) {
+        this.loadDashboardStats();
+        this.loadRecentDeliveries();
+        this.loadActiveDiscounts();
+    
+        if (params['paymentSuccess'] === 'true' && params['deliveryId']) {
+          this.showPaymentSuccessModal(params['deliveryId'], params['paymentId']);
+        }
+      }
+    });
+  }
+
+  private handlePaymentSuccess(deliveryId: string, paymentId: string): void {
+    const deliveryIndex = this.recentDeliveries.findIndex(d => d.id === deliveryId);
+    if (deliveryIndex !== -1) {
+      this.recentDeliveries[deliveryIndex].paymentStatus = PaymentStatus.COMPLETED;
+      this.recentDeliveries[deliveryIndex].paymentId = paymentId;
+      this.recentDeliveries[deliveryIndex].paymentDate = new Date().toISOString();
+      
+      this.filterDeliveries(this.selectedFilter);
+      this.loadDashboardStats();
+    }
+
+    const delivery = this.recentDeliveries[deliveryIndex];
+    if (delivery) {
+      const modalRef = this.dialog.open(PaymentSuccessModalComponent, {
+        data: {
+          deliveryId: delivery.id,
+          amount: delivery.amount,
+          paymentMethod: delivery.paymentMethod || 'Unknown'
+        }
+      });
+
+      modalRef.afterClosed().subscribe(() => {
+        this.loadRecentDeliveries();
+      });
+    }
+  }
+
+  private showPaymentSuccessModal(deliveryId: string, paymentId: string): void {
+    const delivery = this.recentDeliveries.find(d => d.id === deliveryId);
+    
+    if (delivery) {
+      const modalRef = this.dialog.open(PaymentSuccessModalComponent, {
+        data: {
+          deliveryId: delivery.id,
+          amount: delivery.amount,
+          paymentMethod: delivery.paymentMethod
+        }
+      });
+
+      modalRef.afterClosed().subscribe(() => {
+        this.loadDashboardStats();
+        this.loadRecentDeliveries();
+      });
+    }
   }
 
   cancelDelivery(deliveryId: string) {
     if (confirm('Are you sure you want to cancel this delivery?')) {
-      // Set processing state
       const delivery = this.recentDeliveries.find(d => d.id === deliveryId);
       if (delivery) {
         delivery.processing = true;
@@ -97,7 +168,6 @@ export class ClientDashboardComponent implements OnInit {
         },
         error: (err) => {
           alert('Error: ' + err.message);
-          // Remove processing state on error
           if (delivery) {
             delivery.processing = false;
           }
@@ -124,13 +194,13 @@ export class ClientDashboardComponent implements OnInit {
     switch (filter) {
       case 'paid':
         this.filteredDeliveries = this.recentDeliveries.filter(d => 
-          d.paymentStatus === 'PAID'
+          d.paymentStatus === PaymentStatus.COMPLETED
         );
         break;
       case 'unpaid':
         this.filteredDeliveries = this.recentDeliveries.filter(d => 
           d.status === 'DELIVERED' && 
-          (!d.paymentStatus || d.paymentStatus === 'UNPAID')
+          d.paymentStatus !== PaymentStatus.COMPLETED
         );
         break;
       default:
@@ -145,7 +215,7 @@ export class ClientDashboardComponent implements OnInit {
   payAllUnpaid() {
     const unpaidOrders = this.recentDeliveries.filter(d => 
       d.status === 'DELIVERED' && 
-      (!d.paymentStatus || d.paymentStatus === 'UNPAID')
+      d.paymentStatus !== PaymentStatus.COMPLETED
     );
 
     if (unpaidOrders.length === 0) {
@@ -154,8 +224,6 @@ export class ClientDashboardComponent implements OnInit {
     }
 
     if (confirm(`Are you sure you want to pay all ${unpaidOrders.length} unpaid orders?`)) {
-      // You can implement bulk payment logic here
-      // For now, let's open payment dialog for each order
       this.openBulkPaymentDialog(unpaidOrders);
     }
   }
@@ -182,23 +250,17 @@ export class ClientDashboardComponent implements OnInit {
 
   getEmptyStateMessage(): string {
     switch (this.selectedFilter) {
-      case 'paid':
-        return 'No paid orders found';
-      case 'unpaid':
-        return 'No unpaid orders found';
-      default:
-        return 'No delivery requests found';
+      case 'paid': return 'No paid orders found';
+      case 'unpaid': return 'No unpaid orders found';
+      default: return 'No delivery requests found';
     }
   }
 
   getEmptyStateDescription(): string {
     switch (this.selectedFilter) {
-      case 'paid':
-        return 'You haven\'t made any payments yet.';
-      case 'unpaid':
-        return 'All your delivered orders have been paid.';
-      default:
-        return 'Start by creating your first delivery request.';
+      case 'paid': return 'You haven\'t made any payments yet.';
+      case 'unpaid': return 'All your delivered orders have been paid.';
+      default: return 'Start by creating your first delivery request.';
     }
   }
 
@@ -212,7 +274,6 @@ export class ClientDashboardComponent implements OnInit {
     return labels[method] || method;
   }
 
-  // Fixed downloadReceipt method with proper typing
   downloadReceipt(delivery: DeliveryRequest) {
     console.log('Downloading receipt for delivery:', delivery.id);
     
@@ -238,80 +299,161 @@ export class ClientDashboardComponent implements OnInit {
       this.handleAuthError();
       return;
     }
-  
+
     this.deliveryService.getClientDeliveries(this.clientId).subscribe({
       next: (deliveries: DeliveryRequest[]) => {
         try {
+          const validDeliveries = deliveries.filter(delivery => 
+            delivery && typeof delivery === 'object'
+          );
+
+          if (validDeliveries.length === 0) {
+            this.errorMessage = 'No delivery history found';
+            this.isLoading = false;
+            return;
+          }
+
           const validStatuses = ['DELIVERED', 'IN_TRANSIT', 'PENDING', 'CANCELLED', 'APPROVED', 'ASSIGNED', 'EXPIRED'];
           
-          const statusCounts = deliveries.reduce((acc, delivery) => {
-            const status = delivery?.status?.toUpperCase() || 'UNKNOWN';
-            const normalizedStatus = validStatuses.includes(status) 
-              ? status 
-              : 'UNKNOWN';
-              
+          const statusCounts = validDeliveries.reduce((acc, delivery) => {
+            const status = delivery?.status?.toString().toUpperCase() || 'UNKNOWN';
+            const normalizedStatus = validStatuses.includes(status) ? status : 'UNKNOWN';
             acc[normalizedStatus] = (acc[normalizedStatus] || 0) + 1;
             return acc;
           }, {} as Record<string, number>);
 
-          // Calculate payment statistics
-          const deliveredOrders = deliveries.filter(d => d.status === 'DELIVERED');
-          const paidOrders = deliveredOrders.filter(d => d.paymentStatus === 'PAID');
-          
-          // Calculate unpaid deliveries
-          this.unpaidDeliveries = deliveredOrders.filter(d => 
-            !d.paymentStatus || d.paymentStatus === 'UNPAID'
-          ).length;
+          const now = new Date();
+          const currentMonth = now.getMonth();
+          const currentYear = now.getFullYear();
 
-          // Calculate this month's orders
-          const currentMonth = new Date().getMonth();
-          const currentYear = new Date().getFullYear();
-          const thisMonthOrders = deliveries.filter(d => {
+          const deliveredOrders = validDeliveries.filter(d => 
+            d.status?.toUpperCase() === 'DELIVERED'
+          );
+
+          const paidOrders = deliveredOrders.filter(d => {
+            return d.paymentStatus === PaymentStatus.COMPLETED;
+          });
+
+          const unpaidOrders = deliveredOrders.filter(d => {
+            return d.paymentStatus !== PaymentStatus.COMPLETED;
+          });
+
+          const thisMonthOrders = validDeliveries.filter(d => {
             if (!d.createdAt) return false;
-            const orderDate = new Date(d.createdAt);
-            return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear;
+            try {
+              const orderDate = new Date(d.createdAt);
+              if (isNaN(orderDate.getTime())) return false;
+              return orderDate.getMonth() === currentMonth && 
+                     orderDate.getFullYear() === currentYear;
+            } catch (dateError) {
+              console.warn('Invalid date format:', d.createdAt);
+              return false;
+            }
           }).length;
 
-          // Fixed financial calculations with proper type handling
           const totalPaidAmount = paidOrders.reduce((sum, d) => {
-            const amount = typeof d.amount === 'string' ? parseFloat(d.amount) : (d.amount || 0);
-            return sum + amount;
+            try {
+              let amount = 0;
+              if (d.amount) {
+                if (typeof d.amount === 'string') {
+amount = typeof d.amount === 'string' ? 
+         parseFloat(d.amount.replace(/[^\d.-]/g, '')) || 0 :
+         typeof d.amount === 'number' ? d.amount : 0;
+                        } else if (typeof d.amount === 'number') {
+                  amount = d.amount;
+                }
+              }
+              return sum + (isNaN(amount) ? 0 : amount);
+            } catch (error) {
+              console.warn('Error parsing amount for delivery:', d.id, error);
+              return sum;
+            }
           }, 0);
           
-          const totalUnpaidAmount = deliveredOrders
-            .filter(d => !d.paymentStatus || d.paymentStatus === 'UNPAID')
-            .reduce((sum, d) => {
-              const amount = typeof d.amount === 'string' ? parseFloat(d.amount) : (d.amount || 0);
-              return sum + amount;
-            }, 0);
-            
-          const totalSavings = deliveries.reduce((sum, d) => sum + (d.discountAmount || 0), 0);
+          const totalUnpaidAmount = unpaidOrders.reduce((sum, d) => {
+            try {
+              let amount = 0;
+              if (d.amount) {
+                if (typeof d.amount === 'string') {
+                  amount = parseFloat(d.amount.toString().replace(/[^\d.-]/g, '')) || 0;
+                } else if (typeof d.amount === 'number') {
+                  amount = d.amount;
+                }
+              }
+              return sum + (isNaN(amount) ? 0 : amount);
+            } catch (error) {
+              console.warn('Error parsing amount for unpaid delivery:', d.id, error);
+              return sum;
+            }
+          }, 0);
+          
+  const totalSavings = validDeliveries.reduce((sum, d) => {
+  try {
+    const delivery = d as any;
+    const discountAmount = delivery.discountAmount;
+    
+    // Early return if no discount
+    if (!discountAmount) {
+      return sum;
+    }
+    
+    let discount = 0;
+    
+    // Explicit type checking to avoid 'never' type
+    if (discountAmount && typeof discountAmount === 'string') {
+      const stringValue: string = discountAmount; // Explicit typing
+      discount = parseFloat(stringValue.replace(/[^\d.-]/g, '')) || 0;
+    } else if (discountAmount && typeof discountAmount === 'number') {
+      discount = discountAmount;
+    }
+    
+    return sum + discount;
+  } catch (error) {
+    console.warn('Error parsing discount for delivery:', d.id, error);
+    return sum;
+  }
+}, 0);
 
-          // Calculate payment rate
           const paymentRate = deliveredOrders.length > 0 
-            ? Math.round((paidOrders.length / deliveredOrders.length) * 100)
+            ? Math.round((paidOrders.length / deliveredOrders.length) * 100 * 100) / 100
             : 0;
 
+          const pendingStatuses = ['PENDING', 'IN_TRANSIT', 'ASSIGNED', 'APPROVED'];
+          const pendingOrders = pendingStatuses.reduce((sum, status) => 
+            sum + (statusCounts[status] || 0), 0
+          );
+
+          this.unpaidDeliveries = unpaidOrders.length;
+
           this.stats = {
-            totalOrders: deliveries.length,
-            pendingOrders: (statusCounts['PENDING'] || 0) + 
-                          (statusCounts['IN_TRANSIT'] || 0) + 
-                          (statusCounts['ASSIGNED'] || 0) +
-                          (statusCounts['APPROVED'] || 0),
+            totalOrders: validDeliveries.length,
+            pendingOrders: pendingOrders,
             completedOrders: statusCounts['DELIVERED'] || 0,
-            paidOrders: paidOrders.length,
             canceledOrders: statusCounts['CANCELLED'] || 0,
-            unknownStatus: statusCounts['UNKNOWN'] || 0,
-            thisMonthOrders,
-            paymentRate,
-            totalPaidAmount,
-            totalUnpaidAmount,
-            totalSavings
+            expiredOrders: statusCounts['EXPIRED'] || 0,
+            paidOrders: paidOrders.length,
+            unpaidOrders: unpaidOrders.length,
+            paymentRate: paymentRate,
+            totalPaidAmount: Math.round(totalPaidAmount * 100) / 100,
+            totalUnpaidAmount: Math.round(totalUnpaidAmount * 100) / 100,
+            totalSavings: Math.round(totalSavings * 100) / 100,
+            totalRevenue: Math.round((totalPaidAmount + totalUnpaidAmount) * 100) / 100,
+            thisMonthOrders: thisMonthOrders,
+            averageOrderValue: deliveredOrders.length > 0 
+              ? Math.round(((totalPaidAmount + totalUnpaidAmount) / deliveredOrders.length) * 100) / 100
+              : 0,
+            deliveryRate: validDeliveries.length > 0 
+              ? Math.round((deliveredOrders.length / validDeliveries.length) * 100 * 100) / 100
+              : 0
           };
 
-          if (deliveries.length === 0) {
-            this.errorMessage = 'No delivery history found';
-          }
+          console.log('Dashboard Statistics:', {
+            totalDeliveries: validDeliveries.length,
+            delivered: deliveredOrders.length,
+            paid: paidOrders.length,
+            unpaid: unpaidOrders.length,
+            paymentRate: paymentRate + '%'
+          });
 
         } catch (parseError) {
           console.error('Error processing delivery data:', parseError);
@@ -326,6 +468,10 @@ export class ClientDashboardComponent implements OnInit {
         
         if (err.status === 401) {
           this.handleAuthError();
+        } else if (err.status === 403) {
+          this.errorMessage = 'Access denied. Please check your permissions.';
+        } else if (err.status >= 500) {
+          this.errorMessage = 'Server error. Please try again later.';
         } else {
           this.errorMessage = err.message || 'Failed to load dashboard data. Please try again later.';
         }
@@ -358,9 +504,8 @@ export class ClientDashboardComponent implements OnInit {
             const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
             return dateB - dateA;
           })
-          .slice(0, 10); // Show more recent deliveries
+          .slice(0, 10);
 
-        // Apply current filter
         this.filterDeliveries(this.selectedFilter);
       },
       error: (err) => {
@@ -370,14 +515,14 @@ export class ClientDashboardComponent implements OnInit {
     });
   }
 
-openPaymentDialog(delivery: DeliveryRequest): void {
-  this.router.navigate(['/client/payment'], {
-    queryParams: {
-      deliveryId: delivery.id,
-      clientId: this.clientId
-    }
-  });
-}
+  openPaymentDialog(delivery: DeliveryRequest): void {
+    this.router.navigate(['/client/payment'], {
+      queryParams: {
+        deliveryId: delivery.id,
+        clientId: this.clientId
+      }
+    });
+  }
 
   goToDeliveryRequest() {
     this.router.navigate(['/client/delivery-request']);
@@ -395,8 +540,6 @@ openPaymentDialog(delivery: DeliveryRequest): void {
       pendingOrders: 0, 
       completedOrders: 0,
       paidOrders: 0,
-      canceledOrders: 0,
-      unknownStatus: 0,
       thisMonthOrders: 0,
       paymentRate: 0,
       totalPaidAmount: 0,

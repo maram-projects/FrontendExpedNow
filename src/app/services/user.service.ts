@@ -184,20 +184,20 @@ rejectUser(userId: string): Observable<void> {
 
   // ================ VEHICLE OPERATIONS ================
 
-  /**
-   * Assign vehicle to user
-   * @param userId The user's ID
-   * @param vehicleId The vehicle's ID
-   * @returns Observable with user and vehicle
-   */
+/**
+ * Assign vehicle to user
+ * @param userId The user's ID
+ * @param vehicleId The vehicle's ID
+ * @returns Observable with user and vehicle
+ */
 assignVehicleToUser(userId: string, vehicleId: string): Observable<{user: User, vehicle: Vehicle}> {
   return this.http.patch<{user: any, vehicle: any}>(
-    `${this.apiUrl}/${vehicleId}/assign`,
-    { userId }
+    `${this.apiUrl}/${userId}/assign-vehicle`,  // Match Spring endpoint
+    { vehicleId }  // Send vehicleId in request body
   ).pipe(
     map(response => {
       // Validate response structure
-      if (!response || !response.user || !response.vehicle) {
+      if (!response.user || !response.vehicle) {
         throw new Error('Invalid response structure from server');
       }
 
@@ -206,16 +206,8 @@ assignVehicleToUser(userId: string, vehicleId: string): Observable<{user: User, 
         this.convertDtoToVehicle(response.vehicle) : 
         response.vehicle;
 
-      // Ensure we have valid IDs
-      if (!response.user.id || !vehicle?.id) {
-        throw new Error('Missing IDs in response');
-      }
-
       return {
-        user: {
-          ...response.user,
-          assignedVehicleId: vehicle.id
-        },
+        user: response.user,
         vehicle: vehicle
       };
     }),
@@ -225,7 +217,6 @@ assignVehicleToUser(userId: string, vehicleId: string): Observable<{user: User, 
     })
   );
 }
-
 isVehicleDTO(vehicle: Vehicle | VehicleDTO): vehicle is VehicleDTO {
   return 'vehicleBrand' in vehicle;
 }

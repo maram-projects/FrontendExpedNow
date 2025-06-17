@@ -1,7 +1,6 @@
-// payment-dialog.component.ts
 import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Observable, Subscription, tap } from 'rxjs';
 import { PaymentService } from '../../../services/payment.service';
 import { DiscountService } from '../../../services/discount.service';
 import { PricingService } from '../../../services/pricing.service';
@@ -38,6 +37,7 @@ interface DeliveryData {
   fragile?: boolean;
   paymentStatus?: PaymentStatus;
   paymentId?: string;
+  paymentDate?: string | number | Date; // Added paymentDate
 }
 
 interface PricingDetails {
@@ -73,7 +73,7 @@ interface BillingDetails {
 @Component({
   selector: 'app-payment-dialog',
   templateUrl: './payment-dialog.component.html',
-  styleUrls: ['./payment-dialog.component.scss'],
+  styleUrls: ['./payment-dialog.component.css'],
   standalone: true,
   imports: [
     CommonModule,
@@ -86,30 +86,21 @@ interface BillingDetails {
 export class PaymentDialogComponent implements OnInit, OnDestroy {
   @ViewChild(PricingDetailsComponent) pricingDetails!: PricingDetailsComponent;
 
-  // Payment data
   delivery: DeliveryData | null = null;
   clientId: string = '';
   paymentStatus: PaymentStatus = PaymentStatus.PENDING;
   paymentId: string | null = null;
   paymentError: string = '';
-  
-  // Payment methods - Initialize as empty array to avoid "used before initialization" error
   paymentMethods: any[] = [];
   selectedMethod: PaymentMethod | null = null;
   showCardForm: boolean = false;
   showBankDetails: boolean = false;
-  
-  // Discount
   discountCode: string = '';
   discountApplied: boolean = false;
   discountError: string = '';
-  
-  // Loading states
   loading: boolean = true;
   discountLoading: boolean = false;
   paymentProcessing: boolean = false;
-  
-  // Billing details
   billingDetails: BillingDetails = {
     name: '',
     email: '',
@@ -135,7 +126,6 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    // Initialize payment methods after paymentService is available
     this.paymentMethods = this.paymentService.getAvailablePaymentMethods();
     this.loadData();
   }
@@ -165,11 +155,18 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
           ...delivery,
           amount: parseFloat(delivery.amount.toString()),
           finalAmountAfterDiscount: parseFloat(delivery.amount.toString()),
-          pricingDetails: null
+          pricingDetails: null,
+          paymentStatus: delivery.paymentStatus as PaymentStatus
         };
         
+        if (delivery.paymentStatus === PaymentStatus.COMPLETED) {
+          this.toastService.showWarning('This delivery has already been paid');
+          this.navigateToDashboard();
+          return;
+        }
+
         if (delivery.paymentStatus) {
-          this.handleExistingPayment(delivery);
+          this.handleExistingPayment(this.delivery);
         } else {
           this.loadPricingDetails();
         }
@@ -207,6 +204,15 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
 
   private loadPricingDetails(): void {
     if (!this.delivery) return;
+    
+    let scheduledDate: string | undefined;
+    if (this.delivery.scheduledDate) {
+      try {
+        scheduledDate = new Date(this.delivery.scheduledDate).toISOString();
+      } catch (e) {
+        scheduledDate = undefined;
+      }
+    }
 
     const pricingSub = this.pricingService.calculatePricing({
       pickupAddress: this.delivery.pickupAddress,
@@ -214,7 +220,7 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
       packageDescription: this.delivery.packageDescription,
       packageWeight: this.delivery.packageWeight,
       vehicleId: this.delivery.vehicleId || '',
-      scheduledDate: this.delivery.scheduledDate,
+      scheduledDate: scheduledDate,
       packageType: this.delivery.packageType || 'standard',
       pickupLatitude: this.delivery.pickupLatitude || 0,
       pickupLongitude: this.delivery.pickupLongitude || 0,
@@ -240,6 +246,13 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
 
     const pricingData = response?.data || response;
     
+    let calculatedAt: string;
+    try {
+      calculatedAt = pricingData.calculatedAt ? new Date(pricingData.calculatedAt).toISOString() : new Date().toISOString();
+    } catch (e) {
+      calculatedAt = new Date().toISOString();
+    }
+    
     this.delivery.pricingDetails = {
       distance: pricingData.distance || 0,
       basePrice: pricingData.basePrice || 0,
@@ -247,12 +260,12 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
       weightCost: pricingData.weightCost || 0,
       urgencyFee: pricingData.urgencyFee || 0,
       peakSurcharge: pricingData.peakSurcharge || 0,
+      calculatedAt: calculatedAt,
       holidaySurcharge: pricingData.holidaySurcharge || 0,
       discountAmount: pricingData.discountAmount || 0,
       totalAmount: pricingData.totalAmount || 0,
       appliedRules: pricingData.appliedRules || [],
       currency: pricingData.currency || 'TND',
-      calculatedAt: pricingData.calculatedAt || new Date().toISOString()
     };
 
     this.delivery.amount = pricingData.totalAmount;
@@ -339,7 +352,6 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
       billingDetails: this.selectedMethod === PaymentMethod.CREDIT_CARD ? this.billingDetails : undefined
     };
 
-    // Use createPaymentIntent instead of createPayment
     const paymentSub = this.paymentService.createPaymentIntent(paymentData).subscribe({
       next: (response: any) => this.handlePaymentResponse(response),
       error: (err: any) => this.handlePaymentError(err)
@@ -388,7 +400,6 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
     if (!this.paymentId) return;
 
     try {
-      // Handle Stripe payment as Promise instead of Observable
       const result = await this.stripeService.confirmPayment(clientSecret, {
         name: this.billingDetails.name,
         email: this.billingDetails.email,
@@ -408,7 +419,6 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
   }
 
   private handleNonCardPayment(paymentId: string): void {
-    // Use processNonCardPayment method from the service
     const confirmSub = this.paymentService.processNonCardPayment(paymentId, this.discountApplied ? this.discountCode : undefined).subscribe({
       next: (response: any) => {
         const payment = response.data;
@@ -432,7 +442,6 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
   }
 
   private confirmPayment(paymentId: string, paymentIntentId?: string): void {
-    // Fix the confirmPayment call to match the service signature
     const amount = this.delivery?.finalAmountAfterDiscount || 0;
     const transactionId = paymentIntentId || paymentId;
     
@@ -457,17 +466,42 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
   }
 
   private handlePaymentSuccess(payment: Payment): void {
-    this.toastService.showSuccess('Payment completed successfully');
-    this.navigateToDashboard({
-      paymentSuccess: true,
-      paymentId: payment.id
+    this.updateDeliveryPaymentStatus(this.delivery!.id, payment.id).subscribe({
+      next: () => {
+        this.toastService.showSuccess('Payment Successful! Your payment has been processed successfully.');
+        this.navigateToDashboard({
+          paymentSuccess: 'true',
+          paymentId: payment.id,
+          deliveryId: this.delivery!.id
+        });
+      },
+      error: (err) => {
+        console.error('Error updating delivery status:', err);
+        this.navigateToDashboard({
+          paymentSuccess: 'true',
+          paymentId: payment.id,
+          deliveryId: this.delivery!.id
+        });
+      }
     });
+  }
+
+  private updateDeliveryPaymentStatus(deliveryId: string, paymentId: string): Observable<any> {
+    return this.deliveryService.updateDeliveryPaymentStatus(deliveryId, paymentId).pipe(
+      tap(() => {
+        if (this.delivery) {
+          this.delivery.paymentStatus = PaymentStatus.COMPLETED;
+          this.delivery.paymentId = paymentId;
+          this.delivery.paymentDate = new Date();
+        }
+      })
+    );
   }
 
   private handlePendingVerification(payment: Payment): void {
     this.toastService.showInfo('Payment is pending verification');
     this.navigateToDashboard({
-      paymentPending: true,
+      paymentPending: 'true',
       paymentId: payment.id
     });
   }
@@ -479,7 +513,12 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
   }
 
   navigateToDashboard(queryParams: any = {}): void {
-    this.router.navigate(['/client/dashboard'], { queryParams });
+    this.router.navigate(['/client/dashboard'], { 
+      queryParams: {
+        ...queryParams,
+        refresh: Date.now().toString()
+      }
+    });
   }
 
   getOrderId(): string {

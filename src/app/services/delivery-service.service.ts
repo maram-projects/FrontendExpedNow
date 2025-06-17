@@ -1,15 +1,30 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, filter, map, tap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth.service';
 import { Mission } from '../models/mission.model';
+export enum DeliveryStatus {
+  PENDING = 'PENDING',
+  IN_TRANSIT = 'IN_TRANSIT',
+  DELIVERED = 'DELIVERED',
+  CANCELLED = 'CANCELLED',
+  APPROVED = 'APPROVED',
+  ASSIGNED = 'ASSIGNED',
+  EXPIRED = 'EXPIRED'
+}
+
+export enum PaymentStatus {
+  PENDING = 'PENDING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  REFUNDED = 'REFUNDED'
+}
 
 // Updated to match Java DeliveryResponseDTO
 export interface DeliveryRequest {
   amount: string | number;
-  paymentStatus: string;
   actionTime: string | number | Date;
   updatedAt: string | number | Date;
   id: string;
@@ -21,9 +36,7 @@ export interface DeliveryRequest {
   pickupLongitude: number;
   deliveryLatitude: number;
   deliveryLongitude: number;
-   paymentDate?: string | number | Date;
   originalAmount?: number | string;
-  paymentMethod?: string;
   status: string; 
   vehicleId?: string;
   scheduledDate: string;
@@ -32,11 +45,17 @@ export interface DeliveryRequest {
   clientId?: string;
   processing?: boolean;
   discountAmount?: number; // Added missing property
+  paymentId?: string;
+  paymentDate?: string | number | Date;
+  paymentMethod?: string;
+  paymentStatus?: string;
+  
 }
 
 @Injectable({ providedIn: 'root' })
 export class DeliveryService {
   private apiUrl = `${environment.apiUrl}/api/deliveries`;
+  router: any;
 
   constructor(
     private http: HttpClient,
@@ -318,9 +337,42 @@ export class DeliveryService {
   }
 
 
-   getDeliveryById(deliveryId: string): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/${deliveryId}`, { 
-      headers: this.getAuthHeaders() 
-    });
-  }
+getDeliveryById(deliveryId: string): Observable<DeliveryRequest> {
+    return this.http.get<DeliveryRequest>(
+        `${this.apiUrl}/${deliveryId}`,
+        { 
+            headers: this.getAuthHeaders(),
+            withCredentials: true
+        }
+    ).pipe(
+        catchError((error: HttpErrorResponse) => {
+            console.error('Error fetching delivery:', error);
+            if (error.status === 404) {
+                return throwError(() => new Error('Delivery not found'));
+            } else if (error.status === 401) {
+                return throwError(() => new Error('Unauthorized access'));
+            } else {
+                return throwError(() => new Error('Failed to load delivery details'));
+            }
+        })
+    );
 }
+
+// In DeliveryService
+updateDeliveryPaymentStatus(deliveryId: string, paymentId: string): Observable<DeliveryRequest> {
+  return this.http.patch<DeliveryRequest>(
+    `${this.apiUrl}/${deliveryId}/payment-status`,
+    { paymentId, paymentStatus: 'PAID' },
+    { headers: this.getAuthHeaders() }
+  );
+}
+
+navigateToDashboard(queryParams: any = {}): void {
+  // Add refresh token to force update
+  this.router.navigate(['/client/dashboard'], { 
+    queryParams: {
+      ...queryParams,
+      refresh: Date.now().toString()
+    }
+  });
+}}
