@@ -20,7 +20,8 @@
         <!-- Left Column - Payment Details -->
         <div class="col-lg-8 col-md-12">
           <!-- Payment Status Banner -->
-          <div *ngIf="paymentStatus !== 'PENDING'" class="status-banner" [class.success]="paymentStatus === 'COMPLETED'"
+          <div *ngIf="paymentStatus !== 'PENDING'" class="status-banner" 
+               [class.success]="paymentStatus === 'COMPLETED'"
                [class.warning]="paymentStatus === 'PROCESSING' || paymentStatus === 'PENDING_VERIFICATION'"
                [class.error]="paymentStatus === 'FAILED'">
             <i class="fas" 
@@ -115,9 +116,11 @@
                      (click)="selectPaymentMethod(method.id)">
                   <div class="payment-method-content">
                     <div class="payment-method-icon">
-                      <i class="fas" [class.fa-credit-card]="method.id === 'CREDIT_CARD'"
+                      <i class="fas" 
+                         [class.fa-credit-card]="method.id === 'CREDIT_CARD'"
                          [class.fa-university]="method.id === 'BANK_TRANSFER'"
-                         [class.fa-wallet]="method.id === 'WALLET'"></i>
+                         [class.fa-wallet]="method.id === 'WALLET'"
+                         [class.fa-money-bill-wave]="method.id === 'CASH'"></i>
                     </div>
                     <div class="payment-method-info">
                       <h6>{{ method.name }}</h6>
@@ -167,10 +170,33 @@
                 
                 <div class="form-group">
                   <label for="card-element">Card Details *</label>
-                  <div id="card-element" class="stripe-card-element">
-                    <!-- Stripe Elements will mount here -->
+                  <div id="card-element" class="stripe-card-element"></div>
+                  <div *ngIf="cardErrors" class="stripe-card-errors text-danger">
+                    <i class="fas fa-exclamation-circle"></i> {{ cardErrors }}
                   </div>
-                  <div id="card-errors" class="stripe-card-errors" role="alert"></div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="address-line1">Address Line 1</label>
+                    <input 
+                      id="address-line1"
+                      type="text" 
+                      class="form-control"
+                      [(ngModel)]="billingDetails.address.line1"
+                      placeholder="123 Main Street"
+                      [disabled]="paymentProcessing">
+                  </div>
+                  <div class="form-group">
+                    <label for="city">City</label>
+                    <input 
+                      id="city"
+                      type="text" 
+                      class="form-control"
+                      [(ngModel)]="billingDetails.address.city"
+                      placeholder="Tunis"
+                      [disabled]="paymentProcessing">
+                  </div>
                 </div>
               </div>
             </div>
@@ -184,7 +210,7 @@
             </div>
             <div class="section-body">
               <div class="bank-details">
-                <p>Please transfer the amount of <strong>{{ getFinalAmount() | currency:'TND' }}</strong> to:</p>
+                <p>Please transfer the amount of <strong>{{ getFinalAmount() | currency:'TND':'symbol':'1.2-2' }}</strong> to:</p>
                 <div class="bank-info">
                   <div class="bank-row">
                     <span class="bank-label">Bank Name:</span>
@@ -222,16 +248,16 @@
                 <div class="pricing-summary">
                   <div class="pricing-row">
                     <span class="pricing-label">Delivery Amount:</span>
-                    <span class="pricing-value">{{ delivery?.amount | currency:'TND' }}</span>
+                    <span class="pricing-value">{{ delivery?.amount | currency:'TND':'symbol':'1.2-2' }}</span>
                   </div>
                   <div *ngIf="discountApplied" class="pricing-row">
                     <span class="pricing-label">Discount Applied:</span>
-                    <span class="pricing-value discount-applied">-{{ getDiscountAmount() | currency:'TND' }}</span>
+                    <span class="pricing-value discount-applied">-{{ getDiscountAmount() | currency:'TND':'symbol':'1.2-2' }}</span>
                   </div>
                   <hr class="pricing-divider">
                   <div class="pricing-row total-row">
                     <span class="pricing-label">Total Amount:</span>
-                    <span class="pricing-value total-amount">{{ getFinalAmount() | currency:'TND' }}</span>
+                    <span class="pricing-value total-amount">{{ getFinalAmount() | currency:'TND':'symbol':'1.2-2' }}</span>
                   </div>
                 </div>
               </div>
@@ -246,7 +272,7 @@
             <!-- Action Buttons -->
             <div class="action-buttons" *ngIf="paymentStatus === 'PENDING'">
               <button class="btn btn-cancel" (click)="navigateToDashboard()" [disabled]="paymentProcessing">
-                <i class="fas fa-times me-2"></i>Cancel
+                <i class="fas fa-times me-2"></i> Cancel
               </button>
               <button 
                 class="btn btn-pay" 
@@ -255,17 +281,17 @@
                 <span *ngIf="paymentProcessing" class="spinner-border spinner-border-sm me-2"></span>
                 <i *ngIf="!paymentProcessing" class="fas fa-lock me-2"></i>
                 <span *ngIf="paymentProcessing">Processing...</span>
-                <span *ngIf="!paymentProcessing">Pay {{ getFinalAmount() | currency:'TND' }}</span>
+                <span *ngIf="!paymentProcessing">Pay {{ getFinalAmount() | currency:'TND':'symbol':'1.2-2' }}</span>
               </button>
             </div>
 
             <!-- Payment Status Actions -->
             <div *ngIf="paymentStatus !== 'PENDING'" class="status-actions">
               <button *ngIf="paymentStatus === 'FAILED'" class="btn btn-retry" (click)="resetPayment()">
-                <i class="fas fa-redo me-2"></i>Retry Payment
+                <i class="fas fa-redo me-2"></i> Retry Payment
               </button>
               <button class="btn btn-dashboard" (click)="navigateToDashboard()">
-                <i class="fas fa-home me-2"></i>Go to Dashboard
+                <i class="fas fa-home me-2"></i> Go to Dashboard
               </button>
             </div>
           </div>

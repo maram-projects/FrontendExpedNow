@@ -1,6 +1,7 @@
 /* Add this if not already present */
 @import 'bootstrap/dist/css/bootstrap.min.css';
 @import '@fortawesome/fontawesome-free/css/all.min.css';
+
 /* Custom styles for admin layout */
 .sidebar {
   min-height: 100vh;
@@ -40,3 +41,15 @@
 }
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+.stripe-card-element {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: white;
+}
+
+.stripe-card-errors {
+  color: #fa755a;
+  margin-top: 8px;
+  font-size: 14px;
+}

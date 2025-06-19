@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { PaymentDialogComponent } from './payment-dialog/payment-dialog.component';
+import { PaymentConfirmationComponent } from './payment-confirmation/payment-confirmation.component';
 
 export const CLIENT_ROUTES: Routes = [
   {
@@ -18,14 +18,14 @@ export const CLIENT_ROUTES: Routes = [
       .then(m => m.ClientDiscountsComponent)
   },
   {
-    path: 'payment-method',
-    loadComponent: () => import('./payment-method/payment-method.component')
-      .then(m => m.PaymentMethodComponent)
-  },
-{
     path: 'payment',
-    component: PaymentDialogComponent,
-    data: { title: 'Payment' }
+    loadComponent: () => import('./payment-dialog/payment-dialog.component')
+      .then(m => m.PaymentDialogComponent)
+  },
+  {
+    path: 'payment/confirmation',
+    loadComponent: () => import('./payment-confirmation/payment-confirmation.component')
+      .then(m => m.PaymentConfirmationComponent)
   },
   { 
     path: '', 

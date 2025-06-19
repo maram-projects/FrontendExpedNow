@@ -126,30 +126,44 @@ export class PaymentService {
   /**
    * Create a new payment intent
    */
-  createPaymentIntent(paymentData: {
-    deliveryId: string;
-    amount: number;
-    currency: string;
-    paymentMethod: PaymentMethod;
-    clientId: string;
-    discountCode?: string;
-  }): Observable<CreatePaymentIntentResponse> {
-    console.log('Creating payment intent with data:', paymentData);
-    
-    return this.http.post<CreatePaymentIntentResponse>(
-      this.apiUrl,
-      paymentData,
-      {
-        headers: this.createHeaders(),
-        withCredentials: true
+createPaymentIntent(paymentData: {
+  deliveryId: string;
+  amount: number;
+  currency: string;
+  paymentMethod: PaymentMethod;
+  clientId: string;
+  discountCode?: string;
+}): Observable<CreatePaymentIntentResponse> {
+  console.log('Creating payment intent with data:', paymentData);
+  
+  return this.http.post<CreatePaymentIntentResponse>(
+    this.apiUrl,
+    paymentData,
+    {
+      headers: this.createHeaders(),
+      withCredentials: true
+    }
+  ).pipe(
+    tap(response => {
+      if (!response || !response.clientSecret || !response.paymentId) {
+        console.error('Invalid response:', response);
+        throw new Error('Payment service returned invalid response');
       }
-    ).pipe(
-      retry(2),
-      tap(response => console.log('Payment intent created:', response)),
-      catchError(this.handleError)
-    );
-  }
-
+    }),
+    catchError(error => {
+      console.error('Payment intent creation error:', error);
+      let errorMessage = 'Payment failed';
+      
+      if (error.error?.message) {
+        errorMessage = error.error.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      throw new Error(errorMessage);
+    })
+  );
+}
   /**
    * Get a specific payment by ID
    */
@@ -198,11 +212,18 @@ confirmPayment(transactionId: string, amount: number): Observable<PaymentRespons
       withCredentials: true 
     }
   ).pipe(
-    tap(response => {
-      console.log('Payment confirmed:', response);
-      // Update local state if needed
-    }),
-    catchError(this.handleError)
+    catchError(error => {
+      console.error('Payment confirmation failed:', error);
+      // Try with payload instead of params if first attempt fails
+      return this.http.post<PaymentResponse>(
+        `${this.apiUrl}/confirm`,
+        { transactionId, amount },
+        { 
+          headers: this.createHeaders(),
+          withCredentials: true 
+        }
+      );
+    })
   );
 }
 
@@ -438,61 +459,68 @@ processNonCardPayment(paymentId: string, discountCode?: string): Observable<Paym
     catchError(this.handleError)
   );
 }
-
+getPaymentStatus(paymentId: string): Observable<{success: boolean, status: PaymentStatus, updatedAt: Date}> {
+  return this.http.get<{success: boolean, status: PaymentStatus, updatedAt: Date}>(
+    `${this.apiUrl}/${paymentId}/status`,
+    { headers: this.createHeaders() }
+  ).pipe(
+    catchError(this.handleError)
+  );
+}
 
   /**
    * Enhanced error handling
    */
-  private handleError = (error: HttpErrorResponse) => {
-    console.error('Payment service error:', error);
-    
-    let errorMessage = 'An unexpected error occurred';
-    
-    if (error.error instanceof ErrorEvent) {
-      // Client-side error
-      errorMessage = `Error: ${error.error.message}`;
+private handleError = (error: HttpErrorResponse) => {
+  console.error('Payment service error:', error);
+  
+  let errorMessage = 'An unexpected error occurred';
+  
+  if (error.error instanceof ErrorEvent) {
+    // Client-side error
+    errorMessage = `Error: ${error.error.message}`;
+  } else {
+    // Server-side error
+    if (error.error && error.error.message) {
+      errorMessage = error.error.message;
     } else {
-      // Server-side error
-      if (error.error && error.error.message) {
-        errorMessage = error.error.message;
-      } else {
-        switch (error.status) {
-          case 400:
-            errorMessage = 'Invalid payment data provided';
-            break;
-          case 401:
-            errorMessage = 'Authentication required. Please log in again.';
-            break;
-          case 402:
-            errorMessage = 'Payment required or insufficient funds';
-            break;
-          case 403:
-            errorMessage = 'Access denied. You do not have permission to perform this action.';
-            break;
-          case 404:
-            errorMessage = 'Payment not found';
-            break;
-          case 409:
-            errorMessage = 'Payment conflict. This payment may have already been processed.';
-            break;
-          case 422:
-            errorMessage = 'Invalid payment data. Please check your input.';
-            break;
-          case 500:
-            errorMessage = 'Payment processing temporarily unavailable. Please try again later.';
-            break;
-          case 502:
-            errorMessage = 'Payment gateway error. Please try again.';
-            break;
-          case 503:
-            errorMessage = 'Payment service temporarily unavailable. Please try again later.';
-            break;
-          default:
-            errorMessage = `Payment failed with status ${error.status}. Please try again.`;
-        }
+      switch (error.status) {
+        case 400:
+          errorMessage = 'Invalid payment data provided';
+          break;
+        case 401:
+          errorMessage = 'Authentication required. Please log in again.';
+          break;
+        case 402:
+          errorMessage = 'Payment required or insufficient funds';
+          break;
+        case 403:
+          errorMessage = 'Access denied. You do not have permission to perform this action.';
+          break;
+        case 404:
+          errorMessage = 'Payment not found';
+          break;
+        case 409:
+          errorMessage = 'Payment conflict. This payment may have already been processed.';
+          break;
+        case 422:
+          errorMessage = 'Invalid payment data. Please check your input.';
+          break;
+        case 500:
+          errorMessage = 'Payment processing temporarily unavailable. Please try again later.';
+          break;
+        case 502:
+          errorMessage = 'Payment gateway error. Please try again.';
+          break;
+        case 503:
+          errorMessage = 'Payment service temporarily unavailable. Please try again later.';
+          break;
+        default:
+          errorMessage = `Payment failed with status ${error.status}. Please try again.`;
       }
     }
-    
-    return throwError(() => new Error(errorMessage));
-  };
+  }
+  
+  return throwError(() => new Error(errorMessage));
+};
 }

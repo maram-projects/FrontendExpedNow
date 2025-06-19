@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule, DatePipe, CurrencyPipe } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
@@ -10,6 +10,8 @@ import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.compone
 import { ActivatedRoute } from '@angular/router';
 import { PaymentSuccessModalComponent } from '../../../shared/payment-success-modal/payment-success-modal.component';
 import { PaymentStatus } from '../../../models/Payment.model';
+import { filter, interval, Subscription, switchMap, takeUntil, timer, Subject } from 'rxjs';
+import { PaymentService } from '../../../services/payment.service';
 
 interface DashboardStats {
   totalOrders: number;
@@ -23,12 +25,22 @@ interface DashboardStats {
   totalPaidAmount: number;
   totalUnpaidAmount: number;
   totalSavings: number;
-  // Added new properties
   expiredOrders?: number;
   unpaidOrders?: number;
   totalRevenue?: number;
   averageOrderValue?: number;
   deliveryRate?: number;
+}
+
+interface PaymentTransaction {
+  id: string;
+  deliveryId: string;
+  amount: number;
+  paymentMethod: string;
+  paymentDate: Date | string;
+  status: string;
+  description: string;
+  type: 'PAYMENT' | 'REFUND' | 'DISCOUNT';
 }
 
 @Component({
@@ -43,7 +55,10 @@ interface DashboardStats {
     CurrencyPipe
   ]
 })
-export class ClientDashboardComponent implements OnInit {
+export class ClientDashboardComponent implements OnInit, OnDestroy {
+  private paymentStatusSubscriptions: Subscription[] = [];
+  private destroy$ = new Subject<void>();
+
   userType: string = '';
   clientId: string = '';
   stats: DashboardStats = {
@@ -60,10 +75,12 @@ export class ClientDashboardComponent implements OnInit {
   recentDeliveries: DeliveryRequest[] = [];
   filteredDeliveries: DeliveryRequest[] = [];
   activeDiscounts: Discount[] = [];
+  paymentTransactions: PaymentTransaction[] = [];
   unpaidDeliveries: number = 0;
   isLoading = true;
   errorMessage = '';
-  selectedFilter: 'all' | 'paid' | 'unpaid' = 'all';
+  selectedFilter: 'all' | 'paid' | 'unpaid' | 'cancelled' | 'expired' = 'all';
+  selectedView: 'orders' | 'payments' | 'movements' = 'orders';
 
   constructor(
     private authService: AuthService,
@@ -71,7 +88,8 @@ export class ClientDashboardComponent implements OnInit {
     private discountService: DiscountService,
     private dialog: MatDialog,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private paymentService: PaymentService,
   ) {
     const currentUser = this.authService.getCurrentUser();
     
@@ -85,53 +103,351 @@ export class ClientDashboardComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.loadDashboardStats();
-    this.loadRecentDeliveries();
-    this.loadActiveDiscounts();
-    this.checkExpiredDeliveries();
-  
+    console.log('Dashboard initializing...');
+    this.refreshDashboardData();
+    
+    // Subscribe to query params for payment success handling
     this.route.queryParams.subscribe(params => {
+      console.log('Query params received:', params);
+      
       if (params['paymentSuccess'] === 'true' && params['deliveryId']) {
+        console.log('Processing payment success for delivery:', params['deliveryId']);
         this.handlePaymentSuccess(params['deliveryId'], params['paymentId']);
       }
 
-      if (params['refresh']) {
-        this.loadDashboardStats();
-        this.loadRecentDeliveries();
-        this.loadActiveDiscounts();
-    
-        if (params['paymentSuccess'] === 'true' && params['deliveryId']) {
-          this.showPaymentSuccessModal(params['deliveryId'], params['paymentId']);
-        }
+      if (params['refresh'] === 'true') {
+        console.log('Refreshing dashboard data...');
+        this.refreshDashboardData();
+        // Clear the refresh param to prevent infinite refreshes
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { refresh: null },
+          queryParamsHandling: 'merge'
+        });
       }
+    });
+
+    // Set up periodic refresh every 30 seconds for real-time updates
+    interval(30000).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(() => {
+      this.loadDashboardStats();
+      this.loadRecentDeliveries();
     });
   }
 
-  private handlePaymentSuccess(deliveryId: string, paymentId: string): void {
-    const deliveryIndex = this.recentDeliveries.findIndex(d => d.id === deliveryId);
-    if (deliveryIndex !== -1) {
-      this.recentDeliveries[deliveryIndex].paymentStatus = PaymentStatus.COMPLETED;
-      this.recentDeliveries[deliveryIndex].paymentId = paymentId;
-      this.recentDeliveries[deliveryIndex].paymentDate = new Date().toISOString();
-      
-      this.filterDeliveries(this.selectedFilter);
-      this.loadDashboardStats();
-    }
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.paymentStatusSubscriptions.forEach(sub => sub.unsubscribe());
+  }
 
-    const delivery = this.recentDeliveries[deliveryIndex];
-    if (delivery) {
-      const modalRef = this.dialog.open(PaymentSuccessModalComponent, {
-        data: {
-          deliveryId: delivery.id,
-          amount: delivery.amount,
-          paymentMethod: delivery.paymentMethod || 'Unknown'
+  private refreshDashboardData(): void {
+    console.log('Refreshing all dashboard data...');
+    this.isLoading = true;
+    
+    // Reset all data first
+    this.recentDeliveries = [];
+    this.filteredDeliveries = [];
+    this.paymentTransactions = [];
+    
+    // Load all data in sequence to ensure proper order
+    Promise.all([
+      this.loadDashboardStatsPromise(),
+      this.loadRecentDeliveriesPromise(),
+      this.loadActiveDiscountsPromise(),
+      this.loadPaymentTransactionsPromise()
+    ]).then(() => {
+      console.log('All dashboard data loaded successfully');
+      this.isLoading = false;
+      this.filterDeliveries(this.selectedFilter);
+    }).catch(error => {
+      console.error('Error loading dashboard data:', error);
+      this.isLoading = false;
+      this.handleError(error);
+    });
+  }
+
+  // Convert observables to promises for better control
+  private loadDashboardStatsPromise(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.clientId) {
+        reject(new Error('Invalid client ID'));
+        return;
+      }
+
+      this.deliveryService.getClientDeliveries(this.clientId).subscribe({
+        next: (deliveries: DeliveryRequest[]) => {
+          try {
+            this.calculateStats(deliveries);
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        },
+        error: reject
+      });
+    });
+  }
+
+  private loadRecentDeliveriesPromise(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.clientId) {
+        reject(new Error('Invalid client ID'));
+        return;
+      }
+
+      this.deliveryService.getClientDeliveries(this.clientId).subscribe({
+        next: (deliveries: DeliveryRequest[]) => {
+          console.log('Received deliveries:', deliveries);
+          this.recentDeliveries = deliveries
+            .sort((a, b) => {
+              const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+              const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+              return dateB - dateA;
+            })
+            .slice(0, 20);
+          
+          console.log('Processed recent deliveries:', this.recentDeliveries);
+          resolve();
+        },
+        error: reject
+      });
+    });
+  }
+
+  private loadActiveDiscountsPromise(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.clientId) {
+        resolve();
+        return;
+      }
+      
+      this.discountService.getClientDiscounts(this.clientId).subscribe({
+        next: (discounts) => {
+          this.activeDiscounts = discounts.filter(d => 
+            !d.used && 
+            d.validUntil && new Date(d.validUntil) > new Date()
+          );
+          resolve();
+        },
+        error: (err) => {
+          console.error('Error loading discounts:', err);
+          resolve(); // Don't fail the entire refresh for discounts
         }
       });
+    });
+  }
 
-      modalRef.afterClosed().subscribe(() => {
-        this.loadRecentDeliveries();
+  private loadPaymentTransactionsPromise(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.clientId) {
+        resolve();
+        return;
+      }
+      
+      this.deliveryService.getClientDeliveries(this.clientId).subscribe({
+        next: (deliveries: DeliveryRequest[]) => {
+          this.generatePaymentTransactions(deliveries);
+          resolve();
+        },
+        error: (err) => {
+          console.error('Error loading payment transactions:', err);
+          resolve(); // Don't fail the entire refresh for transactions
+        }
       });
+    });
+  }
+
+  private calculateStats(deliveries: DeliveryRequest[]): void {
+    const validDeliveries = deliveries.filter(delivery => 
+      delivery && typeof delivery === 'object'
+    );
+
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    // Calculate different order statuses
+    const pendingOrders = validDeliveries.filter(d => 
+      ['PENDING', 'ASSIGNED', 'IN_TRANSIT'].includes(d.status || '')
+    ).length;
+
+    const completedOrders = validDeliveries.filter(d => 
+      d.status === 'DELIVERED'
+    ).length;
+
+    const paidOrders = validDeliveries.filter(d => 
+      d.paymentStatus === PaymentStatus.COMPLETED
+    ).length;
+
+    const unpaidOrders = validDeliveries.filter(d => 
+      d.status === 'DELIVERED' && 
+      d.paymentStatus !== PaymentStatus.COMPLETED
+    ).length;
+
+    const thisMonthOrders = validDeliveries.filter(d => {
+      if (!d.createdAt) return false;
+      const orderDate = new Date(d.createdAt);
+      return orderDate.getMonth() === currentMonth && 
+             orderDate.getFullYear() === currentYear;
+    }).length;
+
+    // Calculate amounts
+    const totalPaidAmount = validDeliveries
+      .filter(d => d.paymentStatus === PaymentStatus.COMPLETED)
+      .reduce((sum, d) => sum + this.parseAmount(d.amount), 0);
+    
+    const totalUnpaidAmount = validDeliveries
+      .filter(d => d.status === 'DELIVERED' && d.paymentStatus !== PaymentStatus.COMPLETED)
+      .reduce((sum, d) => sum + this.parseAmount(d.amount), 0);
+
+    const totalSavings = validDeliveries
+      .reduce((sum, d) => sum + this.parseAmount(d.discountAmount), 0);
+
+    // Update stats
+    this.stats = {
+      ...this.stats,
+      totalOrders: validDeliveries.length,
+      pendingOrders,
+      completedOrders,
+      paidOrders,
+      unpaidOrders,
+      thisMonthOrders,
+      totalPaidAmount,
+      totalUnpaidAmount,
+      totalSavings,
+      paymentRate: completedOrders > 0 
+        ? Math.round((paidOrders / completedOrders) * 100 * 100) / 100
+        : 0
+    };
+
+    console.log('Updated stats:', this.stats);
+  }
+
+  private generatePaymentTransactions(deliveries: DeliveryRequest[]): void {
+    this.paymentTransactions = [];
+    
+    deliveries.forEach(delivery => {
+      const toDateString = (date: any): string => {
+        if (!date) return new Date().toISOString();
+        if (date instanceof Date) return date.toISOString();
+        if (typeof date === 'string') return new Date(date).toISOString();
+        return new Date(date).toISOString();
+      };
+
+      // Add payment transaction for paid deliveries
+      if (delivery.paymentStatus === PaymentStatus.COMPLETED && delivery.paymentDate) {
+        this.paymentTransactions.push({
+          id: `pay_${delivery.id}`,
+          deliveryId: delivery.id,
+          amount: this.parseAmount(delivery.amount),
+          paymentMethod: delivery.paymentMethod || 'UNKNOWN',
+          paymentDate: toDateString(delivery.paymentDate),
+          status: 'COMPLETED',
+          description: `Payment for delivery to ${delivery.deliveryAddress}`,
+          type: 'PAYMENT'
+        });
+      }
+      
+      // Add refund transactions
+      if (delivery.paymentStatus === PaymentStatus.REFUNDED) {
+        this.paymentTransactions.push({
+          id: `ref_${delivery.id}`,
+          deliveryId: delivery.id,
+          amount: -this.parseAmount(delivery.amount),
+          paymentMethod: delivery.paymentMethod || 'UNKNOWN',
+          paymentDate: toDateString(delivery.updatedAt || delivery.paymentDate),
+          status: 'REFUNDED',
+          description: `Refund for delivery to ${delivery.deliveryAddress}`,
+          type: 'REFUND'
+        });
+      }
+      
+      // Add discount transactions  
+      if (delivery.discountAmount && delivery.discountAmount > 0) {
+        this.paymentTransactions.push({
+          id: `disc_${delivery.id}`,
+          deliveryId: delivery.id,
+          amount: -this.parseAmount(delivery.discountAmount),
+          paymentMethod: 'DISCOUNT',
+          paymentDate: toDateString(delivery.createdAt),
+          status: 'APPLIED',
+          description: `Discount applied for delivery to ${delivery.deliveryAddress}`,
+          type: 'DISCOUNT'
+        });
+      }
+    });
+    
+    // Sort transactions by date (newest first)
+    this.paymentTransactions.sort((a, b) => 
+      new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()
+    );
+  }
+
+  // Enhanced payment success handling with better state management
+  private handlePaymentSuccess(deliveryId: string, paymentId: string): void {
+    console.log('Handling payment success for delivery:', deliveryId, 'payment:', paymentId);
+    
+    // Find and update the delivery immediately for UI responsiveness
+    const delivery = this.recentDeliveries.find(d => d.id === deliveryId);
+    if (delivery) {
+      console.log('Found delivery, updating payment status...');
+      delivery.paymentStatus = PaymentStatus.COMPLETED;
+      delivery.paymentId = paymentId;
+      delivery.paymentDate = new Date().toISOString();
+      
+      // Update filtered deliveries as well
+      const filteredDelivery = this.filteredDeliveries.find(d => d.id === deliveryId);
+      if (filteredDelivery) {
+        filteredDelivery.paymentStatus = PaymentStatus.COMPLETED;
+        filteredDelivery.paymentId = paymentId;
+        filteredDelivery.paymentDate = new Date().toISOString();
+      }
     }
+    
+    // Show success modal immediately
+    this.showPaymentSuccessModal(deliveryId, paymentId);
+    
+    // Start intensive polling for confirmation (every 2 seconds for 30 seconds)
+    let pollCount = 0;
+    const maxPolls = 15; // 30 seconds total
+    
+    const statusSub = interval(2000).pipe(
+      switchMap(() => {
+        pollCount++;
+        console.log(`Polling payment status attempt ${pollCount}/${maxPolls}`);
+        return this.paymentService.getPaymentStatus(paymentId);
+      }),
+      takeUntil(timer(30000)),
+      filter(response => {
+        console.log('Payment status response:', response);
+        return response.success && response.status === PaymentStatus.COMPLETED;
+      })
+    ).subscribe({
+      next: (response) => {
+        console.log('Payment confirmed, refreshing dashboard...');
+        this.refreshDashboardData();
+      },
+      error: (err) => {
+        console.error('Error checking payment status:', err);
+        // Still refresh even on error to get latest data
+        this.refreshDashboardData();
+      },
+      complete: () => {
+        console.log('Payment status polling completed');
+        // Final refresh regardless of polling result
+        this.refreshDashboardData();
+      }
+    });
+    
+    this.paymentStatusSubscriptions.push(statusSub);
+
+    // Also do an immediate refresh
+    setTimeout(() => {
+      console.log('Doing immediate refresh after payment success...');
+      this.refreshDashboardData();
+    }, 1000);
   }
 
   private showPaymentSuccessModal(deliveryId: string, paymentId: string): void {
@@ -147,10 +463,127 @@ export class ClientDashboardComponent implements OnInit {
       });
 
       modalRef.afterClosed().subscribe(() => {
-        this.loadDashboardStats();
-        this.loadRecentDeliveries();
+        console.log('Payment success modal closed, refreshing data...');
+        this.refreshDashboardData();
       });
     }
+  }
+
+  // Legacy methods - keeping for backward compatibility
+  private loadDashboardStats(): void {
+    this.loadDashboardStatsPromise().catch(err => {
+      console.error('Error in loadDashboardStats:', err);
+      this.handleError(err);
+    });
+  }
+
+  private loadRecentDeliveries(): void {
+    this.loadRecentDeliveriesPromise().then(() => {
+      this.filterDeliveries(this.selectedFilter);
+    }).catch(err => {
+      console.error('Error in loadRecentDeliveries:', err);
+      this.filteredDeliveries = [];
+    });
+  }
+
+  private loadActiveDiscounts(): void {
+    this.loadActiveDiscountsPromise().catch(err => {
+      console.error('Error in loadActiveDiscounts:', err);
+    });
+  }
+
+  private loadPaymentTransactions(): void {
+    this.loadPaymentTransactionsPromise().catch(err => {
+      console.error('Error in loadPaymentTransactions:', err);
+    });
+  }
+
+  private parseAmount(amount: any): number {
+    if (!amount) return 0;
+    if (typeof amount === 'string') {
+      return parseFloat(amount.replace(/[^\d.-]/g, '')) || 0;
+    }
+    return typeof amount === 'number' ? amount : 0;
+  }
+
+  // View Management
+  changeView(view: 'orders' | 'payments' | 'movements') {
+    this.selectedView = view;
+    if (view === 'payments') {
+      this.loadPaymentTransactions();
+    }
+  }
+
+  // Enhanced Filter Functions
+  filterDeliveries(filter: 'all' | 'paid' | 'unpaid' | 'cancelled' | 'expired') {
+    this.selectedFilter = filter;
+    
+    switch (filter) {
+      case 'paid':
+        this.filteredDeliveries = this.recentDeliveries.filter(d => 
+          d.paymentStatus === PaymentStatus.COMPLETED
+        );
+        break;
+      case 'unpaid':
+        this.filteredDeliveries = this.recentDeliveries.filter(d => 
+          d.status === 'DELIVERED' && 
+          d.paymentStatus !== PaymentStatus.COMPLETED
+        );
+        break;
+      case 'cancelled':
+        this.filteredDeliveries = this.recentDeliveries.filter(d => 
+          d.status === 'CANCELLED'
+        );
+        break;
+      case 'expired':
+        this.filteredDeliveries = this.recentDeliveries.filter(d => 
+          d.status === 'EXPIRED'
+        );
+        break;
+      default:
+        this.filteredDeliveries = [...this.recentDeliveries];
+    }
+    
+    console.log(`Filtered ${this.filteredDeliveries.length} deliveries for filter: ${filter}`);
+  }
+
+  // Payment Management Functions
+  getPaymentHistory() {
+    return this.paymentTransactions.filter(t => t.type === 'PAYMENT');
+  }
+
+  getDiscountHistory() {
+    return this.paymentTransactions.filter(t => t.type === 'DISCOUNT');
+  }
+
+  getTotalPaidThisMonth(): number {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    return this.paymentTransactions
+      .filter(t => {
+        const transactionDate = new Date(t.paymentDate);
+        return t.type === 'PAYMENT' && 
+               transactionDate.getMonth() === currentMonth && 
+               transactionDate.getFullYear() === currentYear;
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+  }
+
+  getTotalDiscountsThisMonth(): number {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    return this.paymentTransactions
+      .filter(t => {
+        const transactionDate = new Date(t.paymentDate);
+        return t.type === 'DISCOUNT' && 
+               transactionDate.getMonth() === currentMonth && 
+               transactionDate.getFullYear() === currentYear;
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
   }
 
   cancelDelivery(deliveryId: string) {
@@ -162,8 +595,7 @@ export class ClientDashboardComponent implements OnInit {
 
       this.deliveryService.cancelDelivery(deliveryId).subscribe({
         next: () => {
-          this.loadDashboardStats();
-          this.loadRecentDeliveries();
+          this.refreshDashboardData();
           alert('Delivery cancelled successfully!');
         },
         error: (err) => {
@@ -186,26 +618,6 @@ export class ClientDashboardComponent implements OnInit {
         console.error('Error checking expired deliveries:', err.message);
       }
     });
-  }
-
-  filterDeliveries(filter: 'all' | 'paid' | 'unpaid') {
-    this.selectedFilter = filter;
-    
-    switch (filter) {
-      case 'paid':
-        this.filteredDeliveries = this.recentDeliveries.filter(d => 
-          d.paymentStatus === PaymentStatus.COMPLETED
-        );
-        break;
-      case 'unpaid':
-        this.filteredDeliveries = this.recentDeliveries.filter(d => 
-          d.status === 'DELIVERED' && 
-          d.paymentStatus !== PaymentStatus.COMPLETED
-        );
-        break;
-      default:
-        this.filteredDeliveries = [...this.recentDeliveries];
-    }
   }
 
   showUnpaidOrders() {
@@ -241,9 +653,7 @@ export class ClientDashboardComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result?.success) {
-        this.loadDashboardStats();
-        this.loadRecentDeliveries();
-        this.loadActiveDiscounts();
+        this.refreshDashboardData();
       }
     });
   }
@@ -252,6 +662,8 @@ export class ClientDashboardComponent implements OnInit {
     switch (this.selectedFilter) {
       case 'paid': return 'No paid orders found';
       case 'unpaid': return 'No unpaid orders found';
+      case 'cancelled': return 'No cancelled orders found';
+      case 'expired': return 'No expired orders found';
       default: return 'No delivery requests found';
     }
   }
@@ -260,6 +672,8 @@ export class ClientDashboardComponent implements OnInit {
     switch (this.selectedFilter) {
       case 'paid': return 'You haven\'t made any payments yet.';
       case 'unpaid': return 'All your delivered orders have been paid.';
+      case 'cancelled': return 'You haven\'t cancelled any orders.';
+      case 'expired': return 'No orders have expired.';
       default: return 'Start by creating your first delivery request.';
     }
   }
@@ -269,7 +683,9 @@ export class ClientDashboardComponent implements OnInit {
       'CREDIT_CARD': 'Credit Card',
       'CASH_ON_DELIVERY': 'Cash on Delivery',
       'MOBILE_MONEY': 'Mobile Money',
-      'BANK_TRANSFER': 'Bank Transfer'
+      'BANK_TRANSFER': 'Bank Transfer',
+      'DISCOUNT': 'Discount Applied',
+      'WALLET': 'Digital Wallet'
     };
     return labels[method] || method;
   }
@@ -289,228 +705,6 @@ export class ClientDashboardComponent implements OnInit {
       error: (err: any) => {
         console.error('Error downloading receipt:', err);
         alert('Error downloading receipt. Please try again.');
-      }
-    });
-  }
-
-  private loadDashboardStats(): void {
-    if (!this.clientId || typeof this.clientId !== 'string') {
-      console.error('Invalid client ID:', this.clientId);
-      this.handleAuthError();
-      return;
-    }
-
-    this.deliveryService.getClientDeliveries(this.clientId).subscribe({
-      next: (deliveries: DeliveryRequest[]) => {
-        try {
-          const validDeliveries = deliveries.filter(delivery => 
-            delivery && typeof delivery === 'object'
-          );
-
-          if (validDeliveries.length === 0) {
-            this.errorMessage = 'No delivery history found';
-            this.isLoading = false;
-            return;
-          }
-
-          const validStatuses = ['DELIVERED', 'IN_TRANSIT', 'PENDING', 'CANCELLED', 'APPROVED', 'ASSIGNED', 'EXPIRED'];
-          
-          const statusCounts = validDeliveries.reduce((acc, delivery) => {
-            const status = delivery?.status?.toString().toUpperCase() || 'UNKNOWN';
-            const normalizedStatus = validStatuses.includes(status) ? status : 'UNKNOWN';
-            acc[normalizedStatus] = (acc[normalizedStatus] || 0) + 1;
-            return acc;
-          }, {} as Record<string, number>);
-
-          const now = new Date();
-          const currentMonth = now.getMonth();
-          const currentYear = now.getFullYear();
-
-          const deliveredOrders = validDeliveries.filter(d => 
-            d.status?.toUpperCase() === 'DELIVERED'
-          );
-
-          const paidOrders = deliveredOrders.filter(d => {
-            return d.paymentStatus === PaymentStatus.COMPLETED;
-          });
-
-          const unpaidOrders = deliveredOrders.filter(d => {
-            return d.paymentStatus !== PaymentStatus.COMPLETED;
-          });
-
-          const thisMonthOrders = validDeliveries.filter(d => {
-            if (!d.createdAt) return false;
-            try {
-              const orderDate = new Date(d.createdAt);
-              if (isNaN(orderDate.getTime())) return false;
-              return orderDate.getMonth() === currentMonth && 
-                     orderDate.getFullYear() === currentYear;
-            } catch (dateError) {
-              console.warn('Invalid date format:', d.createdAt);
-              return false;
-            }
-          }).length;
-
-          const totalPaidAmount = paidOrders.reduce((sum, d) => {
-            try {
-              let amount = 0;
-              if (d.amount) {
-                if (typeof d.amount === 'string') {
-amount = typeof d.amount === 'string' ? 
-         parseFloat(d.amount.replace(/[^\d.-]/g, '')) || 0 :
-         typeof d.amount === 'number' ? d.amount : 0;
-                        } else if (typeof d.amount === 'number') {
-                  amount = d.amount;
-                }
-              }
-              return sum + (isNaN(amount) ? 0 : amount);
-            } catch (error) {
-              console.warn('Error parsing amount for delivery:', d.id, error);
-              return sum;
-            }
-          }, 0);
-          
-          const totalUnpaidAmount = unpaidOrders.reduce((sum, d) => {
-            try {
-              let amount = 0;
-              if (d.amount) {
-                if (typeof d.amount === 'string') {
-                  amount = parseFloat(d.amount.toString().replace(/[^\d.-]/g, '')) || 0;
-                } else if (typeof d.amount === 'number') {
-                  amount = d.amount;
-                }
-              }
-              return sum + (isNaN(amount) ? 0 : amount);
-            } catch (error) {
-              console.warn('Error parsing amount for unpaid delivery:', d.id, error);
-              return sum;
-            }
-          }, 0);
-          
-  const totalSavings = validDeliveries.reduce((sum, d) => {
-  try {
-    const delivery = d as any;
-    const discountAmount = delivery.discountAmount;
-    
-    // Early return if no discount
-    if (!discountAmount) {
-      return sum;
-    }
-    
-    let discount = 0;
-    
-    // Explicit type checking to avoid 'never' type
-    if (discountAmount && typeof discountAmount === 'string') {
-      const stringValue: string = discountAmount; // Explicit typing
-      discount = parseFloat(stringValue.replace(/[^\d.-]/g, '')) || 0;
-    } else if (discountAmount && typeof discountAmount === 'number') {
-      discount = discountAmount;
-    }
-    
-    return sum + discount;
-  } catch (error) {
-    console.warn('Error parsing discount for delivery:', d.id, error);
-    return sum;
-  }
-}, 0);
-
-          const paymentRate = deliveredOrders.length > 0 
-            ? Math.round((paidOrders.length / deliveredOrders.length) * 100 * 100) / 100
-            : 0;
-
-          const pendingStatuses = ['PENDING', 'IN_TRANSIT', 'ASSIGNED', 'APPROVED'];
-          const pendingOrders = pendingStatuses.reduce((sum, status) => 
-            sum + (statusCounts[status] || 0), 0
-          );
-
-          this.unpaidDeliveries = unpaidOrders.length;
-
-          this.stats = {
-            totalOrders: validDeliveries.length,
-            pendingOrders: pendingOrders,
-            completedOrders: statusCounts['DELIVERED'] || 0,
-            canceledOrders: statusCounts['CANCELLED'] || 0,
-            expiredOrders: statusCounts['EXPIRED'] || 0,
-            paidOrders: paidOrders.length,
-            unpaidOrders: unpaidOrders.length,
-            paymentRate: paymentRate,
-            totalPaidAmount: Math.round(totalPaidAmount * 100) / 100,
-            totalUnpaidAmount: Math.round(totalUnpaidAmount * 100) / 100,
-            totalSavings: Math.round(totalSavings * 100) / 100,
-            totalRevenue: Math.round((totalPaidAmount + totalUnpaidAmount) * 100) / 100,
-            thisMonthOrders: thisMonthOrders,
-            averageOrderValue: deliveredOrders.length > 0 
-              ? Math.round(((totalPaidAmount + totalUnpaidAmount) / deliveredOrders.length) * 100) / 100
-              : 0,
-            deliveryRate: validDeliveries.length > 0 
-              ? Math.round((deliveredOrders.length / validDeliveries.length) * 100 * 100) / 100
-              : 0
-          };
-
-          console.log('Dashboard Statistics:', {
-            totalDeliveries: validDeliveries.length,
-            delivered: deliveredOrders.length,
-            paid: paidOrders.length,
-            unpaid: unpaidOrders.length,
-            paymentRate: paymentRate + '%'
-          });
-
-        } catch (parseError) {
-          console.error('Error processing delivery data:', parseError);
-          this.handleDataError();
-        }
-        
-        this.isLoading = false;
-      },
-      error: (err: any) => {
-        console.error('API Error loading dashboard stats:', err);
-        this.isLoading = false;
-        
-        if (err.status === 401) {
-          this.handleAuthError();
-        } else if (err.status === 403) {
-          this.errorMessage = 'Access denied. Please check your permissions.';
-        } else if (err.status >= 500) {
-          this.errorMessage = 'Server error. Please try again later.';
-        } else {
-          this.errorMessage = err.message || 'Failed to load dashboard data. Please try again later.';
-        }
-      }
-    });
-  }
-
-  private loadActiveDiscounts(): void {
-    if (!this.clientId) return;
-    
-    this.discountService.getClientDiscounts(this.clientId).subscribe({
-      next: (discounts) => {
-        this.activeDiscounts = discounts.filter(d => 
-          !d.used && 
-          d.validUntil && new Date(d.validUntil) > new Date()
-        );
-      },
-      error: (err) => console.error('Error loading discounts:', err)
-    });
-  }
-
-  private loadRecentDeliveries() {
-    if (!this.clientId) return;
-
-    this.deliveryService.getClientDeliveries(this.clientId).subscribe({
-      next: (deliveries: DeliveryRequest[]) => {
-        this.recentDeliveries = deliveries
-          .sort((a, b) => {
-            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-            return dateB - dateA;
-          })
-          .slice(0, 10);
-
-        this.filterDeliveries(this.selectedFilter);
-      },
-      error: (err) => {
-        console.error('Error loading recent deliveries:', err);
-        this.filteredDeliveries = [];
       }
     });
   }
@@ -547,5 +741,17 @@ amount = typeof d.amount === 'string' ?
       totalSavings: 0
     };
     this.errorMessage = 'Error processing delivery data. Showing partial information.';
+  }
+
+  private handleError(err: any): void {
+    if (err.status === 401) {
+      this.handleAuthError();
+    } else if (err.status === 403) {
+      this.errorMessage = 'Access denied. Please check your permissions.';
+    } else if (err.status >= 500) {
+      this.errorMessage = 'Server error. Please try again later.';
+    } else {
+      this.errorMessage = err.message || 'Failed to load dashboard data. Please try again later.';
+    }
   }
 }

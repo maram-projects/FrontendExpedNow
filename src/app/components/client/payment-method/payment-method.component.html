@@ -5,7 +5,7 @@
       <h2 class="payment-title">Choose Payment Method</h2>
       <div class="total-amount">
         <span class="amount-label">Total:</span>
-        <span class="amount-value">{{ totalAmount }} {{ currency }}</span>
+        <span class="amount-value">{{ totalAmount | currency:currency:'symbol':'1.2-2' }}</span>
       </div>
     </div>
 
@@ -38,9 +38,15 @@
     <div class="card-form-section" *ngIf="showCardForm" [@slideIn]>
       <h3 class="section-title">Card Information</h3>
       
-      <div class="form-grid">
+      <!-- Loading state for card element -->
+      <div *ngIf="!cardElementMounted" class="card-loading">
+        <mat-spinner diameter="30"></mat-spinner>
+        <span>Loading payment form...</span>
+      </div>
+      
+      <div class="form-grid" [class.hidden]="!cardElementMounted">
         <div class="form-group">
-          <label for="cardholderName">Cardholder Name</label>
+          <label for="cardholderName">Cardholder Name *</label>
           <input 
             id="cardholderName"
             type="text" 
@@ -48,11 +54,12 @@
             placeholder="John Doe"
             class="form-input"
             [disabled]="paymentProcessing"
+            required
           />
         </div>
 
         <div class="form-group">
-          <label for="email">Email Address</label>
+          <label for="email">Email Address *</label>
           <input 
             id="email"
             type="email" 
@@ -60,18 +67,25 @@
             placeholder="john@example.com"
             class="form-input"
             [disabled]="paymentProcessing"
+            required
           />
         </div>
 
-        <div class="form-group full-width">
-          <label for="card-element">Card Details</label>
-          <div id="card-element" class="stripe-element">
-            <!-- Stripe Elements will be mounted here -->
-          </div>
-        </div>
+      <!-- payment-method.component.html -->
+<div class="form-group full-width">
+  <label for="card-element">Card Details *</label>
+  <div id="card-element" class="stripe-element"></div>
+  <div *ngIf="cardErrors" class="stripe-error">
+    <i class="error-icon">⚠️</i> {{ cardErrors }}
+  </div>
+  <div *ngIf="showCardForm && !cardElementMounted" class="card-loading">
+    <mat-spinner diameter="20"></mat-spinner>
+    <span>Loading payment form...</span>
+  </div>
+</div>
 
         <div class="form-group">
-          <label for="address">Address</label>
+          <label for="address">Address Line 1</label>
           <input 
             id="address"
             type="text" 
@@ -104,25 +118,25 @@
 
     <!-- Action Buttons -->
     <div class="action-buttons">
-   <button 
-  type="button"
-  class="btn btn-secondary"
-  (click)="navigateToCart()"
-  [disabled]="paymentProcessing"
->
-  <i class="btn-icon">←</i>
-  Back to Cart
-</button>
+      <button 
+        type="button"
+        class="btn btn-secondary"
+        (click)="navigateToCart()"
+        [disabled]="paymentProcessing"
+      >
+        <i class="btn-icon">←</i>
+        Back to Cart
+      </button>
 
       <button 
         type="button"
         class="btn btn-primary"
-        [disabled]="!selectedMethod || paymentProcessing || isLoading"
+        [disabled]="!selectedMethod || paymentProcessing || isLoading || (showCardForm && (!cardElementMounted || !billingDetails.name || !billingDetails.email))"
         (click)="processPayment()"
       >
         <span *ngIf="!paymentProcessing && !isLoading">
           <i class="btn-icon">💳</i>
-          Pay {{ totalAmount }} {{ currency }}
+          Pay {{ totalAmount | currency:currency:'symbol':'1.2-2' }}
         </span>
         <span *ngIf="paymentProcessing || isLoading" class="loading-content">
           <mat-spinner diameter="20"></mat-spinner>

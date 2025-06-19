@@ -1,0 +1,34 @@
+<div class="payment-container">
+  <div class="payment-card" [ngClass]="{'success': isSuccess, 'failure': !isSuccess && !isLoading}">
+    <ng-container *ngIf="isLoading; else paymentResult">
+      <div class="verifying">
+        <div class="loader"></div>
+        <h2>Verifying payment...</h2>
+      </div>
+    </ng-container>
+
+    <ng-template #paymentResult>
+      <div class="payment-status">
+        <div class="status-icon">
+          <mat-icon>{{ isSuccess ? 'check_circle' : 'error' }}</mat-icon>
+        </div>
+        <h2>{{ isSuccess ? 'Payment Confirmed!' : 'Payment Verification Failed' }}</h2>
+      </div>
+
+      <p *ngIf="isSuccess">
+        Your payment has been successfully processed.
+      </p>
+      <p *ngIf="!isSuccess">
+        We couldn't verify your payment. Please check your payment history or contact support.
+      </p>
+
+      <div *ngIf="isSuccess && paymentId" class="transaction-id">
+        Transaction ID: {{ paymentId }}
+      </div>
+
+      <button class="btn-dashboard" (click)="navigateToDashboard()">
+        Return to Dashboard
+      </button>
+    </ng-template>
+  </div>
+</div>

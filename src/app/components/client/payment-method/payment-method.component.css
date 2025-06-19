@@ -522,4 +522,36 @@
   .method-description {
     font-size: 0.8rem;
   }
+
+  /* Add these to your component's CSS */
+.hidden {
+  display: none;
+}
+
+.card-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  color: #666;
+}
+
+.stripe-error {
+  color: #dc3545;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.error-icon {
+  margin-right: 5px;
+}
+
+.loading-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 }

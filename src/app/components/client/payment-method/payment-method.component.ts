@@ -7,8 +7,7 @@ import { RouterModule } from '@angular/router';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { trigger, state, style, transition, animate } from '@angular/animations';
-import { firstValueFrom } from 'rxjs';
-
+import { firstValueFrom, Subscription } from 'rxjs';
 
 import { CartService } from '../../../services/cart.service';
 import { 
@@ -71,8 +70,11 @@ export class PaymentMethodComponent implements OnInit, OnDestroy, AfterViewInit 
   clientSecret = '';
   paymentId = '';
   stripeInitialized = false;
-  cardElementMounted = false;
-
+  cardErrors: string = '';
+  cardElementMounted: boolean = false;
+  
+  private subscriptions = new Subscription();
+  
   constructor(
     private paymentService: PaymentService,
     private stripeService: StripeService,
@@ -86,24 +88,28 @@ export class PaymentMethodComponent implements OnInit, OnDestroy, AfterViewInit 
     this.totalAmount = this.cartService.getTotalAmount();
     
     // Subscribe to Stripe initialization status
-    this.stripeService.isInitialized$.subscribe(initialized => {
+    const stripeSub = this.stripeService.isInitialized$.subscribe(initialized => {
+      console.log('Stripe initialization status:', initialized);
       this.stripeInitialized = initialized;
       if (!initialized) {
         this.showError('Payment system initialization failed');
       }
     });
+    
+    this.subscriptions.add(stripeSub);
   }
 
   ngAfterViewInit(): void {
     // Wait for view to be ready before mounting Stripe elements
     setTimeout(() => {
-      if (this.showCardForm && this.clientSecret && !this.cardElementMounted) {
+      if (this.showCardForm && this.clientSecret && !this.cardElementMounted && this.stripeInitialized) {
         this.mountStripeElements();
       }
     }, 100);
   }
 
   ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
     this.stripeService.destroy();
   }
 
@@ -116,54 +122,105 @@ export class PaymentMethodComponent implements OnInit, OnDestroy, AfterViewInit 
       await this.createPaymentIntent();
     }
   }
-private async createPaymentIntent(): Promise<void> {
-  if (!this.stripeInitialized) {
-    this.showError('Payment system not ready. Please try again.');
-    return;
-  }
 
-  this.isLoading = true;
-  
-  const paymentData = {
-    deliveryId: this.getDeliveryId(),
-    clientId: this.getCurrentUserId(),
-    amount: Math.round(this.totalAmount * 100), // Convert to cents
-    currency: this.currency.toLowerCase(),
-    paymentMethod: PaymentMethod.CREDIT_CARD // Fix: should be paymentMethod
-  };
-
-  try {
-    const response = await firstValueFrom(
-      this.paymentService.createPaymentIntent(paymentData)
-    );
-    
-    if (response) {
-      this.clientSecret = response.clientSecret || '';
-      this.paymentId = response.paymentId;
-      
-      const elementsCreated = await this.stripeService.createElements(this.clientSecret);
-      if (elementsCreated) {
-        // Wait for the view to update before mounting
-        setTimeout(() => this.mountStripeElements(), 100);
-      } else {
-        this.showError('Failed to initialize payment form');
-      }
+  private async createPaymentIntent(): Promise<void> {
+    // First ensure Stripe is ready
+    const isStripeReady = await this.stripeService.ensureReady();
+    if (!isStripeReady) {
+      this.showError('Payment system not ready. Please try again.');
+      return;
     }
-  } catch (error: any) {
-    this.showError('Failed to initialize payment: ' + error.message);
-  } finally {
-    this.isLoading = false;
-  }
-}
 
-  private mountStripeElements(): void {
-    if (this.cardElementMounted) return;
+    this.isLoading = true;
     
-    const mounted = this.stripeService.mountCardElement('card-element');
-    if (mounted) {
+    const paymentData = {
+      deliveryId: this.getDeliveryId(),
+      clientId: this.getCurrentUserId(),
+      amount: Math.round(this.totalAmount * 100), // Convert to cents
+      currency: this.currency.toLowerCase(),
+      paymentMethod: PaymentMethod.CREDIT_CARD
+    };
+
+    try {
+      const response = await firstValueFrom(
+        this.paymentService.createPaymentIntent(paymentData)
+      );
+      
+      if (response && response.clientSecret) {
+        this.clientSecret = response.clientSecret;
+        this.paymentId = response.paymentId;
+        
+        console.log('Payment intent created, client secret:', this.clientSecret);
+        
+        // Create elements and wait for them
+        const elementsCreated = await this.stripeService.createElements(this.clientSecret);
+        if (elementsCreated) {
+          // Wait for the view to update before mounting
+          setTimeout(() => this.mountStripeElements(), 200);
+        } else {
+          this.showError('Failed to initialize payment form');
+        }
+      } else {
+        this.showError('Failed to initialize payment - no client secret received');
+      }
+    } catch (error: any) {
+      console.error('Payment intent creation error:', error);
+      this.showError('Failed to initialize payment: ' + (error.message || 'Unknown error'));
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  private async mountStripeElements(): Promise<void> {
+    if (this.cardElementMounted) {
+      console.log('Card element already mounted');
+      return;
+    }
+
+    try {
+      console.log('Attempting to mount Stripe elements...');
+      
+      // 1. Ensure Stripe is ready
+      const isReady = await this.stripeService.ensureStripeReady();
+      if (!isReady) {
+        throw new Error('Stripe not ready');
+      }
+      
+      // 2. Create card element if not exists
+      if (!this.stripeService.card) {
+        console.log('Creating card element...');
+        const cardCreated = await this.stripeService.createCardElement(this.clientSecret);
+        if (!cardCreated) {
+          throw new Error('Failed to create card element');
+        }
+      }
+      
+      // 3. Check if DOM element exists
+      const cardElement = document.getElementById('card-element');
+      if (!cardElement) {
+        throw new Error('Card element container not found in DOM');
+      }
+      
+      // 4. Mount the card
+      console.log('Mounting card element...');
+      const mounted = this.stripeService.mountCardElement('card-element');
+      if (!mounted) {
+        throw new Error('Failed to mount card element');
+      }
+      
       this.cardElementMounted = true;
-    } else {
-      this.showError('Failed to load payment form');
+      console.log('Card element mounted successfully');
+      
+      // 5. Listen for changes
+      if (this.stripeService.card) {
+        this.stripeService.card.on('change', (event) => {
+          this.cardErrors = event.error?.message || '';
+        });
+      }
+      
+    } catch (error) {
+      console.error('Failed to mount Stripe elements:', error);
+      this.showError('Failed to load payment form. Please refresh the page.');
     }
   }
 
@@ -187,65 +244,138 @@ private async createPaymentIntent(): Promise<void> {
         await this.processNonCardPayment();
       }
     } catch (error: any) {
-      this.showError('Payment failed: ' + error.message);
+      console.error('Payment processing error:', error);
+      this.showError('Payment failed: ' + (error.message || 'Unknown error'));
     } finally {
       this.paymentProcessing = false;
     }
   }
 
-private async processCardPayment(): Promise<void> {
-  if (!this.clientSecret) {
-    throw new Error('Payment not properly initialized');
+  async processCardPayment(): Promise<void> {
+    if (!this.clientSecret) {
+      this.showError('Payment session not initialized');
+      return;
+    }
+
+    // Ensure Stripe is fully ready
+    try {
+      const isReady = await this.stripeService.ensureReady();
+      if (!isReady) {
+        this.showError('Payment system is still initializing. Please try again.');
+        return;
+      }
+
+      if (!this.stripeService.card) {
+        this.showError('Payment form not properly loaded. Please refresh the page.');
+        return;
+      }
+
+      console.log('Processing card payment...');
+      this.paymentProcessing = true;
+      
+      const stripe = await this.stripeService.stripePromise;
+      if (!stripe) throw new Error('Stripe not available');
+
+      // Create payment method
+      const { paymentMethod, error: createError } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: this.stripeService.card,
+        billing_details: {
+          name: this.billingDetails.name,
+          email: this.billingDetails.email,
+          address: {
+            line1: this.billingDetails.address.line1,
+            city: this.billingDetails.address.city,
+            country: 'TN'
+          }
+        }
+      });
+
+      if (createError) {
+        console.error('Payment method creation error:', createError);
+        throw createError;
+      }
+      
+      if (!paymentMethod) throw new Error('Failed to create payment method');
+
+      console.log('Payment method created:', paymentMethod.id);
+
+      // Confirm payment
+      const { paymentIntent, error: confirmError } = await stripe.confirmCardPayment(
+        this.clientSecret,
+        {
+          payment_method: paymentMethod.id,
+          receipt_email: this.billingDetails.email
+        }
+      );
+
+      if (confirmError) {
+        console.error('Payment confirmation error:', confirmError);
+        throw confirmError;
+      }
+      
+      if (!paymentIntent) throw new Error('No payment intent received');
+
+      console.log('Payment confirmed:', paymentIntent.id);
+
+      // Handle successful payment
+      const payment = await firstValueFrom(
+        this.paymentService.confirmPayment(
+          paymentIntent.id,
+          paymentIntent.amount / 100
+        )
+      );
+
+      this.handlePaymentSuccess(payment.data.id);
+      
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      this.showError(error.message || 'Payment failed');
+    } finally {
+      this.paymentProcessing = false;
+    }
   }
 
-  const result = await this.stripeService.confirmPayment(this.clientSecret, this.billingDetails);
-  
-  if (result.success && result.paymentIntent) {
-    // Confirm payment on backend - fix the parameter mismatch
+  private handlePaymentSuccess(paymentId: string): void {
+    this.showSuccess('Payment successful!');
+    this.cartService.clearCart();
+    this.router.navigate(['/payment/confirmation'], {
+      queryParams: { 
+        paymentId,
+        success: 'true'
+      }
+    });
+  }
+
+  private async processNonCardPayment(): Promise<void> {
+    if (!this.paymentId) {
+      // Create payment for non-card methods
+      const paymentData = {
+        deliveryId: this.getDeliveryId(),
+        clientId: this.getCurrentUserId(),
+        amount: Math.round(this.totalAmount * 100),
+        currency: this.currency.toLowerCase(),
+        paymentMethod: this.selectedMethod!
+      };
+
+      const intentResponse = await firstValueFrom(
+        this.paymentService.createPaymentIntent(paymentData)
+      );
+      
+      if (intentResponse) {
+        this.paymentId = intentResponse.paymentId;
+      }
+    }
+
     const payment = await firstValueFrom(
-      this.paymentService.confirmPayment(
-        result.paymentIntent.id, // This should be the transaction ID
-        result.paymentIntent.amount / 100 // Convert from cents to currency units
-      )
+      this.paymentService.processNonCardPayment(this.paymentId)
     );
     
     if (payment) {
-      this.showSuccess('Payment successful!');
+      this.showSuccess('Payment initiated successfully!');
       this.navigateToConfirmation(payment.data);
     }
-  } else {
-    throw new Error(result.error?.message || 'Payment failed');
   }
-}
-private async processNonCardPayment(): Promise<void> {
-  if (!this.paymentId) {
-    // Create payment for non-card methods
-    const paymentData = {
-      deliveryId: this.getDeliveryId(),
-      clientId: this.getCurrentUserId(),
-      amount: Math.round(this.totalAmount * 100),
-      currency: this.currency.toLowerCase(),
-      paymentMethod: this.selectedMethod! // Fix: should be paymentMethod, not method
-    };
-
-    const intentResponse = await firstValueFrom(
-      this.paymentService.createPaymentIntent(paymentData)
-    );
-    
-    if (intentResponse) {
-      this.paymentId = intentResponse.paymentId;
-    }
-  }
-
-  const payment = await firstValueFrom(
-    this.paymentService.processNonCardPayment(this.paymentId)
-  );
-  
-  if (payment) {
-    this.showSuccess('Payment initiated successfully!');
-    this.navigateToConfirmation(payment.data);
-  }
-}
 
   private validateForm(): boolean {
     if (this.showCardForm) {
@@ -301,7 +431,7 @@ private async processNonCardPayment(): Promise<void> {
     return 'current-user-id';
   }
 
-   public navigateToCart(): void {
+  public navigateToCart(): void {
     this.router.navigate(['/cart']);
   }
 }
