@@ -19,6 +19,7 @@ export interface Payment {
   clientSecret?: string; // For Stripe payments
   createdAt?: Date;
   updatedAt?: Date;
+    invoiceUrl?: string;  // Add this
 }
 
 export enum PaymentStatus {

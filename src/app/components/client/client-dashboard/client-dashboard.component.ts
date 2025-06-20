@@ -12,24 +12,35 @@ import { PaymentSuccessModalComponent } from '../../../shared/payment-success-mo
 import { Payment, PaymentStatus } from '../../../models/Payment.model';
 import { filter, interval, Subscription, switchMap, takeUntil, timer, Subject, forkJoin, take } from 'rxjs';
 import { PaymentService } from '../../../services/payment.service';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatCardModule } from '@angular/material/card';
+import { MatButtonModule } from '@angular/material/button';
 
 interface DashboardStats {
   totalOrders: number;
   pendingOrders: number;
   completedOrders: number;
   paidOrders: number;
-  canceledOrders?: number;
-  unknownStatus?: number;
+  canceledOrders: number;
+  expiredOrders: number;
+  unpaidOrders: number;
   thisMonthOrders: number;
   paymentRate: number;
   totalPaidAmount: number;
   totalUnpaidAmount: number;
   totalSavings: number;
-  expiredOrders?: number;
-  unpaidOrders?: number;
-  totalRevenue?: number;
-  averageOrderValue?: number;
-  deliveryRate?: number;
+  totalRevenue: number;
+  averageOrderValue: number;
+  deliveryRate: number;
+  paymentMethods: {
+    [method: string]: {
+      count: number;
+      amount: number;
+    }
+  };
+  statusDistribution: {
+    [status: string]: number;
+  };
 }
 
 interface PaymentTransaction {
@@ -38,9 +49,27 @@ interface PaymentTransaction {
   amount: number;
   paymentMethod: string;
   paymentDate: Date | string;
-  status: string;
+  status: PaymentStatus;
   description: string;
   type: 'PAYMENT' | 'REFUND' | 'DISCOUNT';
+  invoiceUrl?: string;
+  receiptUrl?: string;
+}
+
+interface PaymentSummary {
+  totalCompleted: number;
+  totalPending: number;
+  totalFailed: number;
+  totalRefunded: number;
+  monthlyTrend: {
+    month: string;
+    amount: number;
+  }[];
+  methodBreakdown: {
+    method: string;
+    count: number;
+    amount: number;
+  }[];
 }
 
 @Component({
@@ -52,10 +81,19 @@ interface PaymentTransaction {
     CommonModule, 
     RouterModule,
     DatePipe,
-    CurrencyPipe
+    CurrencyPipe,
+    MatProgressBarModule,
+    MatCardModule,
+    MatButtonModule
   ]
 })
 export class ClientDashboardComponent implements OnInit, OnDestroy {
+// Add this inside the ClientDashboardComponent class
+statusFilters: ('all' | 'paid' | 'unpaid' | 'cancelled' | 'expired')[] = [
+  'all', 'paid', 'unpaid', 'cancelled', 'expired'
+];
+
+
   private paymentStatusSubscriptions: Subscription[] = [];
   private destroy$ = new Subject<void>();
 
@@ -66,11 +104,19 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
     pendingOrders: 0,
     completedOrders: 0,
     paidOrders: 0,
+    canceledOrders: 0,
+    expiredOrders: 0,
+    unpaidOrders: 0,
     thisMonthOrders: 0,
     paymentRate: 0,
     totalPaidAmount: 0,
     totalUnpaidAmount: 0,
-    totalSavings: 0
+    totalSavings: 0,
+    totalRevenue: 0,
+    averageOrderValue: 0,
+    deliveryRate: 0,
+    paymentMethods: {},
+    statusDistribution: {}
   };
   recentDeliveries: DeliveryRequest[] = [];
   filteredDeliveries: DeliveryRequest[] = [];
@@ -89,6 +135,18 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
     totalAmount: 0,
     lastPayment: null as Payment | null
   };
+
+  paymentSummary: PaymentSummary = {
+    totalCompleted: 0,
+    totalPending: 0,
+    totalFailed: 0,
+    totalRefunded: 0,
+    monthlyTrend: [],
+    methodBreakdown: []
+  };
+
+  // Expose enum to template
+  PaymentStatus = PaymentStatus;
 
   constructor(
     private authService: AuthService,
@@ -112,66 +170,167 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     console.log('Dashboard initializing...');
-    this.refreshDashboardData();
+    this.initializeData();
     
-    this.route.queryParams.subscribe(params => {
-      console.log('Query params received:', params);
-      
-      if (params['paymentSuccess'] === 'true' && params['deliveryId']) {
-        console.log('Processing payment success for delivery:', params['deliveryId']);
-        this.handlePaymentSuccess(params['deliveryId'], params['paymentId']);
-      }
-
-      if (params['refresh'] === 'true') {
-        console.log('Refreshing dashboard data...');
-        this.refreshDashboardData();
-        this.router.navigate([], {
-          relativeTo: this.route,
-          queryParams: { refresh: null },
-          queryParamsHandling: 'merge'
-        });
-      }
+    this.route.queryParams.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(params => {
+      this.handleQueryParams(params);
     });
 
+    // Setup polling
+    this.setupDataPolling();
+  }
+
+  private setupDataPolling(): void {
+    // Main data polling every 30 seconds
     interval(30000).pipe(
       takeUntil(this.destroy$)
     ).subscribe(() => {
-      this.loadDashboardStats();
-      this.loadRecentDeliveries();
+      this.refreshDashboardData();
+    });
+
+    // More frequent payment status checks for pending payments
+    interval(10000).pipe(
+      takeUntil(this.destroy$),
+      switchMap(() => this.deliveryService.getClientDeliveries(this.clientId))
+    ).subscribe(deliveries => {
+      this.checkPendingPayments(deliveries);
     });
   }
 
-ngOnDestroy() {
-  this.destroy$.next();
-  this.destroy$.complete();
-  
-  // Clean up all payment status subscriptions
-  this.paymentStatusSubscriptions.forEach(sub => sub.unsubscribe());
-  this.paymentStatusSubscriptions = [];
-}
-
-private refreshDashboardData(): void {
-  console.log('Refreshing dashboard data...');
-  this.isLoading = true;
-
-  forkJoin([
-    this.deliveryService.getClientDeliveries(this.clientId),
-    this.paymentService.getPaymentsByClient(this.clientId)
-  ]).subscribe({
-    next: ([deliveries, paymentsResponse]) => {
-      // Extract the payments array from the response
-      const payments = paymentsResponse.payments || paymentsResponse.data || [];
-      this.processDashboardData(deliveries, payments);
-      this.isLoading = false;
-    },
-    error: (err) => {
-      console.error('Error refreshing dashboard:', err);
-      this.isLoading = false;
+  private handleQueryParams(params: any): void {
+    console.log('Query params received:', params);
+    
+    if (params['paymentSuccess'] === 'true') {
+      this.handlePaymentSuccess(params['deliveryId'], params['paymentId']);
     }
-  });
-}
 
-private loadDashboardStatsPromise(): Promise<void> {
+    if (params['refresh'] === 'true') {
+      this.refreshDashboardData();
+      this.clearRefreshParam();
+    }
+  }
+
+  private clearRefreshParam(): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { refresh: null },
+      queryParamsHandling: 'merge'
+    });
+  }
+
+  private checkPendingPayments(deliveries: DeliveryRequest[]): void {
+    const pendingPayments = deliveries.filter(d => 
+      d.paymentStatus === PaymentStatus.PENDING && 
+      d.paymentId
+    );
+
+    pendingPayments.forEach(delivery => {
+      if (!this.paymentStatusSubscriptions.some(sub => (sub as any).deliveryId === delivery.id)) {
+        const sub = this.paymentService.getPaymentStatus(delivery.paymentId!).pipe(
+          takeUntil(this.destroy$),
+          filter(response => response.success),
+          take(1)
+        ).subscribe({
+          next: (statusResponse) => {
+            if (statusResponse.status !== delivery.paymentStatus) {
+              this.handlePaymentStatusUpdate(delivery.id, statusResponse);
+            }
+          },
+          error: (err) => console.error('Error checking payment status:', err)
+        });
+        
+        // Mark subscription with delivery ID for tracking
+        (sub as any).deliveryId = delivery.id;
+        this.paymentStatusSubscriptions.push(sub);
+      }
+    });
+  }
+
+  private handlePaymentStatusUpdate(deliveryId: string, statusResponse: any): void {
+    const delivery = this.recentDeliveries.find(d => d.id === deliveryId);
+    if (delivery) {
+      delivery.paymentStatus = statusResponse.status;
+      delivery.paymentDate = statusResponse.paymentDate || new Date().toISOString();
+      
+      if (statusResponse.status === PaymentStatus.COMPLETED) {
+        this.showPaymentSuccessNotification(deliveryId);
+      }
+      
+      this.calculateStats(this.recentDeliveries);
+    }
+  }
+
+  private showPaymentSuccessNotification(deliveryId: string): void {
+    const delivery = this.recentDeliveries.find(d => d.id === deliveryId);
+    if (delivery) {
+      const notification = this.dialog.open(PaymentSuccessModalComponent, {
+        data: {
+          deliveryId: delivery.id,
+          amount: delivery.amount,
+          paymentMethod: delivery.paymentMethod,
+          paymentDate: delivery.paymentDate
+        },
+        disableClose: true
+      });
+
+      notification.afterClosed().subscribe(() => {
+        this.refreshDashboardData();
+      });
+    }
+  }
+
+  private initializeData(): void {
+    this.isLoading = true;
+    forkJoin([
+      this.deliveryService.getClientDeliveries(this.clientId),
+      this.paymentService.getPaymentsByClient(this.clientId),
+      this.discountService.getClientDiscounts(this.clientId)
+    ]).subscribe({
+      next: ([deliveries, paymentsResponse, discounts]) => {
+        const payments = paymentsResponse.payments || paymentsResponse.data || [];
+        this.processDashboardData(deliveries, payments, discounts);
+        this.isLoading = false;
+      },
+      error: (err) => {
+        this.handleError(err);
+        this.isLoading = false;
+      }
+    });
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+    
+    // Clean up all payment status subscriptions
+    this.paymentStatusSubscriptions.forEach(sub => sub.unsubscribe());
+    this.paymentStatusSubscriptions = [];
+  }
+
+  private refreshDashboardData(): void {
+    console.log('Refreshing dashboard data...');
+    this.isLoading = true;
+
+    forkJoin([
+      this.deliveryService.getClientDeliveries(this.clientId),
+      this.paymentService.getPaymentsByClient(this.clientId)
+    ]).subscribe({
+      next: ([deliveries, paymentsResponse]) => {
+        // Extract the payments array from the response
+        const payments = paymentsResponse.payments || paymentsResponse.data || [];
+        this.processDashboardData(deliveries, payments);
+        this.isLoading = false;
+      },
+      error: (err) => {
+        console.error('Error refreshing dashboard:', err);
+        this.isLoading = false;
+      }
+    });
+  }
+
+  private loadDashboardStatsPromise(): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!this.clientId) {
         reject(new Error('Invalid client ID'));
@@ -250,7 +409,7 @@ private loadDashboardStatsPromise(): Promise<void> {
       
       this.deliveryService.getClientDeliveries(this.clientId).subscribe({
         next: (deliveries: DeliveryRequest[]) => {
-          this.generatePaymentTransactions(deliveries);
+          this.generatePaymentTransactions(deliveries, []);
           resolve();
         },
         error: (err) => {
@@ -261,173 +420,193 @@ private loadDashboardStatsPromise(): Promise<void> {
     });
   }
 
-private calculateStats(deliveries: DeliveryRequest[]): void {
-  const validDeliveries = deliveries.filter(delivery => 
-    delivery && typeof delivery === 'object'
-  );
+  private calculateStats(deliveries: DeliveryRequest[]): void {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
 
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
+    const statusCounts: { [status: string]: number } = {};
+    const paymentMethods: { [method: string]: { count: number, amount: number } } = {};
 
-  const pendingOrders = validDeliveries.filter(d => 
-    ['PENDING', 'ASSIGNED', 'IN_TRANSIT'].includes(d.status || '')
-  ).length;
+    deliveries.forEach(delivery => {
+      // Count statuses
+      const status = delivery.status || 'UNKNOWN';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
 
-  const completedOrders = validDeliveries.filter(d => 
-    d.status === 'DELIVERED'
-  ).length;
+      // Track payment methods for completed payments
+      if (delivery.paymentStatus === PaymentStatus.COMPLETED && delivery.paymentMethod) {
+        if (!paymentMethods[delivery.paymentMethod]) {
+          paymentMethods[delivery.paymentMethod] = { count: 0, amount: 0 };
+        }
+        paymentMethods[delivery.paymentMethod].count++;
+        paymentMethods[delivery.paymentMethod].amount += this.parseAmount(delivery.amount);
+      }
+    });
 
-  const paidOrders = validDeliveries.filter(d => 
-    d.paymentStatus === PaymentStatus.COMPLETED
-  ).length;
+    const completedOrders = statusCounts['DELIVERED'] || 0;
+    const paidOrders = deliveries.filter(d => 
+      d.paymentStatus === PaymentStatus.COMPLETED
+    ).length;
 
-  const unpaidOrders = validDeliveries.filter(d => 
-    d.status === 'DELIVERED' && 
-    d.paymentStatus !== PaymentStatus.COMPLETED
-  ).length;
+    const thisMonthOrders = deliveries.filter(d => {
+      if (!d.createdAt) return false;
+      const orderDate = new Date(d.createdAt);
+      return orderDate.getMonth() === currentMonth && 
+             orderDate.getFullYear() === currentYear;
+    }).length;
 
-  const thisMonthOrders = validDeliveries.filter(d => {
-    if (!d.createdAt) return false;
-    const orderDate = new Date(d.createdAt);
-    return orderDate.getMonth() === currentMonth && 
-           orderDate.getFullYear() === currentYear;
-  }).length;
+    const totalPaidAmount = deliveries
+      .filter(d => d.paymentStatus === PaymentStatus.COMPLETED)
+      .reduce((sum, d) => sum + this.parseAmount(d.amount), 0);
+      
+    const totalUnpaidAmount = deliveries
+      .filter(d => d.status === 'DELIVERED' && d.paymentStatus !== PaymentStatus.COMPLETED)
+      .reduce((sum, d) => sum + this.parseAmount(d.amount), 0);
 
- const totalPaidAmount = validDeliveries
-  .filter(d => d.paymentStatus === PaymentStatus.COMPLETED)
-  .reduce((sum, d) => sum + this.parseAmount(d.amount), 0);
-  
-const totalUnpaidAmount = validDeliveries
-  .filter(d => d.status === 'DELIVERED' && d.paymentStatus !== PaymentStatus.COMPLETED)
-  .reduce((sum, d) => sum + this.parseAmount(d.amount), 0);
+    const totalSavings = deliveries
+      .reduce((sum, d) => sum + this.parseAmount(d.discountAmount || 0), 0);
 
-const totalSavings = validDeliveries
-  .reduce((sum, d) => sum + this.parseAmount(d.discountAmount), 0);
-  this.stats = {
-    ...this.stats,
-    totalOrders: validDeliveries.length,
-    pendingOrders,
-    completedOrders,
-    paidOrders,
-    unpaidOrders,
-    thisMonthOrders,
-    totalPaidAmount,
-    totalUnpaidAmount,
-    totalSavings,
-    paymentRate: completedOrders > 0 
-      ? Math.round((paidOrders / completedOrders) * 100 * 100) / 100
-      : 0
-  };
-}
+    this.stats = {
+      totalOrders: deliveries.length,
+      pendingOrders: (statusCounts['PENDING'] || 0) + (statusCounts['ASSIGNED'] || 0) + (statusCounts['IN_TRANSIT'] || 0),
+      completedOrders,
+      paidOrders,
+      canceledOrders: statusCounts['CANCELLED'] || 0,
+      expiredOrders: statusCounts['EXPIRED'] || 0,
+      unpaidOrders: deliveries.filter(d => 
+        d.status === 'DELIVERED' && 
+        d.paymentStatus !== PaymentStatus.COMPLETED
+      ).length,
+      thisMonthOrders,
+      paymentRate: completedOrders > 0 
+        ? Math.round((paidOrders / completedOrders) * 100 * 100) / 100
+        : 0,
+      totalPaidAmount,
+      totalUnpaidAmount,
+      totalSavings,
+      totalRevenue: totalPaidAmount,
+      averageOrderValue: deliveries.length > 0 
+        ? totalPaidAmount / deliveries.length 
+        : 0,
+      deliveryRate: deliveries.length > 0
+        ? (completedOrders / deliveries.length) * 100
+        : 0,
+      paymentMethods,
+      statusDistribution: statusCounts
+    };
+  }
 
-  private generatePaymentTransactions(deliveries: DeliveryRequest[]): void {
+  private generatePaymentTransactions(deliveries: DeliveryRequest[], payments: Payment[]): void {
     this.paymentTransactions = [];
     
-    deliveries.forEach(delivery => {
-      const toDateString = (date: any): string => {
-        if (!date) return new Date().toISOString();
-        if (date instanceof Date) return date.toISOString();
-        if (typeof date === 'string') return new Date(date).toISOString();
-        return new Date(date).toISOString();
-      };
+    // Process payments
+    payments.forEach(payment => {
+      const delivery = deliveries.find(d => d.id === payment.deliveryId);
+      
+      this.paymentTransactions.push({
+        id: payment.id,
+        deliveryId: payment.deliveryId || '',
+        amount: payment.amount,
+        paymentMethod: payment.method || 'UNKNOWN',
+        paymentDate: payment.paymentDate || payment.createdAt || new Date(),
+        status: payment.status,
+        description: delivery 
+          ? `Payment for delivery to ${delivery.deliveryAddress}`
+          : 'Standalone payment',
+        type: payment.status === PaymentStatus.REFUNDED ? 'REFUND' : 'PAYMENT',
+        invoiceUrl: payment.invoiceUrl,
+        receiptUrl: payment.receiptUrl
+      });
+    });
 
-      if (delivery.paymentStatus === PaymentStatus.COMPLETED && delivery.paymentDate) {
-        this.paymentTransactions.push({
-          id: `pay_${delivery.id}`,
-          deliveryId: delivery.id,
-          amount: this.parseAmount(delivery.amount),
-          paymentMethod: delivery.paymentMethod || 'UNKNOWN',
-          paymentDate: toDateString(delivery.paymentDate),
-          status: 'COMPLETED',
-          description: `Payment for delivery to ${delivery.deliveryAddress}`,
-          type: 'PAYMENT'
-        });
-      }
-      
-      if (delivery.paymentStatus === PaymentStatus.REFUNDED) {
-        this.paymentTransactions.push({
-          id: `ref_${delivery.id}`,
-          deliveryId: delivery.id,
-          amount: -this.parseAmount(delivery.amount),
-          paymentMethod: delivery.paymentMethod || 'UNKNOWN',
-          paymentDate: toDateString(delivery.updatedAt || delivery.paymentDate),
-          status: 'REFUNDED',
-          description: `Refund for delivery to ${delivery.deliveryAddress}`,
-          type: 'REFUND'
-        });
-      }
-      
+    // Process discounts from deliveries
+    deliveries.forEach(delivery => {
       if (delivery.discountAmount && delivery.discountAmount > 0) {
         this.paymentTransactions.push({
           id: `disc_${delivery.id}`,
           deliveryId: delivery.id,
           amount: -this.parseAmount(delivery.discountAmount),
           paymentMethod: 'DISCOUNT',
-          paymentDate: toDateString(delivery.createdAt),
-          status: 'APPLIED',
+          paymentDate: delivery.createdAt || new Date(),
+          status: PaymentStatus.COMPLETED,
           description: `Discount applied for delivery to ${delivery.deliveryAddress}`,
           type: 'DISCOUNT'
         });
       }
     });
     
+    // Sort by date
     this.paymentTransactions.sort((a, b) => 
       new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()
     );
   }
 
-private handlePaymentSuccess(deliveryId: string, paymentId: string): void {
-  console.log('Handling payment success for delivery:', deliveryId, 'payment:', paymentId);
-  
-  // Immediate UI update
-  const delivery = this.recentDeliveries.find(d => d.id === deliveryId);
-  if (delivery) {
-    delivery.paymentStatus = PaymentStatus.COMPLETED;
-    delivery.paymentId = paymentId;
-    delivery.paymentDate = new Date().toISOString();
+  private handlePaymentSuccess(deliveryId: string, paymentId: string): void {
+    console.log('Handling payment success for delivery:', deliveryId, 'payment:', paymentId);
+    
+    // Optimistic UI update
+    const delivery = this.recentDeliveries.find(d => d.id === deliveryId);
+    if (delivery) {
+      delivery.paymentStatus = PaymentStatus.COMPLETED;
+      delivery.paymentId = paymentId;
+      delivery.paymentDate = new Date().toISOString();
+      this.calculateStats(this.recentDeliveries);
+    }
+
+    // Verify payment status from server
+    this.verifyPaymentStatus(paymentId, deliveryId);
   }
 
-  // Force refresh of all data
-  this.refreshDashboardData();
+  private verifyPaymentStatus(paymentId: string, deliveryId: string): void {
+    this.paymentService.getPaymentStatus(paymentId).pipe(
+      take(1)
+    ).subscribe({
+      next: (statusResponse) => {
+        if (statusResponse.success) {
+          if (statusResponse.status === PaymentStatus.COMPLETED) {
+            this.showPaymentSuccessModal(deliveryId, paymentId);
+          } else {
+            // Payment not actually completed yet
+            this.pollPaymentStatusUntilComplete(paymentId, deliveryId);
+          }
+        }
+      },
+      error: (err) => {
+        console.error('Error verifying payment:', err);
+        // Fall back to polling
+        this.pollPaymentStatusUntilComplete(paymentId, deliveryId);
+      }
+    });
+  }
 
-  // Add navigation with refresh parameter
-  this.router.navigate(['/client/dashboard'], {
-    queryParams: { 
-      paymentSuccess: 'true',
-      paymentId: paymentId,
-      refresh: Date.now().toString()
-    }
-  });
-}
+  private pollPaymentStatus(paymentId: string): void {
+    let pollCount = 0;
+    const maxPolls = 15;
+    
+    const statusSub = interval(2000).pipe(
+      takeUntil(timer(30000)),
+      switchMap(() => {
+        pollCount++;
+        return this.paymentService.getPaymentStatus(paymentId);
+      }),
+      filter(response => response.success && response.status === PaymentStatus.COMPLETED),
+      take(1)
+    ).subscribe({
+      next: () => {
+        console.log('Payment confirmed, final refresh...');
+        this.refreshDashboardData();
+      },
+      error: (err) => {
+        console.error('Error checking payment status:', err);
+      },
+      complete: () => {
+        statusSub.unsubscribe();
+      }
+    });
+    
+    this.paymentStatusSubscriptions.push(statusSub);
+  }
 
-private pollPaymentStatus(paymentId: string): void {
-  let pollCount = 0;
-  const maxPolls = 15;
-  
-  const statusSub = interval(2000).pipe(
-    takeUntil(timer(30000)),
-    switchMap(() => {
-      pollCount++;
-      return this.paymentService.getPaymentStatus(paymentId);
-    }),
-    filter(response => response.success && response.status === PaymentStatus.COMPLETED),
-    take(1)
-  ).subscribe({
-    next: () => {
-      console.log('Payment confirmed, final refresh...');
-      this.refreshDashboardData();
-    },
-    error: (err) => {
-      console.error('Error checking payment status:', err);
-    },
-    complete: () => {
-      statusSub.unsubscribe();
-    }
-  });
-  
-  this.paymentStatusSubscriptions.push(statusSub);
-}
   private showPaymentSuccessModal(deliveryId: string, paymentId: string): void {
     const delivery = this.recentDeliveries.find(d => d.id === deliveryId);
     
@@ -447,7 +626,7 @@ private pollPaymentStatus(paymentId: string): void {
     }
   }
 
-private loadDashboardStats(): void {
+  private loadDashboardStats(): void {
     this.isLoading = true;
     
     forkJoin([
@@ -467,92 +646,222 @@ private loadDashboardStats(): void {
     });
   }
 
- private calculatePaymentStats(payments: Payment[]): void {
-    // Ensure payments is an array
-    const validPayments = Array.isArray(payments) ? payments.filter(p => p.paymentDate) : [];
-    
-    this.paymentStats = {
-      totalPayments: validPayments.length,
-      completedPayments: validPayments.filter(p => p.status === PaymentStatus.COMPLETED).length,
-      pendingPayments: validPayments.filter(p => p.status === PaymentStatus.PENDING).length,
-      failedPayments: validPayments.filter(p => p.status === PaymentStatus.FAILED).length,
-      totalAmount: validPayments.reduce((sum, p) => sum + (p.status === PaymentStatus.COMPLETED ? p.amount : 0), 0),
-      lastPayment: validPayments.length > 0 ? 
-        validPayments.sort((a, b) => 
-          new Date(b.paymentDate!).getTime() - new Date(a.paymentDate!).getTime()
-        )[0] : null
-    };
+  private pollPaymentStatusUntilComplete(paymentId: string, deliveryId: string): void {
+    const pollSub = interval(3000).pipe(
+      takeUntil(this.destroy$),
+      switchMap(() => this.paymentService.getPaymentStatus(paymentId)),
+      filter(response => response.success),
+      takeUntil(timer(60000)) // Timeout after 1 minute
+    ).subscribe({
+      next: (statusResponse) => {
+        if (statusResponse.status === PaymentStatus.COMPLETED) {
+          this.showPaymentSuccessModal(deliveryId, paymentId);
+          pollSub.unsubscribe();
+        } else if (statusResponse.status === PaymentStatus.FAILED) {
+          this.showPaymentFailedNotification(deliveryId);
+          pollSub.unsubscribe();
+        }
+      },
+      error: (err) => {
+        console.error('Payment status polling error:', err);
+        pollSub.unsubscribe();
+      }
+    });
+
+    this.paymentStatusSubscriptions.push(pollSub);
   }
 
-private processDashboardData(deliveries: DeliveryRequest[], payments: Payment[]): void {
-  // Ensure we have arrays
-  const deliveriesArray = Array.isArray(deliveries) ? deliveries : [];
-  const paymentsArray = Array.isArray(payments) ? payments : [];
-  
-  // Merge payment data into deliveries
-  deliveriesArray.forEach(delivery => {
-    if (delivery.paymentId) {
-      const payment = paymentsArray.find(p => p.id === delivery.paymentId);
+  private showPaymentFailedNotification(deliveryId: string): void {
+    const delivery = this.recentDeliveries.find(d => d.id === deliveryId);
+    if (delivery) {
+      delivery.paymentStatus = PaymentStatus.FAILED;
+      // Show error notification
+      this.errorMessage = 'Payment processing failed. Please try again.';
+      this.calculateStats(this.recentDeliveries);
+    }
+  }
+
+  private processDashboardData(deliveries: DeliveryRequest[], payments: Payment[], discounts?: Discount[]): void {
+    // Merge payment data into deliveries
+    deliveries.forEach(delivery => {
+      const payment = payments.find(p => 
+        p.id === delivery.paymentId || p.deliveryId === delivery.id
+      );
+      
       if (payment) {
         delivery.paymentStatus = payment.status;
         delivery.paymentMethod = payment.method;
         delivery.paymentDate = payment.paymentDate;
         delivery.amount = payment.amount;
+        delivery.paymentId = payment.id;
       }
-    } else {
-      // Find payment by deliveryId if paymentId is not set
-      const relatedPayment = paymentsArray.find(p => p.deliveryId === delivery.id);
-      if (relatedPayment) {
-        delivery.paymentStatus = relatedPayment.status;
-        delivery.paymentMethod = relatedPayment.method;
-        delivery.paymentDate = relatedPayment.paymentDate;
-        delivery.amount = relatedPayment.amount;
-        delivery.paymentId = relatedPayment.id;
-      }
+    });
+
+    this.recentDeliveries = deliveries;
+    this.filteredDeliveries = [...deliveries];
+    
+    this.calculateStats(deliveries);
+    this.calculatePaymentStats(payments);
+    this.generatePaymentTransactions(deliveries, payments);
+    
+    if (discounts) {
+      this.activeDiscounts = discounts.filter(d => 
+        !d.used && d.validUntil && new Date(d.validUntil) > new Date()
+      );
     }
-  });
+  }
 
-  this.recentDeliveries = deliveriesArray;
-  this.calculateStats(deliveriesArray);
-  this.filterDeliveries(this.selectedFilter);
-  this.calculatePaymentStats(paymentsArray);
-}
+  private calculatePaymentStats(payments: Payment[]): void {
+    const now = new Date();
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthlyTrend: { month: string; amount: number }[] = [];
+    
+    // Initialize last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      monthlyTrend.push({
+        month: `${monthNames[date.getMonth()]} ${date.getFullYear()}`,
+        amount: 0
+      });
+    }
 
-  private loadRecentDeliveries(): void {
-    this.loadRecentDeliveriesPromise().then(() => {
-      this.filterDeliveries(this.selectedFilter);
-    }).catch(err => {
-      console.error('Error in loadRecentDeliveries:', err);
-      this.filteredDeliveries = [];
+    const methodBreakdown: { [method: string]: { method: string; count: number; amount: number } } = {};
+
+    payments.forEach(payment => {
+      // Monthly trend
+      if (payment.paymentDate && payment.status === PaymentStatus.COMPLETED) {
+        const paymentDate = new Date(payment.paymentDate);
+        const monthStr = `${monthNames[paymentDate.getMonth()]} ${paymentDate.getFullYear()}`;
+        const monthEntry = monthlyTrend.find(m => m.month === monthStr);
+        if (monthEntry) {
+          monthEntry.amount += payment.amount;
+        }
+      }
+
+      // Method breakdown
+      if (payment.method) {
+        if (!methodBreakdown[payment.method]) {
+          methodBreakdown[payment.method] = {
+            method: payment.method,
+            count: 0,
+            amount: 0
+          };
+        }
+        methodBreakdown[payment.method].count++;
+        methodBreakdown[payment.method].amount += payment.amount;
+      }
+    });
+
+    this.paymentSummary = {
+      totalCompleted: payments.filter(p => p.status === PaymentStatus.COMPLETED).length,
+      totalPending: payments.filter(p => p.status === PaymentStatus.PENDING).length,
+      totalFailed: payments.filter(p => p.status === PaymentStatus.FAILED).length,
+      totalRefunded: payments.filter(p => p.status === PaymentStatus.REFUNDED).length,
+      monthlyTrend,
+      methodBreakdown: Object.values(methodBreakdown)
+    };
+  }
+
+  // Helper methods for template
+  getPaymentMethodPercentage(method: string): number {
+    const total = this.paymentSummary.totalCompleted;
+    if (total === 0) return 0;
+    
+    const methodData = this.paymentSummary.methodBreakdown.find(m => m.method === method);
+    return methodData ? Math.round((methodData.count / total) * 100) : 0;
+  }
+
+  getPaymentStatusPercentage(status: PaymentStatus): number {
+    const total = this.recentDeliveries.filter(d => d.status === 'DELIVERED').length;
+    if (total === 0) return 0;
+    
+    const count = this.recentDeliveries.filter(d => 
+      d.status === 'DELIVERED' && d.paymentStatus === status
+    ).length;
+    
+    return Math.round((count / total) * 100);
+  }
+
+  getMethodColor(method: string): string {
+    const colors: { [key: string]: string } = {
+      'CREDIT_CARD': 'primary',
+      'BANK_TRANSFER': 'info',
+      'CASH': 'success',
+      'WALLET': 'warning',
+      'DISCOUNT': 'secondary'
+    };
+    return colors[method] || 'dark';
+  }
+
+  getTrendBarHeight(amount: number): number {
+    const maxAmount = Math.max(...this.paymentSummary.monthlyTrend.map(m => m.amount), 1);
+    return Math.min((amount / maxAmount) * 100, 100);
+  }
+
+  getStatusCount(status: string): number {
+    switch (status) {
+      case 'paid': return this.stats.paidOrders;
+      case 'unpaid': return this.stats.unpaidOrders;
+      case 'cancelled': return this.stats.canceledOrders;
+      case 'expired': return this.stats.expiredOrders;
+      default: return this.stats.totalOrders;
+    }
+  }
+
+  getPaymentStatusIcon(status?: string): string {
+    if (!status) return 'fa-question-circle';
+    
+    const icons: { [key: string]: string } = {
+      [PaymentStatus.COMPLETED]: 'fa-check-circle text-success',
+      [PaymentStatus.PENDING]: 'fa-clock text-warning',
+      [PaymentStatus.FAILED]: 'fa-times-circle text-danger',
+      [PaymentStatus.REFUNDED]: 'fa-exchange-alt text-info'
+    };
+    
+    return icons[status] || 'fa-question-circle text-secondary';
+  }
+
+  retryFailedPayment(delivery: DeliveryRequest): void {
+    if (!delivery.id) return;
+    
+    this.router.navigate(['/client/payment'], {
+      queryParams: {
+        deliveryId: delivery.id,
+        clientId: this.clientId,
+        retry: true
+      }
     });
   }
 
-  private loadActiveDiscounts(): void {
-    this.loadActiveDiscountsPromise().catch(err => {
-      console.error('Error in loadActiveDiscounts:', err);
-    });
+  viewPaymentDetails(payment: PaymentTransaction): void {
+    if (!payment.id) return;
+    
+    this.router.navigate(['/client/payments', payment.id]);
   }
 
-  private loadPaymentTransactions(): void {
-    this.loadPaymentTransactionsPromise().catch(err => {
-      console.error('Error in loadPaymentTransactions:', err);
-    });
+  filterPayments(filter: string): void {
+    // Implement your payment filtering logic here
+    console.log('Filtering payments by:', filter);
   }
 
-private parseAmount(amount: any): number {
-  if (amount === null || amount === undefined) return 0;
-  
-  // Convert string to number
-  if (typeof amount === 'string') {
-    // Remove any non-numeric characters except decimal point and minus sign
-    const numericString = amount.replace(/[^\d.-]/g, '');
-    const parsed = parseFloat(numericString);
-    return isNaN(parsed) ? 0 : parsed;
+  getTotalPaymentsAmount(): number {
+    return this.getPaymentHistory().reduce((sum, t) => sum + t.amount, 0);
   }
-  
-  // If it's already a number
-  return typeof amount === 'number' ? amount : 0;
-}
+
+  private parseAmount(amount: any): number {
+    if (amount === null || amount === undefined) return 0;
+    
+    // Convert string to number
+    if (typeof amount === 'string') {
+      // Remove any non-numeric characters except decimal point and minus sign
+      const numericString = amount.replace(/[^\d.-]/g, '');
+      const parsed = parseFloat(numericString);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    
+    // If it's already a number
+    return typeof amount === 'number' ? amount : 0;
+  }
 
   changeView(view: 'orders' | 'payments' | 'movements') {
     this.selectedView = view;
@@ -779,11 +1088,19 @@ private parseAmount(amount: any): number {
       pendingOrders: 0, 
       completedOrders: 0,
       paidOrders: 0,
+      canceledOrders: 0,
+      expiredOrders: 0,
+      unpaidOrders: 0,
       thisMonthOrders: 0,
       paymentRate: 0,
       totalPaidAmount: 0,
       totalUnpaidAmount: 0,
-      totalSavings: 0
+      totalSavings: 0,
+      totalRevenue: 0,
+      averageOrderValue: 0,
+      deliveryRate: 0,
+      paymentMethods: {},
+      statusDistribution: {}
     };
     this.errorMessage = 'Error processing delivery data. Showing partial information.';
   }
@@ -799,4 +1116,16 @@ private parseAmount(amount: any): number {
       this.errorMessage = err.message || 'Failed to load dashboard data. Please try again later.';
     }
   }
+  // Add these methods to your ClientDashboardComponent class
+loadPaymentTransactions(): void {
+  this.loadPaymentTransactionsPromise()
+    .then(() => console.log('Payment transactions loaded'))
+    .catch(err => console.error('Error loading payment transactions:', err));
+}
+
+loadRecentDeliveries(): void {
+  this.loadRecentDeliveriesPromise()
+    .then(() => console.log('Recent deliveries loaded'))
+    .catch(err => console.error('Error loading recent deliveries:', err));
+}
 }
