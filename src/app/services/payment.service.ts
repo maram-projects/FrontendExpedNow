@@ -2,6 +2,8 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, retry, tap } from 'rxjs/operators';
+import { Router } from '@angular/router';
+
 import { environment } from '../../environments/environment';
 import { 
   Payment, 
@@ -25,6 +27,7 @@ interface PaymentResponse {
 }
 
 interface PaymentListResponse {
+  payments: Payment[];
   success: boolean;
   data: Payment[];
   pagination?: {
@@ -64,7 +67,7 @@ interface PaymentStatsResponse {
 export class PaymentService {
   private apiUrl = `${environment.apiUrl}/api/payments`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient,   private router: Router ) {}
 
   /**
    * Creates HTTP headers with authentication token
@@ -197,34 +200,39 @@ createPaymentIntent(paymentData: {
   /**
    * Confirm a payment
    */
-// In payment.service.ts
 confirmPayment(transactionId: string, amount: number): Observable<PaymentResponse> {
-  const params = new HttpParams()
-    .set('transactionId', transactionId)
-    .set('amount', amount.toString());
-
-  return this.http.post<PaymentResponse>(
-    `${this.apiUrl}/confirm`, 
-    {}, 
-    { 
-      params,
-      headers: this.createHeaders(),
-      withCredentials: true 
+    // Validate parameters first
+    if (!transactionId || amount == null) {
+      return throwError(() => new Error('transactionId and amount are required'));
     }
-  ).pipe(
-    catchError(error => {
-      console.error('Payment confirmation failed:', error);
-      // Try with payload instead of params if first attempt fails
-      return this.http.post<PaymentResponse>(
-        `${this.apiUrl}/confirm`,
-        { transactionId, amount },
-        { 
-          headers: this.createHeaders(),
-          withCredentials: true 
-        }
-      );
-    })
-  );
+
+    const requestBody = {
+      transactionId: transactionId,
+      amount: amount
+    };
+
+    return this.http.post<PaymentResponse>(
+      `${this.apiUrl}/confirm`,
+      requestBody,  // Send as request body instead of query params
+      {
+        headers: this.createHeaders(),
+        withCredentials: true
+      }
+    ).pipe(
+      catchError(error => {
+        console.error('Payment confirmation failed:', error);
+        return throwError(() => new Error('Payment confirmation failed'));
+      })
+    );
+  }
+
+private refreshDashboardData(): void {
+  if (this.router) {
+    this.router.navigate([], {
+      queryParams: { refresh: Date.now().toString() },
+      queryParamsHandling: 'merge'
+    });
+  }
 }
 
   /**

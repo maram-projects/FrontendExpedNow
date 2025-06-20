@@ -6,6 +6,8 @@ import { CommonModule } from '@angular/common';
 import { ToastService } from '../../../services/toast.service';
 import { PaymentService } from '../../../services/payment.service';
 import { MatIconModule } from '@angular/material/icon';
+import { filter, interval, switchMap, take, takeUntil, timer } from 'rxjs';
+import { PaymentStatus } from '../../../models/Payment.model';
 
 @Component({
   selector: 'app-payment-confirmation',
@@ -63,6 +65,30 @@ export class PaymentConfirmationComponent implements OnInit {
   navigateToDashboard(): void {
     this.router.navigate(['/client/dashboard']);
   }
+private pollPaymentStatus(paymentId: string): void {
+  let attempts = 0;
+  const maxAttempts = 10;
+  const pollInterval = 2000; // 2 seconds
 
+  const pollSubscription = interval(pollInterval).pipe(
+    takeUntil(timer(pollInterval * maxAttempts)),
+    switchMap(() => this.paymentService.getPaymentStatus(paymentId)),
+    filter(response => response.status === PaymentStatus.COMPLETED),
+    take(1)
+  ).subscribe({
+    next: () => {
+      this.router.navigate(['/client/dashboard'], {
+        queryParams: { 
+          paymentSuccess: 'true',
+          paymentId: paymentId,
+          refresh: Date.now().toString()
+        }
+      });
+    },
+    complete: () => {
+      pollSubscription.unsubscribe();
+    }
+  });
+}
   
 }

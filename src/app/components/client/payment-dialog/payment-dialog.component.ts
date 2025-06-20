@@ -498,93 +498,109 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async processCardPayment(): Promise<void> {
-    if (!this.clientSecret) {
-      this.showError('Payment session not initialized');
-      return;
-    }
-
-    this.paymentProcessing = true;
-    
-    if (!this.billingDetails.name || !this.billingDetails.email) {
-      this.showError('Please fill in all required fields');
-      this.paymentProcessing = false;
-      return;
-    }
-
-    try {
-      const isReady = await this.stripeService.ensureReady();
-      if (!isReady) {
-        throw new Error('Payment system not ready');
-      }
-
-      const stripe = await this.stripeService.stripePromise;
-      if (!stripe || !this.stripeService.card) {
-        throw new Error('Payment system not ready');
-      }
-
-      const { paymentMethod, error: pmError } = await stripe.createPaymentMethod({
-        type: 'card',
-        card: this.stripeService.card,
-        billing_details: {
-          name: this.billingDetails.name,
-          email: this.billingDetails.email,
-          address: {
-            line1: this.billingDetails.address.line1,
-            city: this.billingDetails.address.city,
-            country: 'TN'
-          }
-        }
-      });
-
-      if (pmError) throw pmError;
-      if (!paymentMethod) throw new Error('Failed to create payment method');
-
-      const result = await stripe.confirmCardPayment(this.clientSecret, {
-        payment_method: paymentMethod.id,
-        receipt_email: this.billingDetails.email
-      });
-
-      if (result.error) throw result.error;
-
-      if (result.paymentIntent) {
-        const payment = await firstValueFrom(
-          this.paymentService.confirmPayment(
-            result.paymentIntent.id,
-            result.paymentIntent.amount / 100
-          )
-        );
-
-        if (this.delivery) {
-          await firstValueFrom(
-            this.deliveryService.updateDeliveryPaymentStatus(
-              this.delivery.id,
-              payment.data.id,
-              'COMPLETED',
-              this.selectedMethod || undefined
-            )
-          ).catch(error => {
-            console.error('Failed to update delivery payment status:', error);
-          });
-
-          this.showSuccess('Payment successful!');
-          this.cartService.clearCart();
-          this.router.navigate(['/client/payment/confirmation'], {
-            queryParams: { 
-              paymentId: payment.data.id,
-              success: 'true'
-            }
-          });
-        }
-      }
-    } catch (error: any) {
-      console.error('Payment processing error:', error);
-      this.showError(error.message || 'Payment failed');
-    } finally {
-      this.paymentProcessing = false;
-    }
+private async processCardPayment(): Promise<void> {
+  if (!this.clientSecret) {
+    this.showError('Payment session not initialized');
+    return;
   }
 
+  this.paymentProcessing = true;
+      
+  if (!this.billingDetails.name || !this.billingDetails.email) {
+    this.showError('Please fill in all required fields');
+    this.paymentProcessing = false;
+    return;
+  }
+
+  try {
+    const isReady = await this.stripeService.ensureReady();
+    if (!isReady) {
+      throw new Error('Payment system not ready');
+    }
+
+    const stripe = await this.stripeService.stripePromise;
+    if (!stripe || !this.stripeService.card) {
+      throw new Error('Payment system not ready');
+    }
+
+    const { paymentMethod, error: pmError } = await stripe.createPaymentMethod({
+      type: 'card',
+      card: this.stripeService.card,
+      billing_details: {
+        name: this.billingDetails.name,
+        email: this.billingDetails.email,
+        address: {
+          line1: this.billingDetails.address.line1,
+          city: this.billingDetails.address.city,
+          country: 'TN'
+        }
+      }
+    });
+
+    if (pmError) throw pmError;
+    if (!paymentMethod) throw new Error('Failed to create payment method');
+
+    const result = await stripe.confirmCardPayment(this.clientSecret, {
+      payment_method: paymentMethod.id,
+      receipt_email: this.billingDetails.email
+    });
+
+    if (result.error) throw result.error;
+
+    if (result.paymentIntent) {
+      // Make sure to pass the correct amount (in dollars, not cents)
+      const amountInDollars = result.paymentIntent.amount / 100;
+      
+      // Add the logging here - right before calling confirmPayment
+      console.log('About to confirm payment with:', {
+        transactionId: result.paymentIntent.id,
+        amount: amountInDollars
+      });
+
+      const paymentResponse = await firstValueFrom(
+        this.paymentService.confirmPayment(
+          result.paymentIntent.id,
+          amountInDollars
+        )
+      );
+
+      // Add the logging here - right after getting the response
+      console.log('Payment confirmation response:', paymentResponse);
+
+      // Add null check for paymentResponse.data
+      if (!paymentResponse.data) {
+        throw new Error('Payment confirmation response is missing data');
+      }
+
+      if (this.delivery) {
+        await firstValueFrom(
+          this.deliveryService.updateDeliveryPaymentStatus(
+            this.delivery.id,
+            paymentResponse.data.id,
+            'COMPLETED',
+            this.selectedMethod || undefined
+          )
+        ).catch(error => {
+          console.error('Failed to update delivery payment status:', error);
+        });
+
+        this.showSuccess('Payment successful!');
+        this.cartService.clearCart();
+        this.router.navigate(['/client/payment/confirmation'], {
+          queryParams: {
+            paymentId: paymentResponse.data.id,
+            success: 'true'
+          }
+        });
+      }
+    }
+  } catch (error: any) {
+    console.error('Payment processing error:', error);
+    this.showError(error.message || 'Payment failed');
+  } finally {
+    this.paymentProcessing = false;
+  }
+}
   private showSuccess(message: string): void {
     this.toastService.showSuccess(message);
   }

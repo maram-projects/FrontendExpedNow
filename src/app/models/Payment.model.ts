@@ -1,6 +1,6 @@
 export interface Payment {
   id: string;
-  deliveryId: string;
+  deliveryId?: string;
   clientId: string;
   amount: number;
   finalAmountAfterDiscount: number;

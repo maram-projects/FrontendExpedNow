@@ -9,8 +9,8 @@ import { MatDialog } from '@angular/material/dialog';
 import { PaymentDialogComponent } from '../payment-dialog/payment-dialog.component';
 import { ActivatedRoute } from '@angular/router';
 import { PaymentSuccessModalComponent } from '../../../shared/payment-success-modal/payment-success-modal.component';
-import { PaymentStatus } from '../../../models/Payment.model';
-import { filter, interval, Subscription, switchMap, takeUntil, timer, Subject } from 'rxjs';
+import { Payment, PaymentStatus } from '../../../models/Payment.model';
+import { filter, interval, Subscription, switchMap, takeUntil, timer, Subject, forkJoin, take } from 'rxjs';
 import { PaymentService } from '../../../services/payment.service';
 
 interface DashboardStats {
@@ -81,6 +81,14 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
   errorMessage = '';
   selectedFilter: 'all' | 'paid' | 'unpaid' | 'cancelled' | 'expired' = 'all';
   selectedView: 'orders' | 'payments' | 'movements' = 'orders';
+  paymentStats = {
+    totalPayments: 0,
+    completedPayments: 0,
+    pendingPayments: 0,
+    failedPayments: 0,
+    totalAmount: 0,
+    lastPayment: null as Payment | null
+  };
 
   constructor(
     private authService: AuthService,
@@ -106,7 +114,6 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
     console.log('Dashboard initializing...');
     this.refreshDashboardData();
     
-    // Subscribe to query params for payment success handling
     this.route.queryParams.subscribe(params => {
       console.log('Query params received:', params);
       
@@ -118,7 +125,6 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
       if (params['refresh'] === 'true') {
         console.log('Refreshing dashboard data...');
         this.refreshDashboardData();
-        // Clear the refresh param to prevent infinite refreshes
         this.router.navigate([], {
           relativeTo: this.route,
           queryParams: { refresh: null },
@@ -127,7 +133,6 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Set up periodic refresh every 30 seconds for real-time updates
     interval(30000).pipe(
       takeUntil(this.destroy$)
     ).subscribe(() => {
@@ -136,40 +141,37 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
-    this.paymentStatusSubscriptions.forEach(sub => sub.unsubscribe());
-  }
+ngOnDestroy() {
+  this.destroy$.next();
+  this.destroy$.complete();
+  
+  // Clean up all payment status subscriptions
+  this.paymentStatusSubscriptions.forEach(sub => sub.unsubscribe());
+  this.paymentStatusSubscriptions = [];
+}
 
-  private refreshDashboardData(): void {
-    console.log('Refreshing all dashboard data...');
-    this.isLoading = true;
-    
-    // Reset all data first
-    this.recentDeliveries = [];
-    this.filteredDeliveries = [];
-    this.paymentTransactions = [];
-    
-    // Load all data in sequence to ensure proper order
-    Promise.all([
-      this.loadDashboardStatsPromise(),
-      this.loadRecentDeliveriesPromise(),
-      this.loadActiveDiscountsPromise(),
-      this.loadPaymentTransactionsPromise()
-    ]).then(() => {
-      console.log('All dashboard data loaded successfully');
-      this.isLoading = false;
-      this.filterDeliveries(this.selectedFilter);
-    }).catch(error => {
-      console.error('Error loading dashboard data:', error);
-      this.isLoading = false;
-      this.handleError(error);
-    });
-  }
+private refreshDashboardData(): void {
+  console.log('Refreshing dashboard data...');
+  this.isLoading = true;
 
-  // Convert observables to promises for better control
-  private loadDashboardStatsPromise(): Promise<void> {
+  forkJoin([
+    this.deliveryService.getClientDeliveries(this.clientId),
+    this.paymentService.getPaymentsByClient(this.clientId)
+  ]).subscribe({
+    next: ([deliveries, paymentsResponse]) => {
+      // Extract the payments array from the response
+      const payments = paymentsResponse.payments || paymentsResponse.data || [];
+      this.processDashboardData(deliveries, payments);
+      this.isLoading = false;
+    },
+    error: (err) => {
+      console.error('Error refreshing dashboard:', err);
+      this.isLoading = false;
+    }
+  });
+}
+
+private loadDashboardStatsPromise(): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!this.clientId) {
         reject(new Error('Invalid client ID'));
@@ -233,7 +235,7 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
         },
         error: (err) => {
           console.error('Error loading discounts:', err);
-          resolve(); // Don't fail the entire refresh for discounts
+          resolve();
         }
       });
     });
@@ -253,7 +255,7 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
         },
         error: (err) => {
           console.error('Error loading payment transactions:', err);
-          resolve(); // Don't fail the entire refresh for transactions
+          resolve();
         }
       });
     });
@@ -268,7 +270,6 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    // Calculate different order statuses
     const pendingOrders = validDeliveries.filter(d => 
       ['PENDING', 'ASSIGNED', 'IN_TRANSIT'].includes(d.status || '')
     ).length;
@@ -293,7 +294,6 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
              orderDate.getFullYear() === currentYear;
     }).length;
 
-    // Calculate amounts
     const totalPaidAmount = validDeliveries
       .filter(d => d.paymentStatus === PaymentStatus.COMPLETED)
       .reduce((sum, d) => sum + this.parseAmount(d.amount), 0);
@@ -305,7 +305,6 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
     const totalSavings = validDeliveries
       .reduce((sum, d) => sum + this.parseAmount(d.discountAmount), 0);
 
-    // Update stats
     this.stats = {
       ...this.stats,
       totalOrders: validDeliveries.length,
@@ -336,7 +335,6 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
         return new Date(date).toISOString();
       };
 
-      // Add payment transaction for paid deliveries
       if (delivery.paymentStatus === PaymentStatus.COMPLETED && delivery.paymentDate) {
         this.paymentTransactions.push({
           id: `pay_${delivery.id}`,
@@ -350,7 +348,6 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
         });
       }
       
-      // Add refund transactions
       if (delivery.paymentStatus === PaymentStatus.REFUNDED) {
         this.paymentTransactions.push({
           id: `ref_${delivery.id}`,
@@ -364,7 +361,6 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
         });
       }
       
-      // Add discount transactions  
       if (delivery.discountAmount && delivery.discountAmount > 0) {
         this.paymentTransactions.push({
           id: `disc_${delivery.id}`,
@@ -379,77 +375,56 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
       }
     });
     
-    // Sort transactions by date (newest first)
     this.paymentTransactions.sort((a, b) => 
       new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()
     );
   }
 
-  // Enhanced payment success handling with better state management
-  private handlePaymentSuccess(deliveryId: string, paymentId: string): void {
-    console.log('Handling payment success for delivery:', deliveryId, 'payment:', paymentId);
-    
-    // Find and update the delivery immediately for UI responsiveness
-    const delivery = this.recentDeliveries.find(d => d.id === deliveryId);
-    if (delivery) {
-      console.log('Found delivery, updating payment status...');
-      delivery.paymentStatus = PaymentStatus.COMPLETED;
-      delivery.paymentId = paymentId;
-      delivery.paymentDate = new Date().toISOString();
-      
-      // Update filtered deliveries as well
-      const filteredDelivery = this.filteredDeliveries.find(d => d.id === deliveryId);
-      if (filteredDelivery) {
-        filteredDelivery.paymentStatus = PaymentStatus.COMPLETED;
-        filteredDelivery.paymentId = paymentId;
-        filteredDelivery.paymentDate = new Date().toISOString();
-      }
-    }
-    
-    // Show success modal immediately
-    this.showPaymentSuccessModal(deliveryId, paymentId);
-    
-    // Start intensive polling for confirmation (every 2 seconds for 30 seconds)
-    let pollCount = 0;
-    const maxPolls = 15; // 30 seconds total
-    
-    const statusSub = interval(2000).pipe(
-      switchMap(() => {
-        pollCount++;
-        console.log(`Polling payment status attempt ${pollCount}/${maxPolls}`);
-        return this.paymentService.getPaymentStatus(paymentId);
-      }),
-      takeUntil(timer(30000)),
-      filter(response => {
-        console.log('Payment status response:', response);
-        return response.success && response.status === PaymentStatus.COMPLETED;
-      })
-    ).subscribe({
-      next: (response) => {
-        console.log('Payment confirmed, refreshing dashboard...');
-        this.refreshDashboardData();
-      },
-      error: (err) => {
-        console.error('Error checking payment status:', err);
-        // Still refresh even on error to get latest data
-        this.refreshDashboardData();
-      },
-      complete: () => {
-        console.log('Payment status polling completed');
-        // Final refresh regardless of polling result
-        this.refreshDashboardData();
-      }
-    });
-    
-    this.paymentStatusSubscriptions.push(statusSub);
-
-    // Also do an immediate refresh
-    setTimeout(() => {
-      console.log('Doing immediate refresh after payment success...');
-      this.refreshDashboardData();
-    }, 1000);
+private handlePaymentSuccess(deliveryId: string, paymentId: string): void {
+  console.log('Handling payment success for delivery:', deliveryId, 'payment:', paymentId);
+  
+  // Immediate UI update
+  const delivery = this.recentDeliveries.find(d => d.id === deliveryId);
+  if (delivery) {
+    delivery.paymentStatus = PaymentStatus.COMPLETED;
+    delivery.paymentId = paymentId;
+    delivery.paymentDate = new Date().toISOString();
   }
 
+  // Force refresh
+  this.refreshDashboardData();
+
+  // Poll for payment status confirmation
+  this.pollPaymentStatus(paymentId);
+}
+
+private pollPaymentStatus(paymentId: string): void {
+  let pollCount = 0;
+  const maxPolls = 15;
+  
+  const statusSub = interval(2000).pipe(
+    takeUntil(timer(30000)),
+    switchMap(() => {
+      pollCount++;
+      return this.paymentService.getPaymentStatus(paymentId);
+    }),
+    filter(response => response.success && response.status === PaymentStatus.COMPLETED),
+    take(1)
+  ).subscribe({
+    next: () => {
+      console.log('Payment confirmed, final refresh...');
+      this.refreshDashboardData();
+    },
+    error: (err) => {
+      console.error('Error checking payment status:', err);
+    },
+    complete: () => {
+      statusSub.unsubscribe();
+    }
+  });
+  
+  this.paymentStatusSubscriptions.push(statusSub);
+}
   private showPaymentSuccessModal(deliveryId: string, paymentId: string): void {
     const delivery = this.recentDeliveries.find(d => d.id === deliveryId);
     
@@ -469,13 +444,63 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Legacy methods - keeping for backward compatibility
-  private loadDashboardStats(): void {
-    this.loadDashboardStatsPromise().catch(err => {
-      console.error('Error in loadDashboardStats:', err);
-      this.handleError(err);
+private loadDashboardStats(): void {
+    this.isLoading = true;
+    
+    forkJoin([
+      this.deliveryService.getClientDeliveries(this.clientId),
+      this.paymentService.getPaymentsByClient(this.clientId)
+    ]).subscribe({
+      next: ([deliveries, paymentsResponse]) => {
+        // Extract the payments array from the response
+        const payments = paymentsResponse.payments || paymentsResponse.data || paymentsResponse;
+        this.processDashboardData(deliveries, payments);
+        this.isLoading = false;
+      },
+      error: (err) => {
+        this.handleError(err);
+        this.isLoading = false;
+      }
     });
   }
+
+ private calculatePaymentStats(payments: Payment[]): void {
+    // Ensure payments is an array
+    const validPayments = Array.isArray(payments) ? payments.filter(p => p.paymentDate) : [];
+    
+    this.paymentStats = {
+      totalPayments: validPayments.length,
+      completedPayments: validPayments.filter(p => p.status === PaymentStatus.COMPLETED).length,
+      pendingPayments: validPayments.filter(p => p.status === PaymentStatus.PENDING).length,
+      failedPayments: validPayments.filter(p => p.status === PaymentStatus.FAILED).length,
+      totalAmount: validPayments.reduce((sum, p) => sum + (p.status === PaymentStatus.COMPLETED ? p.amount : 0), 0),
+      lastPayment: validPayments.length > 0 ? 
+        validPayments.sort((a, b) => 
+          new Date(b.paymentDate!).getTime() - new Date(a.paymentDate!).getTime()
+        )[0] : null
+    };
+  }
+
+private processDashboardData(deliveries: DeliveryRequest[], payments: Payment[]): void {
+  // Ensure payments is an array
+  const paymentsArray = Array.isArray(payments) ? payments : [];
+  
+  deliveries.forEach(delivery => {
+    if (delivery.paymentId) {
+      const payment = paymentsArray.find(p => p.id === delivery.paymentId);
+      if (payment) {
+        delivery.paymentStatus = payment.status;
+        delivery.paymentMethod = payment.method;
+        delivery.paymentDate = payment.paymentDate;
+      }
+    }
+  });
+
+  this.recentDeliveries = deliveries;
+  this.calculateStats(deliveries);
+  this.filterDeliveries(this.selectedFilter);
+  this.calculatePaymentStats(paymentsArray);
+}
 
   private loadRecentDeliveries(): void {
     this.loadRecentDeliveriesPromise().then(() => {
@@ -506,7 +531,6 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
     return typeof amount === 'number' ? amount : 0;
   }
 
-  // View Management
   changeView(view: 'orders' | 'payments' | 'movements') {
     this.selectedView = view;
     if (view === 'payments') {
@@ -514,7 +538,6 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Enhanced Filter Functions
   filterDeliveries(filter: 'all' | 'paid' | 'unpaid' | 'cancelled' | 'expired') {
     this.selectedFilter = filter;
     
@@ -547,7 +570,6 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
     console.log(`Filtered ${this.filteredDeliveries.length} deliveries for filter: ${filter}`);
   }
 
-  // Payment Management Functions
   getPaymentHistory() {
     return this.paymentTransactions.filter(t => t.type === 'PAYMENT');
   }
