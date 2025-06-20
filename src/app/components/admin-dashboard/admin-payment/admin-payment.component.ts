@@ -173,17 +173,18 @@ export class AdminPaymentComponent implements OnInit {
   }
 
   filterPayments(): void {
-    this.filteredPayments = this.payments.filter(payment => {
-      const searchLower = this.searchTerm.toLowerCase();
-      const matchesSearch = payment.id.toLowerCase().includes(searchLower) ||
-                           payment.clientId.toLowerCase().includes(searchLower) ||
-                           payment.deliveryId.toLowerCase().includes(searchLower) ||
-                           (payment.transactionId && payment.transactionId.toLowerCase().includes(searchLower));
-      
-      const matchesStatus = this.selectedStatus === 'ALL' || payment.status === this.selectedStatus;
-      return matchesSearch && matchesStatus;
-    });
-  }
+  this.filteredPayments = this.payments.filter(payment => {
+    const searchLower = this.searchTerm.toLowerCase();
+    const matchesSearch = 
+      payment.id.toLowerCase().includes(searchLower) ||
+      payment.clientId.toLowerCase().includes(searchLower) ||
+      (payment.deliveryId && payment.deliveryId.toLowerCase().includes(searchLower)) || // Safe check
+      (payment.transactionId && payment.transactionId.toLowerCase().includes(searchLower));
+    
+    const matchesStatus = this.selectedStatus === 'ALL' || payment.status === this.selectedStatus;
+    return matchesSearch && matchesStatus;
+  });
+}
 
   async refundPayment(paymentId: string): Promise<void> {
     if (!confirm('Are you sure you want to refund this payment?')) {

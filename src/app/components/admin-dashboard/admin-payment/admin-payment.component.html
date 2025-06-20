@@ -99,7 +99,10 @@
             <td>
               <div class="client-info">
                 <span class="client-id">{{payment.clientId | shorten: 8}}</span>
-                <span class="delivery-id">Del: {{payment.deliveryId | shorten: 6}}</span>
+<span class="delivery-id">Del: {{payment.deliveryId | shorten: 6}}</span>
+<span *ngIf="payment.transactionId" class="transaction-id">
+  Txn: {{payment.transactionId | shorten: 6}}
+</span>
               </div>
             </td>
             

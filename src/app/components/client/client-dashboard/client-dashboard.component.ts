@@ -261,68 +261,65 @@ private loadDashboardStatsPromise(): Promise<void> {
     });
   }
 
-  private calculateStats(deliveries: DeliveryRequest[]): void {
-    const validDeliveries = deliveries.filter(delivery => 
-      delivery && typeof delivery === 'object'
-    );
+private calculateStats(deliveries: DeliveryRequest[]): void {
+  const validDeliveries = deliveries.filter(delivery => 
+    delivery && typeof delivery === 'object'
+  );
 
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
 
-    const pendingOrders = validDeliveries.filter(d => 
-      ['PENDING', 'ASSIGNED', 'IN_TRANSIT'].includes(d.status || '')
-    ).length;
+  const pendingOrders = validDeliveries.filter(d => 
+    ['PENDING', 'ASSIGNED', 'IN_TRANSIT'].includes(d.status || '')
+  ).length;
 
-    const completedOrders = validDeliveries.filter(d => 
-      d.status === 'DELIVERED'
-    ).length;
+  const completedOrders = validDeliveries.filter(d => 
+    d.status === 'DELIVERED'
+  ).length;
 
-    const paidOrders = validDeliveries.filter(d => 
-      d.paymentStatus === PaymentStatus.COMPLETED
-    ).length;
+  const paidOrders = validDeliveries.filter(d => 
+    d.paymentStatus === PaymentStatus.COMPLETED
+  ).length;
 
-    const unpaidOrders = validDeliveries.filter(d => 
-      d.status === 'DELIVERED' && 
-      d.paymentStatus !== PaymentStatus.COMPLETED
-    ).length;
+  const unpaidOrders = validDeliveries.filter(d => 
+    d.status === 'DELIVERED' && 
+    d.paymentStatus !== PaymentStatus.COMPLETED
+  ).length;
 
-    const thisMonthOrders = validDeliveries.filter(d => {
-      if (!d.createdAt) return false;
-      const orderDate = new Date(d.createdAt);
-      return orderDate.getMonth() === currentMonth && 
-             orderDate.getFullYear() === currentYear;
-    }).length;
+  const thisMonthOrders = validDeliveries.filter(d => {
+    if (!d.createdAt) return false;
+    const orderDate = new Date(d.createdAt);
+    return orderDate.getMonth() === currentMonth && 
+           orderDate.getFullYear() === currentYear;
+  }).length;
 
-    const totalPaidAmount = validDeliveries
-      .filter(d => d.paymentStatus === PaymentStatus.COMPLETED)
-      .reduce((sum, d) => sum + this.parseAmount(d.amount), 0);
-    
-    const totalUnpaidAmount = validDeliveries
-      .filter(d => d.status === 'DELIVERED' && d.paymentStatus !== PaymentStatus.COMPLETED)
-      .reduce((sum, d) => sum + this.parseAmount(d.amount), 0);
+ const totalPaidAmount = validDeliveries
+  .filter(d => d.paymentStatus === PaymentStatus.COMPLETED)
+  .reduce((sum, d) => sum + this.parseAmount(d.amount), 0);
+  
+const totalUnpaidAmount = validDeliveries
+  .filter(d => d.status === 'DELIVERED' && d.paymentStatus !== PaymentStatus.COMPLETED)
+  .reduce((sum, d) => sum + this.parseAmount(d.amount), 0);
 
-    const totalSavings = validDeliveries
-      .reduce((sum, d) => sum + this.parseAmount(d.discountAmount), 0);
-
-    this.stats = {
-      ...this.stats,
-      totalOrders: validDeliveries.length,
-      pendingOrders,
-      completedOrders,
-      paidOrders,
-      unpaidOrders,
-      thisMonthOrders,
-      totalPaidAmount,
-      totalUnpaidAmount,
-      totalSavings,
-      paymentRate: completedOrders > 0 
-        ? Math.round((paidOrders / completedOrders) * 100 * 100) / 100
-        : 0
-    };
-
-    console.log('Updated stats:', this.stats);
-  }
+const totalSavings = validDeliveries
+  .reduce((sum, d) => sum + this.parseAmount(d.discountAmount), 0);
+  this.stats = {
+    ...this.stats,
+    totalOrders: validDeliveries.length,
+    pendingOrders,
+    completedOrders,
+    paidOrders,
+    unpaidOrders,
+    thisMonthOrders,
+    totalPaidAmount,
+    totalUnpaidAmount,
+    totalSavings,
+    paymentRate: completedOrders > 0 
+      ? Math.round((paidOrders / completedOrders) * 100 * 100) / 100
+      : 0
+  };
+}
 
   private generatePaymentTransactions(deliveries: DeliveryRequest[]): void {
     this.paymentTransactions = [];
@@ -391,11 +388,17 @@ private handlePaymentSuccess(deliveryId: string, paymentId: string): void {
     delivery.paymentDate = new Date().toISOString();
   }
 
-  // Force refresh
+  // Force refresh of all data
   this.refreshDashboardData();
 
-  // Poll for payment status confirmation
-  this.pollPaymentStatus(paymentId);
+  // Add navigation with refresh parameter
+  this.router.navigate(['/client/dashboard'], {
+    queryParams: { 
+      paymentSuccess: 'true',
+      paymentId: paymentId,
+      refresh: Date.now().toString()
+    }
+  });
 }
 
 private pollPaymentStatus(paymentId: string): void {
@@ -482,22 +485,35 @@ private loadDashboardStats(): void {
   }
 
 private processDashboardData(deliveries: DeliveryRequest[], payments: Payment[]): void {
-  // Ensure payments is an array
+  // Ensure we have arrays
+  const deliveriesArray = Array.isArray(deliveries) ? deliveries : [];
   const paymentsArray = Array.isArray(payments) ? payments : [];
   
-  deliveries.forEach(delivery => {
+  // Merge payment data into deliveries
+  deliveriesArray.forEach(delivery => {
     if (delivery.paymentId) {
       const payment = paymentsArray.find(p => p.id === delivery.paymentId);
       if (payment) {
         delivery.paymentStatus = payment.status;
         delivery.paymentMethod = payment.method;
         delivery.paymentDate = payment.paymentDate;
+        delivery.amount = payment.amount;
+      }
+    } else {
+      // Find payment by deliveryId if paymentId is not set
+      const relatedPayment = paymentsArray.find(p => p.deliveryId === delivery.id);
+      if (relatedPayment) {
+        delivery.paymentStatus = relatedPayment.status;
+        delivery.paymentMethod = relatedPayment.method;
+        delivery.paymentDate = relatedPayment.paymentDate;
+        delivery.amount = relatedPayment.amount;
+        delivery.paymentId = relatedPayment.id;
       }
     }
   });
 
-  this.recentDeliveries = deliveries;
-  this.calculateStats(deliveries);
+  this.recentDeliveries = deliveriesArray;
+  this.calculateStats(deliveriesArray);
   this.filterDeliveries(this.selectedFilter);
   this.calculatePaymentStats(paymentsArray);
 }
@@ -523,13 +539,20 @@ private processDashboardData(deliveries: DeliveryRequest[], payments: Payment[])
     });
   }
 
-  private parseAmount(amount: any): number {
-    if (!amount) return 0;
-    if (typeof amount === 'string') {
-      return parseFloat(amount.replace(/[^\d.-]/g, '')) || 0;
-    }
-    return typeof amount === 'number' ? amount : 0;
+private parseAmount(amount: any): number {
+  if (amount === null || amount === undefined) return 0;
+  
+  // Convert string to number
+  if (typeof amount === 'string') {
+    // Remove any non-numeric characters except decimal point and minus sign
+    const numericString = amount.replace(/[^\d.-]/g, '');
+    const parsed = parseFloat(numericString);
+    return isNaN(parsed) ? 0 : parsed;
   }
+  
+  // If it's already a number
+  return typeof amount === 'number' ? amount : 0;
+}
 
   changeView(view: 'orders' | 'payments' | 'movements') {
     this.selectedView = view;
