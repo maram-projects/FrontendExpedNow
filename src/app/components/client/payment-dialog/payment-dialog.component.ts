@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, Inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom, Observable, Subscription, tap } from 'rxjs';
 import { PaymentService } from '../../../services/payment.service';
@@ -14,7 +14,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { PricingDetailsComponent } from "../pricing-details/pricing-details.component";
 import { DeliveryService } from '../../../services/delivery-service.service';
 import { PaymentSuccessModalComponent } from '../../../shared/payment-success-modal/payment-success-modal.component';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { StripeCardElement, StripeElements } from '@stripe/stripe-js';
 import { CartService } from '../../../services/cart.service';
 
@@ -24,6 +24,7 @@ import { PaymentStatus as DeliveryPaymentStatus } from '../../../services/delive
 interface DeliveryData {
   id: string;
   amount: number;
+  originalAmount?: number;
   finalAmountAfterDiscount: number;
   pricingDetails: PricingDetails | null;
   pickupAddress: string;
@@ -45,8 +46,10 @@ interface DeliveryData {
   paymentStatus?: PaymentStatus;
   paymentId?: string;
   paymentDate?: string | number | Date;
+  discountAmount?: number;
+  discountCode?: string;
+  paymentMethod?: PaymentMethod; // Add this line
 }
-
 interface PricingDetails {
   distance: number;
   basePrice: number;
@@ -75,6 +78,12 @@ interface BillingDetails {
     postal_code: string;
     country: string;
   };
+}
+
+// Define the dialog data interface
+interface DialogData {
+  clientId?: string;
+  deliveryId?: string;
 }
 
 @Component({
@@ -142,21 +151,44 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
     private toastService: ToastService,
     private dialog: MatDialog,
     private cartService: CartService,
+    public dialogRef: MatDialogRef<PaymentDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public dialogData: DialogData
   ) {}
 
   ngOnInit(): void {
+    console.log('PaymentDialogComponent initialized');
     this.paymentMethods = this.paymentService.getAvailablePaymentMethods();
-    this.loadData();
-  }
-
-  private loadData(): void {
-    const paramsSubscription = this.route.queryParams.subscribe(params => {
-      this.clientId = params['clientId'] || '';
-      const deliveryId = params['deliveryId'];
+    
+    if (this.dialogData) {
+      console.log('Opened as dialog with data:', this.dialogData);
+      this.clientId = this.dialogData.clientId || '';
+      const deliveryId = this.dialogData.deliveryId;
       
       if (deliveryId) {
         this.loadDeliveryDetails(deliveryId);
       } else {
+        console.error('No delivery ID provided in dialog data');
+        this.toastService.showError('No delivery ID provided');
+        this.dialogRef.close();
+      }
+    } else {
+      console.log('Opened as regular component');
+      this.loadData();
+    }
+  }
+
+  private loadData(): void {
+    console.log('Loading data from query params');
+    const paramsSubscription = this.route.queryParams.subscribe(params => {
+      this.clientId = params['clientId'] || '';
+      const deliveryId = params['deliveryId'];
+      
+      console.log('Query params:', params);
+      
+      if (deliveryId) {
+        this.loadDeliveryDetails(deliveryId);
+      } else {
+        console.error('No delivery ID provided in query params');
         this.toastService.showError('No delivery ID provided');
         this.navigateToDashboard();
       }
@@ -165,41 +197,64 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
     this.subscriptions.add(paramsSubscription);
   }
 
-  private loadDeliveryDetails(deliveryId: string): void {
-    this.loading = true;
-    
-    const deliverySub = this.deliveryService.getDeliveryById(deliveryId).subscribe({
-      next: (delivery) => {
-        this.delivery = {
-          ...delivery,
-          amount: parseFloat(delivery.amount.toString()),
-          finalAmountAfterDiscount: parseFloat(delivery.amount.toString()),
-          pricingDetails: null,
-          paymentStatus: delivery.paymentStatus as PaymentStatus
-        };
-        
-        if (delivery.paymentStatus === PaymentStatus.COMPLETED) {
-          this.toastService.showWarning('This delivery has already been paid');
-          this.navigateToDashboard();
-          return;
-        }
-
-        if (delivery.paymentStatus) {
-          this.handleExistingPayment(this.delivery);
-        } else {
-          this.loadPricingDetails();
-        }
-      },
-      error: (err) => {
-        this.toastService.showError('Failed to load delivery details');
-        this.loading = false;
+private loadDeliveryDetails(deliveryId: string): void {
+  console.log(`Loading delivery details for ID: ${deliveryId}`);
+  this.loading = true;
+  
+  const deliverySub = this.deliveryService.getDeliveryById(deliveryId).subscribe({
+    next: (delivery) => {
+      console.log('Received delivery data:', delivery);
+      
+      const deliveryAmount = delivery.amount ? parseFloat(delivery.amount.toString()) : 0;
+      const discountAmount = delivery.discountAmount ? parseFloat(delivery.discountAmount.toString()) : 0;
+      
+      this.delivery = {
+        ...delivery,
+        amount: deliveryAmount,
+        discountAmount: discountAmount,
+        finalAmountAfterDiscount: deliveryAmount - discountAmount,
+        pricingDetails: null,
+        paymentStatus: delivery.paymentStatus as PaymentStatus,
+        // Fix: Cast paymentMethod from string to PaymentMethod enum
+        paymentMethod: delivery.paymentMethod as PaymentMethod
+      };
+      
+      console.log('Processed delivery object:', this.delivery);
+      
+      if (deliveryAmount === 0) {
+        console.warn('Delivery amount is 0, loading pricing details');
+        this.toastService.showWarning('Delivery amount is not set. Loading pricing details...');
+        this.loadPricingDetails();
+        return;
       }
-    });
-    
-    this.subscriptions.add(deliverySub);
-  }
+      
+      if (delivery.paymentStatus === PaymentStatus.COMPLETED) {
+        console.log('Delivery already paid, closing dialog');
+        this.toastService.showWarning('This delivery has already been paid');
+        this.closeDialog();
+        return;
+      }
+
+      if (delivery.paymentStatus) {
+        console.log('Handling existing payment');
+        this.handleExistingPayment(this.delivery);
+      } else {
+        console.log('No payment status, loading pricing details');
+        this.loadPricingDetails();
+      }
+    },
+    error: (err) => {
+      console.error('Error loading delivery details:', err);
+      this.toastService.showError('Failed to load delivery details');
+      this.loading = false;
+    }
+  });
+  
+  this.subscriptions.add(deliverySub);
+}
 
   private handleExistingPayment(delivery: DeliveryData): void {
+    console.log('Handling existing payment with status:', delivery.paymentStatus);
     this.paymentStatus = delivery.paymentStatus || PaymentStatus.PENDING;
     this.paymentId = delivery.paymentId || null;
     
@@ -224,11 +279,14 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
   private loadPricingDetails(): void {
     if (!this.delivery) return;
     
+    console.log('Loading pricing details');
+    
     let scheduledDate: string | undefined;
     if (this.delivery.scheduledDate) {
       try {
         scheduledDate = new Date(this.delivery.scheduledDate).toISOString();
       } catch (e) {
+        console.warn('Invalid scheduled date:', this.delivery.scheduledDate);
         scheduledDate = undefined;
       }
     }
@@ -252,6 +310,7 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
     }).subscribe({
       next: (response: any) => this.handlePricingSuccess(response),
       error: (error: any) => {
+        console.error('Error calculating pricing:', error);
         this.toastService.showError('Failed to calculate pricing');
         this.loading = false;
       }
@@ -263,6 +322,8 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
   private handlePricingSuccess(response: any): void {
     if (!this.delivery) return;
 
+    console.log('Pricing calculation successful:', response);
+    
     const pricingData = response?.data || response;
     
     let calculatedAt: string;
@@ -290,9 +351,13 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
     this.delivery.amount = pricingData.totalAmount;
     this.delivery.finalAmountAfterDiscount = pricingData.totalAmount;
     this.loading = false;
+    
+    console.log('Updated delivery with pricing details:', this.delivery);
   }
 
   applyDiscount(): void {
+    console.log('Applying discount with code:', this.discountCode);
+    
     if (!this.discountCode.trim()) {
       this.toastService.showWarning('Please enter a discount code');
       return;
@@ -308,8 +373,12 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
     
     const discountSub = this.discountService.validateDiscount(this.discountCode, this.clientId).subscribe({
       next: (discount: Discount) => {
+        console.log('Discount validated:', discount);
+        
         if (this.delivery && this.delivery.pricingDetails) {
           const discountAmount = this.calculateDiscountAmount(discount);
+          
+          console.log('Applying discount amount:', discountAmount);
           
           this.delivery.pricingDetails.discountAmount = discountAmount;
           this.delivery.finalAmountAfterDiscount = this.delivery.amount - discountAmount;
@@ -320,6 +389,7 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
         this.discountLoading = false;
       },
       error: (err: any) => {
+        console.error('Discount validation error:', err);
         this.discountError = err.error?.message || 'Invalid discount code';
         this.discountLoading = false;
         this.toastService.showError(this.discountError);
@@ -339,6 +409,8 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
   }
 
   removeDiscount(): void {
+    console.log('Removing discount');
+    
     if (!this.delivery || !this.delivery.pricingDetails) return;
     
     this.discountCode = '';
@@ -349,6 +421,7 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
   }
 
   selectPaymentMethod(method: PaymentMethod): void {
+    console.log('Selected payment method:', method);
     this.selectedMethod = method;
     this.paymentError = '';
     this.showCardForm = method === PaymentMethod.CREDIT_CARD;
@@ -360,6 +433,7 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
   }
 
   private async initializeCardForm(): Promise<void> {
+    console.log('Initializing card form');
     try {
       const isReady = await this.stripeService.ensureReady();
       if (!isReady) {
@@ -388,19 +462,18 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
       return;
     }
 
+    console.log('Creating payment intent');
+
     try {
-      // First ensure Stripe is ready
       const isStripeReady = await this.stripeService.ensureReady();
       if (!isStripeReady) {
         this.toastService.showError('Payment system not ready. Please try again.');
         return;
       }
 
-      // Calculate USD amount from TND
       const tndAmount = this.delivery.finalAmountAfterDiscount;
       const usdAmount = tndAmount * this.exchangeRate;
 
-      // Validate amount
       if (usdAmount < this.minimumUsdAmount) {
         const minTndAmount = this.minimumUsdAmount / this.exchangeRate;
         this.toastService.showError(
@@ -417,8 +490,8 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
       const paymentData = {
         deliveryId: this.delivery.id,
         clientId: this.clientId,
-        amount: Math.round(usdAmount * 100), // Convert to cents
-        currency: 'usd',     // Explicitly set currency to USD
+        amount: Math.round(usdAmount * 100),
+        currency: 'usd',
         paymentMethod: PaymentMethod.CREDIT_CARD
       };
 
@@ -434,7 +507,7 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
       this.clientSecret = response.clientSecret;
       this.paymentId = response.paymentId;
       
-      console.log('PaymentIntent created successfully:', {
+      console.log('PaymentIntent created:', {
         clientSecret: this.clientSecret,
         paymentId: this.paymentId
       });
@@ -473,6 +546,7 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
   }
 
   async processPayment(): Promise<void> {
+    console.log('Processing payment');
     if (!this.selectedMethod) {
       this.toastService.showWarning('Please select a payment method');
       return;
@@ -492,120 +566,163 @@ export class PaymentDialogComponent implements OnInit, OnDestroy {
         await this.processNonCardPayment();
       }
     } catch (error: any) {
+      console.error('Payment processing error:', error);
       this.showError('Payment failed: ' + error.message);
     } finally {
       this.paymentProcessing = false;
     }
   }
 
-private async processCardPayment(): Promise<void> {
-  if (!this.clientSecret) {
-    this.showError('Payment session not initialized');
-    return;
-  }
+  private async processCardPayment(): Promise<void> {
+    console.log('Processing card payment');
+    if (!this.clientSecret) {
+      this.showError('Payment session not initialized');
+      return;
+    }
 
-  this.paymentProcessing = true;
+    this.paymentProcessing = true;
       
-  if (!this.billingDetails.name || !this.billingDetails.email) {
-    this.showError('Please fill in all required fields');
-    this.paymentProcessing = false;
-    return;
-  }
-
-  try {
-    const isReady = await this.stripeService.ensureReady();
-    if (!isReady) {
-      throw new Error('Payment system not ready');
+    if (!this.billingDetails.name || !this.billingDetails.email) {
+      this.showError('Please fill in all required fields');
+      this.paymentProcessing = false;
+      return;
     }
 
-    const stripe = await this.stripeService.stripePromise;
-    if (!stripe || !this.stripeService.card) {
-      throw new Error('Payment system not ready');
-    }
-
-    const { paymentMethod, error: pmError } = await stripe.createPaymentMethod({
-      type: 'card',
-      card: this.stripeService.card,
-      billing_details: {
-        name: this.billingDetails.name,
-        email: this.billingDetails.email,
-        address: {
-          line1: this.billingDetails.address.line1,
-          city: this.billingDetails.address.city,
-          country: 'TN'
-        }
+    try {
+      const isReady = await this.stripeService.ensureReady();
+      if (!isReady) {
+        throw new Error('Payment system not ready');
       }
-    });
 
-    if (pmError) throw pmError;
-    if (!paymentMethod) throw new Error('Failed to create payment method');
+      const stripe = await this.stripeService.stripePromise;
+      if (!stripe || !this.stripeService.card) {
+        throw new Error('Payment system not ready');
+      }
 
-    const result = await stripe.confirmCardPayment(this.clientSecret, {
-      payment_method: paymentMethod.id,
-      receipt_email: this.billingDetails.email
-    });
-
-    if (result.error) throw result.error;
-
-    if (result.paymentIntent) {
-      // Make sure to pass the correct amount (in dollars, not cents)
-      const amountInDollars = result.paymentIntent.amount / 100;
-      
-      // Add the logging here - right before calling confirmPayment
-      console.log('About to confirm payment with:', {
-        transactionId: result.paymentIntent.id,
-        amount: amountInDollars
+      const { paymentMethod, error: pmError } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: this.stripeService.card,
+        billing_details: {
+          name: this.billingDetails.name,
+          email: this.billingDetails.email,
+          address: {
+            line1: this.billingDetails.address.line1,
+            city: this.billingDetails.address.city,
+            country: 'TN'
+          }
+        }
       });
 
-      const paymentResponse = await firstValueFrom(
-        this.paymentService.confirmPayment(
-          result.paymentIntent.id,
-          amountInDollars
-        )
-      );
+      if (pmError) throw pmError;
+      if (!paymentMethod) throw new Error('Failed to create payment method');
 
-      // Add the logging here - right after getting the response
-      console.log('Payment confirmation response:', paymentResponse);
+      console.log('Payment method created:', paymentMethod.id);
 
-      // Add null check for paymentResponse.data
-      if (!paymentResponse.data) {
-        throw new Error('Payment confirmation response is missing data');
-      }
+      const result = await stripe.confirmCardPayment(this.clientSecret, {
+        payment_method: paymentMethod.id,
+        receipt_email: this.billingDetails.email
+      });
 
-      if (this.delivery) {
-        await firstValueFrom(
-          this.deliveryService.updateDeliveryPaymentStatus(
-            this.delivery.id,
-            paymentResponse.data.id,
-            'COMPLETED',
-            this.selectedMethod || undefined
+      if (result.error) throw result.error;
+
+      if (result.paymentIntent) {
+        const amountInDollars = result.paymentIntent.amount / 100;
+        const tndAmount = this.delivery!.finalAmountAfterDiscount;
+        
+        console.log('Payment successful. Confirming payment with:', {
+          transactionId: result.paymentIntent.id,
+          amount: amountInDollars
+        });
+
+        const paymentResponse = await firstValueFrom(
+          this.paymentService.confirmPayment(
+            result.paymentIntent.id,
+            amountInDollars
           )
-        ).catch(error => {
-          console.error('Failed to update delivery payment status:', error);
-        });
+        );
 
-        this.showSuccess('Payment successful!');
-        this.cartService.clearCart();
-        this.router.navigate(['/client/payment/confirmation'], {
-          queryParams: {
+        console.log('Payment confirmation response:', paymentResponse);
+
+        if (this.delivery) {
+          console.log('Updating delivery payment status with:', {
+            deliveryId: this.delivery.id,
             paymentId: paymentResponse.data.id,
-            success: 'true'
+            status: 'COMPLETED',
+            method: this.selectedMethod || undefined,
+            finalAmount: tndAmount,
+            originalAmount: this.delivery.amount,
+            discountAmount: this.delivery.discountAmount || 0,
+            discountCode: this.discountCode
+          });
+          
+          // CRITICAL UPDATE: Update local delivery object immediately
+          this.delivery.paymentStatus = PaymentStatus.COMPLETED;
+          this.delivery.paymentId = paymentResponse.data.id;
+          this.delivery.paymentDate = new Date().toISOString();
+          this.delivery.paymentMethod = this.selectedMethod || undefined;
+          this.delivery.finalAmountAfterDiscount = tndAmount;
+          this.delivery.discountAmount = this.delivery.discountAmount || 0;
+          this.delivery.discountCode = this.discountCode;
+          
+          // Update backend
+          await firstValueFrom(
+            this.deliveryService.updateDeliveryPaymentStatus(
+              this.delivery.id,
+              paymentResponse.data.id,
+              'COMPLETED',
+              this.selectedMethod || undefined,
+              tndAmount,
+              this.delivery.amount,
+              this.delivery.discountAmount || 0,
+              this.discountCode
+            )
+          );
+
+          // Clear cart
+          this.cartService.clearCart();
+          
+          if (this.dialogData) {
+            console.log('Closing dialog with success');
+            this.dialogRef.close({
+              success: true,
+              paymentId: paymentResponse.data.id,
+              delivery: this.delivery // Send updated delivery back
+            });
+          } else {
+            console.log('Navigating to dashboard');
+            this.router.navigate(['/client/dashboard'], {
+              queryParams: {
+                paymentId: paymentResponse.data.id,
+                success: 'true',
+                deliveryId: this.delivery.id,
+                refresh: Date.now().toString()
+              }
+            });
           }
-        });
+        }
       }
+    } catch (error: unknown) {
+      console.error('Payment processing error:', error);
+      let errorMessage = 'Payment failed';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      this.showError(errorMessage);
+    } finally {
+      this.paymentProcessing = false;
     }
-  } catch (error: any) {
-    console.error('Payment processing error:', error);
-    this.showError(error.message || 'Payment failed');
-  } finally {
-    this.paymentProcessing = false;
   }
-}
+
   private showSuccess(message: string): void {
     this.toastService.showSuccess(message);
   }
 
   private async processNonCardPayment(): Promise<void> {
+    console.log('Processing non-card payment');
     if (!this.paymentId && this.delivery) {
       const paymentData = {
         deliveryId: this.delivery.id,
@@ -642,6 +759,7 @@ private async processCardPayment(): Promise<void> {
   }
 
   async initializeStripeElements(clientSecret: string): Promise<void> {
+    console.log('Initializing Stripe elements');
     try {
       const isReady = await this.stripeService.ensureReady();
       if (!isReady) {
@@ -691,6 +809,7 @@ private async processCardPayment(): Promise<void> {
   }
 
   private showPaymentSuccess(payment: Payment): void {
+    console.log('Showing payment success');
     if (!this.delivery) return;
 
     const modalRef = this.dialog.open(PaymentSuccessModalComponent, {
@@ -707,36 +826,58 @@ private async processCardPayment(): Promise<void> {
         this.deliveryService.updateDeliveryPaymentStatus(
           this.delivery.id,
           payment.id,
-          this.mapToDeliveryPaymentStatus(PaymentStatus.COMPLETED)
+          this.mapToDeliveryPaymentStatus(PaymentStatus.COMPLETED),
+          this.selectedMethod || undefined,
+          this.delivery.finalAmountAfterDiscount,
+          this.delivery.amount,
+          this.delivery.discountAmount || 0,
+          this.discountCode
         ).subscribe({
           next: () => {
-            this.router.navigate(['/client/dashboard'], {
-              queryParams: {
-                paymentSuccess: 'true',
-                paymentId: payment.id,
-                refresh: Date.now().toString()
-              }
-            });
+            this.navigateAfterPayment(payment.id);
           },
           error: () => {
-            this.router.navigate(['/client/dashboard'], {
-              queryParams: {
-                paymentSuccess: 'true',
-                paymentId: payment.id,
-                refresh: Date.now().toString()
-              }
-            });
+            this.navigateAfterPayment(payment.id);
           }
         });
       }
     });
   }
 
+  private navigateAfterPayment(paymentId: string): void {
+    console.log('Navigating after payment');
+    const queryParams = {
+      paymentSuccess: 'true',
+      paymentId: paymentId,
+      refresh: Date.now().toString()
+    };
+
+    if (this.dialogData) {
+      this.dialogRef.close({
+        success: true,
+        paymentId: paymentId,
+        delivery: this.delivery // Send updated delivery back
+      });
+    } else {
+      this.router.navigate(['/client/dashboard'], { 
+        queryParams: {
+          ...queryParams,
+          deliveryId: this.delivery?.id
+        }
+      });
+    }
+  }
+
   private updateDeliveryPaymentStatus(deliveryId: string, paymentId: string): Observable<any> {
     return this.deliveryService.updateDeliveryPaymentStatus(
       deliveryId,
       paymentId,
-      this.mapToDeliveryPaymentStatus(PaymentStatus.COMPLETED)
+      this.mapToDeliveryPaymentStatus(PaymentStatus.COMPLETED),
+      this.selectedMethod || undefined,
+      this.delivery?.finalAmountAfterDiscount || 0,
+      this.delivery?.amount || 0,
+      this.delivery?.discountAmount || 0,
+      this.discountCode
     ).pipe(
       tap(() => {
         if (this.delivery) {
@@ -774,30 +915,45 @@ private async processCardPayment(): Promise<void> {
   }
 
   resetPayment(): void {
+    console.log('Resetting payment');
     this.paymentStatus = PaymentStatus.PENDING;
     this.paymentId = null;
     this.paymentError = '';
   }
 
   navigateToDashboard(queryParams: any = {}): void {
-    this.router.navigate(['/client/dashboard'], { 
-      queryParams: {
-        ...queryParams,
-        refresh: Date.now().toString()
-      }
-    });
+    console.log('Navigating to dashboard');
+    if (this.dialogData) {
+      this.dialogRef.close();
+    } else {
+      this.router.navigate(['/client/dashboard'], { 
+        queryParams: {
+          ...queryParams,
+          refresh: Date.now().toString()
+        }
+      });
+    }
+  }
+
+  closeDialog(): void {
+    console.log('Closing dialog');
+    if (this.dialogData) {
+      this.dialogRef.close();
+    } else {
+      this.navigateToDashboard();
+    }
   }
 
   getOrderId(): string {
     return this.delivery?.id?.slice(0, 8) || 'N/A';
   }
+  
+  getFinalAmount(): number {
+    return this.delivery?.finalAmountAfterDiscount || 0;
+  }
 
   getDiscountAmount(): number {
     return this.delivery?.pricingDetails?.discountAmount || 0;
-  }
-
-  getFinalAmount(): number {
-    return this.delivery?.finalAmountAfterDiscount || 0;
   }
 
   getPaymentStatusMessage(status: PaymentStatus): string {
@@ -811,6 +967,7 @@ private async processCardPayment(): Promise<void> {
   }
 
   ngOnDestroy(): void {
+    console.log('PaymentDialogComponent destroyed');
     this.subscriptions.unsubscribe();
     if (this.cardElement) {
       this.cardElement.destroy();

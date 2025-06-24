@@ -7,7 +7,7 @@ export interface Payment {
   method: PaymentMethod;
   status: PaymentStatus;
   transactionId?: string;
-  paymentDate?: Date;
+  paymentDate?: Date | string;  
   receiptUrl?: string;
   cardLast4?: string;
   cardBrand?: string;

@@ -50,14 +50,30 @@
   }
 }
 
-/* Container Styles */
+/* Full-screen container styles */
 .payment-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  min-height: 100vh;
   font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.payment-content {
+  height: 100%;
+}
+
+.container {
+  height: 100%;
+}
+
+.row {
+  height: 100%;
 }
 
 /* Header Styles */
@@ -909,7 +925,7 @@
     box-shadow: none;
     border: 1px solid #ccc;
   }
-  
+ 
   .btn {
     display: none;
   }

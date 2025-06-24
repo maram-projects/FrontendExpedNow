@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
-import { catchError, retry, tap } from 'rxjs/operators';
+import { catchError, map, retry, tap } from 'rxjs/operators';
 import { Router } from '@angular/router';
 
 import { environment } from '../../environments/environment';
@@ -20,7 +20,7 @@ interface CreatePaymentIntentResponse {
   paymentId: string;
 }
 
-interface PaymentResponse {
+export interface PaymentResponse {
   success: boolean;
   message: string;
   data: Payment;
@@ -116,15 +116,19 @@ export class PaymentService {
    * Get all payments without pagination
    */
   getAllPaymentsSimple(): Observable<PaymentListResponse> {
-    return this.http.get<PaymentListResponse>(`${this.apiUrl}/all`, {
-      headers: this.createHeaders(),
-      withCredentials: true
-    }).pipe(
-      retry(2),
-      tap(response => console.log('Get all payments simple response:', response)),
-      catchError(this.handleError)
-    );
-  }
+  return this.http.get<PaymentListResponse>(`${this.apiUrl}/all`, {
+    headers: this.createHeaders(),
+    withCredentials: true
+  }).pipe(
+    retry(2),
+    map(response => ({
+      ...response,
+      data: response.data?.map(payment => this.parsePaymentDates(payment)) || []
+    })),
+    tap(response => console.log('Get all payments simple response:', response)),
+    catchError(this.handleError)
+  );
+}
 
   /**
    * Create a new payment intent
@@ -531,4 +535,39 @@ private handleError = (error: HttpErrorResponse) => {
   
   return throwError(() => new Error(errorMessage));
 };
+
+// In your PaymentService, add this helper method
+private parsePaymentDates(payment: Payment): Payment {
+  return {
+    ...payment,
+    paymentDate: payment.paymentDate ? new Date(payment.paymentDate) : undefined,
+    createdAt: payment.createdAt ? new Date(payment.createdAt) : undefined,
+    updatedAt: payment.updatedAt ? new Date(payment.updatedAt) : undefined
+  };
+}
+
+getPaymentDetails(paymentId: string): Observable<PaymentResponse> {
+  return this.http.get<PaymentResponse>(`${this.apiUrl}/${paymentId}`, {
+    headers: this.createHeaders(),
+    withCredentials: true
+  }).pipe(
+    map(response => {
+      if (response.success && response.data) {
+        // Parse dates
+        const payment = response.data;
+        return {
+          ...response,
+          data: {
+            ...payment,
+            paymentDate: payment.paymentDate ? new Date(payment.paymentDate) : undefined,
+            createdAt: payment.createdAt ? new Date(payment.createdAt) : undefined,
+            updatedAt: payment.updatedAt ? new Date(payment.updatedAt) : undefined
+          }
+        };
+      }
+      return response;
+    }),
+    catchError(this.handleError)
+  );
+}
 }

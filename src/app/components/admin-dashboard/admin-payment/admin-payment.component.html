@@ -76,7 +76,8 @@
           <tr>
             <th>Payment ID</th>
             <th>Client</th>
-            <th>Amount</th>
+            <th>Delivery</th>
+            <th>Amount (TND)</th>
             <th>Method</th>
             <th>Status</th>
             <th>Date</th>
@@ -84,35 +85,32 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let payment of filteredPayments; trackBy: trackByPaymentId" 
-              class="payment-row" 
-              @fadeInScale>
+          <tr *ngFor="let payment of filteredPayments; trackBy: trackByPaymentId" class="payment-row">
             <td>
               <div class="payment-id">
                 <span class="id-text">{{payment.id | shorten: 8}}</span>
-                <span *ngIf="payment.transactionId" class="transaction-id">
-                  Txn: {{payment.transactionId | shorten: 6}}
-                </span>
               </div>
             </td>
             
             <td>
               <div class="client-info">
                 <span class="client-id">{{payment.clientId | shorten: 8}}</span>
-<span class="delivery-id">Del: {{payment.deliveryId | shorten: 6}}</span>
-<span *ngIf="payment.transactionId" class="transaction-id">
-  Txn: {{payment.transactionId | shorten: 6}}
-</span>
+              </div>
+            </td>
+            
+            <td>
+              <div class="delivery-info">
+                <span class="delivery-id">{{payment.deliveryId | shorten: 8}}</span>
               </div>
             </td>
             
             <td>
               <div class="amount-info">
-                <span class="final-amount">{{payment.finalAmountAfterDiscount | currency:'TND':'symbol':'1.2-2'}}</span>
-                <span *ngIf="payment.discountAmount && payment.discountAmount > 0" class="discount-info">
-                  -{{payment.discountAmount | currency:'TND':'symbol':'1.2-2'}} 
-                  <small>({{payment.discountCode}})</small>
-                </span>
+                <span class="final-amount">{{payment.finalAmountAfterDiscount | number:'1.2-2'}} TND</span>
+                <div *ngIf="payment.discountAmount && payment.discountAmount > 0" class="discount-info">
+                  <small>Original: {{payment.amount | number:'1.2-2'}} TND</small><br>
+                  <small>Discount: -{{payment.discountAmount | number:'1.2-2'}} TND</small>
+                </div>
               </div>
             </td>
             
@@ -134,30 +132,36 @@
             
             <td>
               <div class="date-info">
-                <span class="date">{{payment.paymentDate | date:'MMM dd, yyyy'}}</span>
-                <span class="time">{{payment.paymentDate | date:'HH:mm'}}</span>
+                <div *ngIf="payment.paymentDate; else noDateTemplate">
+                  <span class="date">{{formatDateOnly(payment.paymentDate)}}</span>
+                  <span class="time">{{formatTimeOnly(payment.paymentDate)}}</span>
+                </div>
+                <ng-template #noDateTemplate>
+                  <span class="no-date">No date</span>
+                </ng-template>
               </div>
             </td>
             
             <td>
               <div class="actions-container">
                 <button 
-                  *ngIf="payment.status === PaymentStatus.COMPLETED" 
+                  *ngIf="canRefund(payment)" 
                   class="action-btn refund-btn"
-                  (click)="refundPayment(payment.id)"
-                  (mouseenter)="onButtonHover('refund-' + payment.id, true)"
-                  (mouseleave)="onButtonHover('refund-' + payment.id, false)"
-                  [@buttonHover]="buttonStates['refund-' + payment.id] || 'normal'">
-                  🔄 Refund
+                  (click)="refundPayment(payment.id)">
+                  Refund
+                </button>
+                
+                <button 
+                  *ngIf="canCancel(payment)" 
+                  class="action-btn cancel-btn"
+                  (click)="cancelPayment(payment.id)">
+                  Cancel
                 </button>
                 
                 <button 
                   class="action-btn details-btn"
-                  [routerLink]="['/admin/payment-details', payment.id]"
-                  (mouseenter)="onButtonHover('details-' + payment.id, true)"
-                  (mouseleave)="onButtonHover('details-' + payment.id, false)"
-                  [@buttonHover]="buttonStates['details-' + payment.id] || 'normal'">
-                  👁️ Details
+                  [routerLink]="['/admin/payments', payment.id]">
+                  Details
                 </button>
               </div>
             </td>

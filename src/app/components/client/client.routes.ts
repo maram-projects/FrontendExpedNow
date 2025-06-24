@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { PaymentConfirmationComponent } from './payment-confirmation/payment-confirmation.component';
+import { DeliveryDetailsComponent } from './delivery-details/delivery-details.component';
 
 export const CLIENT_ROUTES: Routes = [
   {
@@ -26,6 +27,11 @@ export const CLIENT_ROUTES: Routes = [
     path: 'payment/confirmation',
     loadComponent: () => import('./payment-confirmation/payment-confirmation.component')
       .then(m => m.PaymentConfirmationComponent)
+  },
+  { 
+    path: 'orders/:id', 
+    component: DeliveryDetailsComponent,
+    data: { title: 'تفاصيل الطلب' }
   },
   { 
     path: '', 

@@ -314,98 +314,100 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr *ngFor="let delivery of filteredDeliveries" class="table-row-animated">
-<td class="id-cell">#{{ delivery.id.slice(0, 8) || 'N/A' }}</td>
-                    <td class="address-cell">{{ delivery.deliveryAddress || 'N/A' }}</td>
-                    <td class="date-cell">{{ delivery.scheduledDate | date:'mediumDate' }}</td>
-                    <td class="amount-cell">
-                      <div class="amount-info">
-                        <span class="original-amount" *ngIf="delivery.discountAmount && delivery.discountAmount > 0">
-                          <s>{{ delivery.originalAmount | currency:'TND' }}</s>
-                        </span>
-                        <span class="final-amount">{{ delivery.amount | currency:'TND' }}</span>
-                        <span class="savings" *ngIf="delivery.discountAmount && delivery.discountAmount > 0">
-                          <i class="fas fa-tag"></i> -{{ delivery.discountAmount | currency:'TND' }}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <span class="status-badge"
-                            [ngClass]="{
-                              'status-delivered': delivery.status === 'DELIVERED',
-                              'status-approved': delivery.status === 'APPROVED',
-                              'status-pending': delivery.status === 'PENDING',
-                              'status-assigned': delivery.status === 'ASSIGNED',
-                              'status-transit': delivery.status === 'IN_TRANSIT',
-                              'status-cancelled': delivery.status === 'CANCELLED',
-                              'status-expired': delivery.status === 'EXPIRED'
-                            }">
-                        {{ delivery.status || 'UNKNOWN' }}
-                      </span>
-                    </td>
-                    <td class="payment-status-cell">
-                      <ng-container *ngIf="delivery.status === 'DELIVERED'">
-                        <div class="payment-status-container" 
-                             [ngClass]="'status-' + (delivery.paymentStatus || 'UNPAID')">
-                          <i class="status-icon" [ngClass]="getPaymentStatusIcon(delivery.paymentStatus)"></i>
-                          <span class="status-text">{{ delivery.paymentStatus || 'UNPAID' }}</span>
-                          
-                          <div *ngIf="delivery.paymentStatus !== PaymentStatus.COMPLETED" 
-                               class="payment-actions">
-                            <button *ngIf="delivery.paymentStatus === PaymentStatus.FAILED"
-                                    class="btn btn-sm btn-retry"
-                                    (click)="retryFailedPayment(delivery)"
-                                    title="Retry Payment">
-                              <i class="fas fa-sync-alt"></i>
-                            </button>
-                            <button class="btn btn-sm btn-pay"
-                                    (click)="openPaymentDialog(delivery)"
-                                    title="Make Payment">
-                              <i class="fas fa-credit-card"></i>
-                            </button>
-                          </div>
-                        </div>
-                      </ng-container>
-                      <span *ngIf="delivery.status !== 'DELIVERED'">-</span>
-                    </td>
-                    <td>
-                      <span *ngIf="delivery.paymentMethod" class="payment-method">
-                        <i class="fas" [ngClass]="{
-                          'fa-credit-card': delivery.paymentMethod === 'CREDIT_CARD',
-                          'fa-money-bill-wave': delivery.paymentMethod === 'CASH',
-                          'fa-wallet': delivery.paymentMethod === 'WALLET',
-                          'fa-university': delivery.paymentMethod === 'BANK_TRANSFER'
-                        }"></i>
-                        {{ getPaymentMethodLabel(delivery.paymentMethod) }}
-                      </span>
-                      <span *ngIf="!delivery.paymentMethod" class="payment-method-na">-</span>
-                    </td>
-                    <td>
-                      <div class="action-buttons">
-                        <a [routerLink]="['/client/orders', delivery.id]" 
-                           class="btn btn-action btn-view" 
-                           title="View Details">
-                          <i class="fas fa-eye"></i>
-                        </a>
-                        
-                        <button *ngIf="delivery.paymentStatus === PaymentStatus.COMPLETED"
-                                class="btn btn-action btn-receipt"
-                                (click)="downloadReceipt(delivery)"
-                                title="Download Receipt">
-                          <i class="fas fa-receipt"></i>
-                        </button>
-                        
-                        <button *ngIf="delivery.status && ['PENDING', 'ASSIGNED'].includes(delivery.status)"
-                                class="btn btn-action btn-cancel"
-                                (click)="cancelDelivery(delivery.id)"
-                                [disabled]="delivery.processing"
-                                title="Cancel Order">
-                          <i *ngIf="!delivery.processing" class="fas fa-times"></i>
-                          <i *ngIf="delivery.processing" class="fas fa-spinner fa-spin"></i>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+               <tr *ngFor="let delivery of filteredDeliveries" class="table-row-animated">
+  <td class="id-cell">#{{ delivery.id.slice(0, 8) || 'N/A' }}</td>
+  <td class="address-cell">{{ delivery.deliveryAddress || 'N/A' }}</td>
+  <td class="date-cell">{{ delivery.scheduledDate | date:'mediumDate' }}</td>
+  <td class="amount-cell">
+    <div class="amount-info">
+      <span class="original-amount" *ngIf="delivery.discountAmount && delivery.discountAmount > 0">
+        <s>{{ delivery.originalAmount | currency:'TND' }}</s>
+      </span>
+      <span class="final-amount">{{ delivery.amount | currency:'TND' }}</span>
+      <span class="savings" *ngIf="delivery.discountAmount && delivery.discountAmount > 0">
+        <i class="fas fa-tag"></i> -{{ delivery.discountAmount | currency:'TND' }}
+      </span>
+    </div>
+  </td>
+  <td>
+    <span class="status-badge"
+          [ngClass]="{
+            'status-delivered': delivery.status === 'DELIVERED',
+            'status-approved': delivery.status === 'APPROVED',
+            'status-pending': delivery.status === 'PENDING',
+            'status-assigned': delivery.status === 'ASSIGNED',
+            'status-transit': delivery.status === 'IN_TRANSIT',
+            'status-cancelled': delivery.status === 'CANCELLED',
+            'status-expired': delivery.status === 'EXPIRED'
+          }">
+      {{ delivery.status || 'UNKNOWN' }}
+    </span>
+  </td>
+  <td class="payment-status-cell">
+    <ng-container *ngIf="delivery.status === 'DELIVERED'">
+      <div class="payment-status-container" 
+           [ngClass]="'status-' + (delivery.paymentStatus || 'UNPAID')">
+        <i class="status-icon" [ngClass]="getPaymentStatusIcon(delivery.paymentStatus)"></i>
+        <span class="status-text">{{ delivery.paymentStatus || 'UNPAID' }}</span>
+      </div>
+    </ng-container>
+    <span *ngIf="delivery.status !== 'DELIVERED'">-</span>
+  </td>
+  <td>
+    <span *ngIf="delivery.paymentMethod" class="payment-method">
+      <i class="fas" [ngClass]="{
+        'fa-credit-card': delivery.paymentMethod === 'CREDIT_CARD',
+        'fa-money-bill-wave': delivery.paymentMethod === 'CASH',
+        'fa-wallet': delivery.paymentMethod === 'WALLET',
+        'fa-university': delivery.paymentMethod === 'BANK_TRANSFER'
+      }"></i>
+      {{ getPaymentMethodLabel(delivery.paymentMethod) }}
+    </span>
+    <span *ngIf="!delivery.paymentMethod" class="payment-method-na">-</span>
+  </td>
+  <td>
+    <div class="action-buttons">
+      <button (click)="viewDeliveryDetails(delivery.id)" 
+              class="btn btn-action btn-view" 
+              title="عرض التفاصيل">
+        <i class="fas fa-eye"></i>
+      </button>
+      
+      <!-- Payment buttons moved here -->
+      <ng-container *ngIf="delivery.status === 'DELIVERED' && delivery.paymentStatus !== PaymentStatus.COMPLETED">
+        <button *ngIf="delivery.paymentStatus === PaymentStatus.FAILED"
+                class="btn btn-action btn-retry"
+                (click)="retryFailedPayment(delivery)"
+                title="Retry Payment">
+          <i class="fas fa-sync-alt"></i>
+        </button>
+  <button class="btn btn-action btn-pay"
+        (click)="openPaymentDialog(delivery)"
+        [disabled]="delivery.processingPayment"
+        title="Make Payment">
+  <i *ngIf="!delivery.processingPayment" class="fas fa-credit-card"></i>
+  <i *ngIf="delivery.processingPayment" class="fas fa-spinner fa-spin"></i>
+</button>
+      </ng-container>
+      
+      <button *ngIf="delivery.paymentStatus === PaymentStatus.COMPLETED"
+              class="btn btn-action btn-receipt"
+              (click)="downloadReceipt(delivery)"
+              title="Download Receipt">
+        <i class="fas fa-receipt"></i>
+      </button>
+      
+      <button *ngIf="delivery.status && ['PENDING', 'ASSIGNED'].includes(delivery.status)"
+              class="btn btn-action btn-cancel"
+              (click)="cancelDelivery(delivery.id)"
+              [disabled]="delivery.processing"
+              title="Cancel Order">
+        <i *ngIf="!delivery.processing" class="fas fa-times"></i>
+        <i *ngIf="delivery.processing" class="fas fa-spinner fa-spin"></i>
+      </button>
+    </div>
+  </td>
+</tr>
                 </tbody>
               </table>
             </div>
@@ -460,12 +462,17 @@
         </div>
         
         <div class="card-body">
-          <div *ngIf="isLoading" class="loading-container">
-            <div class="loading-spinner">
-              <div class="spinner"></div>
-              <p>Loading payment history...</p>
-            </div>
-          </div>
+       <div *ngIf="isLoading" class="loading-container">
+  <div class="loading-spinner">
+    <div class="spinner"></div>
+    <p>Loading your deliveries...</p>
+    <!-- Add a retry button in case it gets stuck -->
+    <button *ngIf="isLoading" (click)="refreshDashboardData()" 
+            class="btn btn-sm btn-outline-secondary mt-2">
+      <i class="fas fa-sync-alt me-1"></i> Retry
+    </button>
+  </div>
+</div>
           
           <div *ngIf="!isLoading && getPaymentHistory().length === 0" class="empty-state">
             <div class="empty-icon">
@@ -490,8 +497,7 @@
                 </thead>
                 <tbody>
                   <tr *ngFor="let payment of getPaymentHistory()" class="table-row-animated">
-                    <td>{{ payment.paymentDate | date:'shortDate' }}</td>
-                    <td>
+<td>{{ (payment.paymentDate | date:'shortDate') || 'N/A' }}</td>                    <td>
                     <a *ngIf="payment.deliveryId" 
    [routerLink]="['/client/orders', payment.deliveryId]"
    class="delivery-link">

@@ -64,7 +64,6 @@ export const routes: Routes = [
     loadChildren: () => import('./components/client/client.routes').then(m => m.CLIENT_ROUTES)
   },
 
-
   // Delivery routes
   {
     path: 'delivery',
@@ -98,6 +97,10 @@ export const routes: Routes = [
       { 
         path: 'payments', 
         loadComponent: () => import('./components/admin-dashboard/admin-payment/admin-payment.component').then(m => m.AdminPaymentComponent) 
+      },
+      { 
+        path: 'payments/:id', 
+        loadComponent: () => import('./components/admin-dashboard/payment-details/payment-details.component').then(m => m.PaymentDetailsComponent) 
       },
       { 
         path: 'bonuses', 

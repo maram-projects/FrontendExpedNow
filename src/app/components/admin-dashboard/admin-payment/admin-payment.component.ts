@@ -7,8 +7,10 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { trigger, state, style, transition, animate, query, stagger } from '@angular/animations';
 import { firstValueFrom } from 'rxjs';
-
+import { format, isValid, parse } from 'date-fns';
 import { PaymentService } from '../../../services/payment.service';
+import { DatePipe } from '@angular/common';
+
 import { 
   Payment, 
   PaymentStatus, 
@@ -26,6 +28,7 @@ import { ShortenPipe } from '../../../pipes/shorten.pipe';
     MatSnackBarModule,
     MatProgressSpinnerModule
   ],
+   providers: [DatePipe],
   templateUrl: './admin-payment.component.html',
   styleUrls: ['./admin-payment.component.css'],
   animations: [
@@ -80,7 +83,8 @@ export class AdminPaymentComponent implements OnInit {
 
   constructor(
     private paymentService: PaymentService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,   private datePipe: DatePipe
+
   ) {}
 
   ngOnInit(): void {
@@ -92,31 +96,92 @@ export class AdminPaymentComponent implements OnInit {
     return payment.id;
   }
 
-  async loadPayments(): Promise<void> {
-    this.isLoading = true;
+async loadPayments(): Promise<void> {
+  this.isLoading = true;
+  
+  try {
+    const response = await firstValueFrom(this.paymentService.getAllPaymentsSimple());
     
-    try {
-      // Use the getAllPaymentsSimple method from your service
-      const response = await firstValueFrom(this.paymentService.getAllPaymentsSimple());
+    if (response.success && response.data) {
+      this.payments = response.data.map(payment => {
+        // Ensure amounts are properly formatted
+        const parsedPayment = {
+          ...payment,
+          amount: payment.amount || 0,
+          finalAmountAfterDiscount: payment.finalAmountAfterDiscount || payment.amount || 0,
+          discountAmount: payment.discountAmount || 0,
+          paymentDate: this.parseDate(payment.paymentDate),
+          createdAt: this.parseDate(payment.createdAt),
+          updatedAt: this.parseDate(payment.updatedAt)
+        };
+        
+        return parsedPayment;
+      });
       
-      if (response.success && response.data) {
-        this.payments = response.data;
-        this.filteredPayments = [...this.payments];
-      } else {
-        this.showError('Failed to load payments');
-      }
-    } catch (error: any) {
-      console.error('Error loading payments:', error);
-      this.showError('Error loading payments: ' + error.message);
-      // Load mock data as fallback
-      this.loadMockPayments();
-    } finally {
-      this.isLoading = false;
+      this.filteredPayments = [...this.payments];
+    } else {
+      this.showError('Failed to load payments');
     }
+  } catch (error: any) {
+    console.error('Error loading payments:', error);
+    this.showError('Error loading payments: ' + error.message);
+  } finally {
+    this.isLoading = false;
   }
+}
 
-  // Mock data for demonstration - can be removed when service is fully implemented
-  private loadMockPayments(): void {
+
+private parseDate(date: any): Date | undefined {
+  if (!date) return undefined;
+  
+  try {
+    // If it's already a Date object
+    if (date instanceof Date) {
+      return isNaN(date.getTime()) ? undefined : new Date(date);
+    }
+    
+    // If it's a string
+    if (typeof date === 'string') {
+      // Try parsing ISO format first
+      if (date.includes('T') || date.includes('Z')) {
+        const parsed = new Date(date);
+        if (!isNaN(parsed.getTime())) return parsed;
+      }
+      
+      // Try parsing as timestamp
+      const timestamp = Date.parse(date);
+      if (!isNaN(timestamp)) return new Date(timestamp);
+      
+      // Try other common formats manually
+      const commonFormats = [
+        /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/, // yyyy-MM-dd HH:mm:ss
+        /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/, // yyyy/MM/dd HH:mm:ss
+        /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/, // MM/dd/yyyy HH:mm:ss
+        /^\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}$/   // dd-MM-yyyy HH:mm:ss
+      ];
+      
+      for (const regex of commonFormats) {
+        if (regex.test(date)) {
+          const parsed = new Date(date);
+          if (!isNaN(parsed.getTime())) return parsed;
+        }
+      }
+      
+      return undefined;
+    }
+    
+    // If it's a number (timestamp)
+    if (typeof date === 'number') {
+      return new Date(date);
+    }
+    
+    return undefined;
+  } catch (e) {
+    console.error('Error parsing date:', e, 'Input date:', date);
+    return undefined;
+  }
+}
+ private loadMockPayments(): void {
     this.payments = [
       {
         id: 'pay_001',
@@ -173,20 +238,20 @@ export class AdminPaymentComponent implements OnInit {
   }
 
   filterPayments(): void {
-  this.filteredPayments = this.payments.filter(payment => {
-    const searchLower = this.searchTerm.toLowerCase();
-    const matchesSearch = 
-      payment.id.toLowerCase().includes(searchLower) ||
-      payment.clientId.toLowerCase().includes(searchLower) ||
-      (payment.deliveryId && payment.deliveryId.toLowerCase().includes(searchLower)) || // Safe check
-      (payment.transactionId && payment.transactionId.toLowerCase().includes(searchLower));
-    
-    const matchesStatus = this.selectedStatus === 'ALL' || payment.status === this.selectedStatus;
-    return matchesSearch && matchesStatus;
-  });
-}
+    this.filteredPayments = this.payments.filter(payment => {
+      const searchLower = this.searchTerm.toLowerCase();
+      const matchesSearch = 
+        payment.id.toLowerCase().includes(searchLower) ||
+        payment.clientId.toLowerCase().includes(searchLower) ||
+        (payment.deliveryId && payment.deliveryId.toLowerCase().includes(searchLower)) ||
+        (payment.transactionId && payment.transactionId.toLowerCase().includes(searchLower));
+      
+      const matchesStatus = this.selectedStatus === 'ALL' || payment.status === this.selectedStatus;
+      return matchesSearch && matchesStatus;
+    });
+  }
 
-  async refundPayment(paymentId: string): Promise<void> {
+async refundPayment(paymentId: string): Promise<void> {
     if (!confirm('Are you sure you want to refund this payment?')) {
       return;
     }
@@ -194,7 +259,14 @@ export class AdminPaymentComponent implements OnInit {
     this.isLoading = true;
     
     try {
-      const response = await firstValueFrom(this.paymentService.refundPayment(paymentId));
+      const payment = this.payments.find(p => p.id === paymentId);
+      if (!payment) {
+        throw new Error('Payment not found');
+      }
+
+      const response = await firstValueFrom(
+        this.paymentService.refundPayment(paymentId, payment.finalAmountAfterDiscount)
+      );
       
       if (response.success && response.data) {
         const index = this.payments.findIndex(p => p.id === paymentId);
@@ -214,7 +286,7 @@ export class AdminPaymentComponent implements OnInit {
     }
   }
 
-  async cancelPayment(paymentId: string): Promise<void> {
+async cancelPayment(paymentId: string): Promise<void> {
     if (!confirm('Are you sure you want to cancel this payment?')) {
       return;
     }
@@ -338,7 +410,6 @@ export class AdminPaymentComponent implements OnInit {
   getRefundedPaymentsCount(): number {
     return this.getStatusCount(PaymentStatus.REFUNDED);
   }
-
   exportPayments(): void {
     try {
       const headers = [
@@ -365,7 +436,7 @@ export class AdminPaymentComponent implements OnInit {
         payment.finalAmountAfterDiscount.toString(),
         payment.method,
         payment.status,
-        payment.paymentDate ? payment.paymentDate.toISOString().split('T')[0] : '',
+        payment.paymentDate ? this.formatDate(payment.paymentDate) : '',
         payment.transactionId || '',
         payment.cardLast4 || '',
         payment.cardBrand || '',
@@ -413,16 +484,67 @@ export class AdminPaymentComponent implements OnInit {
       currency: 'TND'
     }).format(amount);
   }
+ formatDate(date: Date | string | null | undefined): string {
+    if (!date) return 'N/A';
+    
+    try {
+      const dateObj = this.parseDate(date);
+      if (!dateObj) return 'N/A';
+      
+      return dateObj.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'N/A';
+    }
+  }
+formatDateOnly(date: Date | string | null | undefined): string {
+    if (!date) return 'N/A';
+    
+    try {
+      const dateObj = this.parseDate(date);
+      if (!dateObj) return 'N/A';
+      
+      return dateObj.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'N/A';
+    }
+  }
+  formatTimeOnly(date: Date | string | null | undefined): string {
+    if (!date) return 'N/A';
+    
+    try {
+      const dateObj = this.parseDate(date);
+      if (!dateObj) return 'N/A';
+      
+      return dateObj.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return 'N/A';
+    }
+  }
 
-  formatDate(date: Date | string): string {
-    if (!date) return '';
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-    return dateObj.toLocaleDateString('en-TN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+isValidDate(date: Date | string | null | undefined): boolean {
+    if (!date) return false;
+    
+    try {
+      const dateObj = this.parseDate(date);
+      return dateObj !== null;
+    } catch (error) {
+      return false;
+    }
   }
 }

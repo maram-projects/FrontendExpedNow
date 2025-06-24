@@ -25,34 +25,61 @@ export enum PaymentStatus {
 }
 
   // Updated to match Java DeliveryResponseDTO
-  export interface DeliveryRequest {
-    amount: string | number;
-    actionTime: string | number | Date;
-    updatedAt: string | number | Date;
+ export interface DeliveryRequest {
+  id: string;
+  pickupAddress: string;
+  deliveryAddress: string;
+  packageDescription: string;
+  packageWeight: number;
+  vehicleId?: string;
+  paymentId?: string;
+  paymentStatus?: PaymentStatus;
+  discountCode?: string;
+  discountAmount?: number;
+  preferredPaymentMethod?: string;
+  clientId: string;
+  packageType?: string;
+  additionalInstructions?: string;
+  status: string;
+  deliveryPersonId?: string;
+  amount?: number;
+  finalAmountAfterDiscount?: number;
+  discountId?: string;
+  scheduledDate?: string;
+  createdAt?: string;
+  assignedAt?: string;
+  startedAt?: string;
+  completedAt?: string;
+  notes?: string;
+  pickupLatitude?: number;
+  pickupLongitude?: number;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
+  updatedAt?: string;
+  paymentMethod?: string;
+  paymentDate?: string;
+   originalAmount?: number; // Add this for discount display
+  processing?: boolean;    // Add this for UI state management
+  processingPayment?: boolean; // Specifically for payment processing
+}
+
+export interface DeliveryWithAssignedPersonResponse {
+  delivery: DeliveryRequest & {
+    paymentStatus?: PaymentStatus; // Add this
+    paymentMethod?: string;        // Add this
+    paymentDate?: string;          // Add this
+  };
+  assignedDeliveryPerson?: {
     id: string;
-    pickupAddress: string;
-    deliveryAddress: string;
-    packageDescription: string;
-    packageWeight: number;
-    pickupLatitude: number;
-    pickupLongitude: number;
-    deliveryLatitude: number;
-    deliveryLongitude: number;
-    originalAmount?: number | string;
-    status: string; 
-    vehicleId?: string;
-    scheduledDate: string;
-    additionalInstructions?: string;
-    createdAt?: string;
-    clientId?: string;
-    processing?: boolean;
-    discountAmount?: number; // Added missing property
-    paymentId?: string;
-    paymentDate?: string | number | Date;
-    paymentMethod?: string;
-    paymentStatus?: string;
-    
-  }
+    fullName: string;
+    phone: string;
+    vehicle?: {
+      model: string;
+      licensePlate: string;
+    };
+  };
+}
+
 
   @Injectable({ providedIn: 'root' })
   export class DeliveryService {
@@ -67,7 +94,7 @@ export enum PaymentStatus {
     createDeliveryRequest(delivery: Omit<DeliveryRequest, 'id'>): Observable<DeliveryRequest> {
       const formattedDelivery = {
         ...delivery,
-        scheduledDate: new Date(delivery.scheduledDate).toISOString()
+        scheduledDate: new Date(delivery.scheduledDate || '').toISOString()
       };
       
       console.log('Delivery request payload:', formattedDelivery);
@@ -360,32 +387,47 @@ export enum PaymentStatus {
       );
   }
 
-updateDeliveryPaymentStatus(
-  deliveryId: string, 
-  paymentId: string, 
-  status: string,
-  method?: PaymentMethod
-): Observable<any> {
-  // Define the type for the body object
-  const body: {
-    paymentId: string;
-    paymentStatus: string;
-    paymentMethod?: PaymentMethod;
-  } = {
-    paymentId: paymentId,
-    paymentStatus: status
-  };
-
-  // Add payment method if provided
-  if (method) {
-    body.paymentMethod = method;
-  }
-
-  return this.http.patch<any>(
-    `${this.apiUrl}/${deliveryId}/payment-status`,
-    body,
-    { headers: this.getAuthHeaders() } // Use getAuthHeaders() instead of createHeaders()
+getDeliveryWithAssignedPerson(deliveryId: string): Observable<DeliveryWithAssignedPersonResponse> {
+  return this.http.get<DeliveryWithAssignedPersonResponse>(
+    `${this.apiUrl}/${deliveryId}/with-assigned`,
+    { 
+      headers: this.getAuthHeaders(),
+      withCredentials: true
+    }
+  ).pipe(
+    catchError((error: HttpErrorResponse) => {
+      console.error('Error fetching delivery with assigned person:', error);
+      if (error.status === 404) {
+        return throwError(() => new Error('Delivery not found'));
+      } else if (error.status === 401) {
+        return throwError(() => new Error('Unauthorized access'));
+      } else {
+        return throwError(() => new Error('Failed to load delivery details'));
+      }
+    })
   );
+}
+
+// In DeliveryService
+updateDeliveryPaymentStatus(
+  deliveryId: string,
+  paymentId: string,
+  status: string,
+  method?: string,
+  finalAmount?: number,
+  originalAmount?: number,
+  discountAmount?: number,
+  discountCode?: string
+): Observable<any> {
+  return this.http.patch(`${this.apiUrl}/deliveries/${deliveryId}/payment`, {
+    paymentId,
+    paymentStatus: status,
+    paymentMethod: method,
+    amount: finalAmount,
+    originalAmount,
+    discountAmount,
+    discountCode
+  });
 }
 
 

@@ -1,0 +1,522 @@
+<div class="delivery-container" *ngIf="!isLoading && delivery && !errorMessage">
+  
+  <!-- Header Section -->
+  <div class="delivery-header">
+    <div class="header-content">
+      <div class="title-section">
+        <h1 class="page-title">
+          <i class="fas fa-shipping-fast"></i>
+          Delivery Details
+        </h1>
+        <div class="delivery-meta">
+          <span class="delivery-id">#{{delivery.id}}</span>
+          <span class="delivery-age" *ngIf="getDeliveryAge()">
+            <i class="fas fa-clock"></i>
+            {{getDeliveryAge()}}
+          </span>
+          <span class="recent-badge" *ngIf="isRecentDelivery()">NEW</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn-refresh" (click)="refreshDelivery()" [disabled]="isLoading">
+          <i class="fas fa-sync-alt" [class.fa-spin]="isLoading"></i>
+          Refresh
+        </button>
+        <button class="btn-back" (click)="goBack()">
+          <i class="fas fa-arrow-left"></i>
+          Back
+        </button>
+      </div>
+    </div>
+    
+    <div class="status-container">
+      <div class="status-badge" 
+           [ngClass]="getStatusConfig(delivery.status).class"
+           [style.border-color]="getStatusConfig(delivery.status).color">
+        <i class="fas fa-{{getStatusConfig(delivery.status).icon}}"></i>
+        <span>{{getStatusConfig(delivery.status).label}}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Grid -->
+  <div class="content-grid">
+    
+    <!-- Order Information Card -->
+    <div class="info-card order-info">
+      <div class="card-header">
+        <h3><i class="fas fa-info-circle"></i> Order Information</h3>
+      </div>
+      <div class="card-content">
+        <div class="detail-row">
+          <div class="detail-label">
+            <i class="fas fa-map-marker-alt pickup"></i>
+            Pickup Address
+          </div>
+          <div class="detail-value">
+            <span class="address-text">{{delivery.pickupAddress || 'Not specified'}}</span>
+            <button class="btn-map-link" *ngIf="delivery.pickupLatitude && delivery.pickupLongitude">
+              <i class="fas fa-external-link-alt"></i>
+            </button>
+          </div>
+        </div>
+        
+        <div class="detail-row">
+          <div class="detail-label">
+            <i class="fas fa-map-marker-alt delivery"></i>
+            Delivery Address
+          </div>
+          <div class="detail-value">
+            <span class="address-text">{{delivery.deliveryAddress || 'Not specified'}}</span>
+            <button class="btn-map-link" *ngIf="delivery.deliveryLatitude && delivery.deliveryLongitude">
+              <i class="fas fa-external-link-alt"></i>
+            </button>
+          </div>
+        </div>
+        
+        <div class="detail-row">
+          <div class="detail-label">
+            <i class="fas fa-box"></i>
+            Package Description
+          </div>
+          <div class="detail-value">
+            {{delivery.packageDescription || 'Not specified'}}
+          </div>
+        </div>
+        
+        <div class="detail-row">
+          <div class="detail-label">
+            <i class="fas fa-weight-hanging"></i>
+            Weight
+          </div>
+          <div class="detail-value">
+            <span *ngIf="delivery.packageWeight; else noWeight">
+              {{delivery.packageWeight}} kg
+            </span>
+            <ng-template #noWeight>Not specified</ng-template>
+          </div>
+        </div>
+        
+        <div class="detail-row">
+          <div class="detail-label">
+            <i class="fas fa-calendar-plus"></i>
+            Created Date
+          </div>
+          <div class="detail-value">
+            {{formatDate(delivery.createdAt)}}
+          </div>
+        </div>
+
+        <div class="detail-row" *ngIf="delivery.scheduledDate">
+          <div class="detail-label">
+            <i class="fas fa-calendar-check"></i>
+            Scheduled Date
+          </div>
+          <div class="detail-value">
+            {{formatDate(delivery.scheduledDate)}}
+          </div>
+        </div>
+
+        <div class="detail-row" *ngIf="delivery.updatedAt">
+          <div class="detail-label">
+            <i class="fas fa-calendar-edit"></i>
+            Last Updated
+          </div>
+          <div class="detail-value">
+            {{formatDate(delivery.updatedAt)}}
+          </div>
+        </div>
+
+        <div class="detail-row" *ngIf="delivery.additionalInstructions">
+          <div class="detail-label">
+            <i class="fas fa-sticky-note"></i>
+            Instructions
+          </div>
+          <div class="detail-value instructions">
+            {{delivery.additionalInstructions}}
+          </div>
+        </div>
+
+        <!-- Package Details -->
+        <div class="detail-row">
+          <div class="detail-label">
+            <i class="fas fa-box"></i>
+            Package Type
+          </div>
+          <div class="detail-value">
+            {{packageType}}
+          </div>
+        </div>
+
+        <div class="detail-row">
+          <div class="detail-label">
+            <i class="fas fa-ruler-combined"></i>
+            Dimensions
+          </div>
+          <div class="detail-value">
+            {{packageDimensions}}
+          </div>
+        </div>
+
+        <div class="detail-row">
+          <div class="detail-label">
+            <i class="fas fa-exclamation-triangle"></i>
+            Fragile
+          </div>
+          <div class="detail-value">
+            {{isFragile ? 'Yes' : 'No'}}
+          </div>
+        </div>
+
+        <div class="detail-row">
+          <div class="detail-label">
+            <i class="fas fa-temperature-low"></i>
+            Temperature Control
+          </div>
+          <div class="detail-value">
+            {{requiresTemperatureControl ? 'Required' : 'Not required'}}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Financial Information Card -->
+    <div class="info-card financial-info">
+      <div class="card-header">
+         <div *ngIf="delivery?.paymentId" class="debug-info">
+    <p>Payment ID: {{ delivery.paymentId }}</p>
+    <p>Raw Payment Status: {{ delivery.paymentStatus || 'null' }}</p>
+  </div>
+        <h3><i class="fas fa-credit-card"></i> Financial Information</h3>
+      </div>
+      <div class="card-content">
+        <!-- Always show financial information to client -->
+        <!-- Base Amount -->
+        <div class="detail-row" *ngIf="delivery.amount">
+          <div class="detail-label">
+            <i class="fas fa-dollar-sign"></i>
+            Total Amount
+          </div>
+          <div class="detail-value">
+            {{ formatCurrency(delivery.amount) }}
+          </div>
+        </div>
+        
+        <!-- Final Amount -->
+        <div class="detail-row final-amount" *ngIf="delivery.finalAmountAfterDiscount || getFinalAmount()">
+          <div class="detail-label">
+            <i class="fas fa-money-bill-wave"></i>
+            Final Amount
+          </div>
+          <div class="detail-value">
+            {{ formatCurrency(delivery.finalAmountAfterDiscount || getFinalAmount()) }}
+          </div>
+        </div>
+
+        <!-- Payment Status -->
+        <div class="detail-row">
+          <div class="detail-label">
+            <i class="fas fa-{{ getPaymentStatusConfig(delivery.paymentStatus).icon }}"></i>
+            Payment Status
+          </div>
+          <div class="detail-value">
+            <span class="payment-status-badge" 
+                  [ngClass]="getPaymentStatusConfig(delivery.paymentStatus).class"
+                  [style.background-color]="getPaymentStatusConfig(delivery.paymentStatus).color">
+              {{ getPaymentStatusConfig(delivery.paymentStatus).label }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Payment Method -->
+        <div class="detail-row" *ngIf="delivery.paymentMethod">
+          <div class="detail-label">
+            <i class="fas fa-{{ getPaymentMethodConfig(delivery.paymentMethod).icon }}"></i>
+            Payment Method
+          </div>
+          <div class="detail-value">
+            {{ getPaymentMethodConfig(delivery.paymentMethod).label }}
+          </div>
+        </div>
+
+        <!-- Payment Date -->
+        <div class="detail-row" *ngIf="delivery.paymentDate">
+          <div class="detail-label">
+            <i class="fas fa-calendar-check"></i>
+            Payment Date
+          </div>
+          <div class="detail-value">
+            {{ formatDate(delivery.paymentDate) }}
+          </div>
+        </div>
+
+        <!-- Payment ID -->
+        <div class="detail-row" *ngIf="delivery.paymentId">
+          <div class="detail-label">
+            <i class="fas fa-receipt"></i>
+            Payment ID
+          </div>
+          <div class="detail-value">
+            <code>{{ delivery.paymentId }}</code>
+          </div>
+        </div>
+        
+        <!-- Download Receipt Button -->
+        <div class="action-buttons" *ngIf="canDownloadReceipt()">
+          <button class="btn-download" 
+                  (click)="downloadReceipt()" 
+                  [disabled]="isDownloading">
+            <i class="fas" [ngClass]="isDownloading ? 'fa-spinner fa-spin' : 'fa-download'"></i>
+            {{ isDownloading ? 'Downloading...' : 'Download Receipt' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timeline Card -->
+    <div class="info-card timeline-card">
+      <div class="card-header">
+        <h3><i class="fas fa-history"></i> Delivery Timeline</h3>
+      </div>
+      <div class="card-content">
+        <div class="timeline">
+          <!-- Created -->
+          <div class="timeline-item">
+            <div class="timeline-marker">
+              <i class="fas fa-plus-circle"></i>
+            </div>
+            <div class="timeline-content">
+              <h4>Order Created</h4>
+              <p>{{formatDate(delivery.createdAt)}}</p>
+            </div>
+          </div>
+
+          <!-- Assigned -->
+          <div class="timeline-item" *ngIf="delivery?.assignedAt">
+            <div class="timeline-marker">
+              <i class="fas fa-user-check"></i>
+            </div>
+            <div class="timeline-content">
+              <h4>Assigned to Delivery Person</h4>
+              <p>{{formatDate(delivery.assignedAt)}}</p>
+            </div>
+          </div>
+
+          <!-- Started -->
+          <div class="timeline-item" *ngIf="delivery?.startedAt">
+            <div class="timeline-marker">
+              <i class="fas fa-play-circle"></i>
+            </div>
+            <div class="timeline-content">
+              <h4>Delivery Started</h4>
+              <p>{{formatDate(delivery.startedAt)}}</p>
+            </div>
+          </div>
+
+          <!-- Completed -->
+          <div class="timeline-item" *ngIf="delivery?.completedAt">
+            <div class="timeline-marker">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="timeline-content">
+              <h4>Delivery Completed</h4>
+              <p>{{formatDate(delivery.completedAt)}}</p>
+            </div>
+          </div>
+
+          <!-- Current Status -->
+          <div class="timeline-item current">
+            <div class="timeline-marker">
+              <i class="fas" [ngClass]="getStatusConfig(delivery.status).icon"></i>
+            </div>
+            <div class="timeline-content">
+              <h4>Current Status</h4>
+              <p>{{getStatusConfig(delivery.status).label}}</p>
+              <p *ngIf="delivery.updatedAt">Last updated: {{formatDate(delivery.updatedAt)}}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Assigned Person Section -->
+    <div class="assigned-person-card">
+      <div class="card-header">
+        <h3><i class="fas fa-user-tie"></i> Assigned Delivery Person</h3>
+      </div>
+      
+      <div class="person-content" *ngIf="assignedPerson; else noAssignedPerson">
+        <div class="person-main-info">
+          <div class="avatar-container">
+            <div class="avatar">
+              <i class="fas fa-user"></i>
+            </div>
+            <div class="status-indicator online" *ngIf="assignedPerson.isOnline"></div>
+          </div>
+          
+          <div class="person-details">
+            <h4 class="person-name">{{assignedPerson.fullName || 'Unknown'}}</h4>
+            <p class="person-phone" *ngIf="assignedPerson.phone">
+              <i class="fas fa-phone"></i>
+              <a href="tel:{{assignedPerson.phone}}">{{assignedPerson.phone}}</a>
+            </p>
+            <p class="person-id" *ngIf="assignedPerson.id">
+              <i class="fas fa-id-badge"></i>
+              ID: {{assignedPerson.id}}
+            </p>
+          </div>
+        </div>
+
+        <!-- Vehicle Information -->
+        <div class="vehicle-info" *ngIf="hasVehicleInfo()">
+          <h5><i class="fas fa-car"></i> Vehicle Information</h5>
+          <div class="vehicle-details">
+            <div class="vehicle-detail" *ngIf="assignedPerson.vehicle?.model">
+              <span class="label">Model:</span>
+              <span class="value">{{assignedPerson.vehicle.model}}</span>
+            </div>
+            <div class="vehicle-detail" *ngIf="assignedPerson.vehicle?.licensePlate">
+              <span class="label">License Plate:</span>
+              <span class="value license-plate">{{assignedPerson.vehicle.licensePlate}}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contact Actions -->
+        <div class="contact-actions" *ngIf="assignedPerson.phone">
+          <a href="tel:{{assignedPerson.phone}}" class="btn-contact call">
+            <i class="fas fa-phone"></i>
+            Call
+          </a>
+          <a href="sms:{{assignedPerson.phone}}" class="btn-contact sms">
+            <i class="fas fa-sms"></i>
+            SMS
+          </a>
+          <a href="https://wa.me/{{assignedPerson.phone}}" class="btn-contact whatsapp" target="_blank">
+            <i class="fab fa-whatsapp"></i>
+            WhatsApp
+          </a>
+        </div>
+      </div>
+      
+      <ng-template #noAssignedPerson>
+        <div class="no-data-message">
+          <i class="fas fa-user-slash"></i>
+          <div>
+            <h4>No Delivery Person Assigned</h4>
+            <p>A delivery person will be assigned once your order is processed</p>
+          </div>
+        </div>
+      </ng-template>
+    </div>
+
+    <!-- Map Card -->
+    <div class="map-card" *ngIf="delivery?.pickupLatitude && delivery?.pickupLongitude && delivery?.deliveryLatitude && delivery?.deliveryLongitude">   
+      <div class="card-header">     
+        <h3><i class="fas fa-map-marked-alt"></i> Delivery Route</h3>
+        <div class="map-controls">
+          <button class="btn-map-control" (click)="toggleMapType()" title="Toggle map view">
+            <i class="fas" [ngClass]="currentMapType === 'roadmap' ? 'fa-satellite' : 'fa-map'"></i>
+          </button>
+          <button class="btn-map-control" (click)="centerMap()" title="Center map">
+            <i class="fas fa-crosshairs"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div class="card-content">     
+        <div class="map-container">
+          <div id="delivery-map" class="leaflet-map"></div>
+          
+          <div class="map-loading" *ngIf="!mapInitialized && !mapError">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Loading map...</p>
+          </div>
+          
+          <div class="map-error-overlay" *ngIf="mapError">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>{{ mapErrorMessage }}</p>
+            <button class="btn-retry" (click)="retryMapInitialization()">
+              <i class="fas fa-sync-alt"></i> Retry
+            </button>
+          </div>
+          
+          <div class="map-info-box" *ngIf="mapInitialized && routeInfo">
+            <div class="info-item">
+              <i class="fas fa-route"></i>
+              <span>{{ routeInfo.distance }}</span>
+            </div>
+            <div class="info-item">
+              <i class="fas fa-clock"></i>
+              <span>{{ routeInfo.duration }}</span>
+            </div>
+          </div>
+          
+          <div class="map-legend">
+            <div class="legend-item">
+              <span class="legend-marker pickup">
+                <i class="fas fa-map-marker-alt" style="color: #4285F4;"></i>
+              </span>
+              <span>Pickup</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-marker delivery">
+                <i class="fas fa-map-marker-alt" style="color: #EA4335;"></i>
+              </span>
+              <span>Delivery</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="map-actions">
+          <button class="btn-map-action" (click)="openOSMaps()">
+            <i class="fas fa-external-link-alt"></i>
+            Open in OpenStreetMap
+          </button>
+          <button class="btn-map-action" (click)="downloadRouteImage()" *ngIf="mapInitialized">
+            <i class="fas fa-download"></i>
+            Download Route
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Loading State -->
+<div class="loading-container" *ngIf="isLoading">
+  <div class="loading-content">
+    <div class="loading-spinner">
+      <div class="spinner"></div>
+    </div>
+    <h3 class="loading-title">Loading Delivery Details</h3>
+    <p class="loading-subtitle">Please wait while we fetch your information...</p>
+    <div class="loading-progress">
+      <div class="progress-bar"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Error State -->
+<div class="error-container" *ngIf="errorMessage && !isLoading">
+  <div class="error-content">
+    <div class="error-icon">
+      <i class="fas fa-exclamation-triangle"></i>
+    </div>
+    <h3 class="error-title">Something went wrong</h3>
+    <p class="error-message">{{errorMessage}}</p>
+    <div class="error-actions">
+      <button class="btn-retry" (click)="loadDeliveryDetails()">
+        <i class="fas fa-redo"></i>
+        Try Again
+      </button>
+      <button class="btn-back-error" (click)="goBack()">
+        <i class="fas fa-arrow-left"></i>
+        Go Back
+      </button>
+    </div>
+    <p class="retry-info" *ngIf="retryCount > 1">
+      Attempt {{retryCount}} of {{maxRetryAttempts}}
+    </p>
+  </div>
+</div>
