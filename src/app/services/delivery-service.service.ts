@@ -61,21 +61,24 @@ export enum PaymentStatus {
    originalAmount?: number; // Add this for discount display
   processing?: boolean;    // Add this for UI state management
   processingPayment?: boolean; // Specifically for payment processing
+  rating?: number | null;
+  rated?: boolean | null;
+
 }
 
 export interface DeliveryWithAssignedPersonResponse {
-  delivery: DeliveryRequest & {
-    paymentStatus?: PaymentStatus; // Add this
-    paymentMethod?: string;        // Add this
-    paymentDate?: string;          // Add this
-  };
+  delivery: DeliveryRequest;
   assignedDeliveryPerson?: {
     id: string;
     fullName: string;
     phone: string;
+    rating?: number;
+    ratingCount?: number;
+    completedDeliveries?: number;
     vehicle?: {
       model: string;
       licensePlate: string;
+      type: string;
     };
   };
 }
@@ -413,23 +416,22 @@ updateDeliveryPaymentStatus(
   deliveryId: string,
   paymentId: string,
   status: string,
-  method?: string,
+  method?: PaymentMethod,
   finalAmount?: number,
   originalAmount?: number,
   discountAmount?: number,
   discountCode?: string
 ): Observable<any> {
-  return this.http.patch(`${this.apiUrl}/deliveries/${deliveryId}/payment`, {
+  return this.http.patch(`${this.apiUrl}/${deliveryId}/payment-status`, {
     paymentId,
     paymentStatus: status,
-    paymentMethod: method,
+    preferredPaymentMethod: method,
     amount: finalAmount,
     originalAmount,
     discountAmount,
     discountCode
-  });
+  }, { headers: this.getAuthHeaders() });
 }
-
 
 
   navigateToDashboard(queryParams: any = {}): void {
@@ -440,4 +442,43 @@ updateDeliveryPaymentStatus(
         refresh: Date.now().toString()
       }
     });
-  }}
+  }
+
+ rateDelivery(deliveryId: string, rating: number): Observable<any> {
+    return this.http.post(
+      `${this.apiUrl}/${deliveryId}/rate`, 
+      { rating },
+      { headers: this.getAuthHeaders() }
+    ).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  getDeliveryWithDetails(deliveryId: string): Observable<DeliveryWithDetails> {
+  return this.http.get<DeliveryWithDetails>(
+    `${this.apiUrl}/${deliveryId}/with-details`,
+    { headers: this.getAuthHeaders() }
+  ).pipe(
+    catchError(this.handleError)
+  );
+}
+
+
+
+}
+
+interface DeliveryWithDetails extends DeliveryRequest {
+  deliveryPerson?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+    rating?: number;
+    ratingCount?: number;
+    vehicle?: {
+      type: string;
+      model: string;
+      licensePlate: string;
+    };
+  };
+}

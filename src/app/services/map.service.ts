@@ -160,14 +160,14 @@ async showRoute(start: L.LatLngExpression, end: L.LatLngExpression): Promise<Rou
     
     // Create custom icons
     const pickupIcon = L.icon({
-      iconUrl: 'assets/map-marker-pickup.png',
+      iconUrl: 'assets/map-marker-pickup.jpeg',
       iconSize: [32, 32],
       iconAnchor: [16, 32],
       popupAnchor: [0, -32]
     });
 
     const deliveryIcon = L.icon({
-      iconUrl: 'assets/map-marker-delivery.png',
+      iconUrl: 'assets/map-marker-delivery.jpeg',
       iconSize: [32, 32],
       iconAnchor: [16, 32],
       popupAnchor: [0, -32]

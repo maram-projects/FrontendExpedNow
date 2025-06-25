@@ -540,9 +540,9 @@ private handleError = (error: HttpErrorResponse) => {
 private parsePaymentDates(payment: Payment): Payment {
   return {
     ...payment,
-    paymentDate: payment.paymentDate ? new Date(payment.paymentDate) : undefined,
-    createdAt: payment.createdAt ? new Date(payment.createdAt) : undefined,
-    updatedAt: payment.updatedAt ? new Date(payment.updatedAt) : undefined
+    paymentDate: payment.paymentDate ? new Date(payment.paymentDate.toString()) : undefined,
+    createdAt: payment.createdAt ? new Date(payment.createdAt.toString()) : undefined,
+    updatedAt: payment.updatedAt ? new Date(payment.updatedAt.toString()) : undefined
   };
 }
 

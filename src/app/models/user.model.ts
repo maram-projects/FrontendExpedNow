@@ -11,7 +11,7 @@ export interface User {
   phone: string;
   address: string;
   dateOfRegistration?: Date;
-  
+ 
   // Enterprise fields
   companyName?: string;
   businessType?: string;
@@ -60,6 +60,7 @@ export interface User {
   successScore?: number;
   totalDeliveries?: number;
   averageDeliveryTime?: number;
+  ratingCount?: number;
 
   // Fix: Make vehicle assignment consistent with null handling
   assignedVehicleId?: string | null;

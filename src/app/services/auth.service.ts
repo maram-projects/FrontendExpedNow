@@ -253,10 +253,19 @@
         return false;
       }
     }
-    isClient(): boolean {
-      const user = this.getCurrentUser();
-      return !!user && [USER_TYPES.INDIVIDUAL, USER_TYPES.ENTERPRISE].includes(user.userType);
-    }
+  // In auth.service.ts
+isClient(): boolean {
+  const user = this.getCurrentUser();
+  if (!user || !user.userType) return false;
+  
+  const userType = user.userType.toLowerCase();
+  return [
+    USER_TYPES.INDIVIDUAL, 
+    USER_TYPES.ENTERPRISE,
+    'role_individual',    // Add backend role formats
+    'role_enterprise'
+  ].includes(userType);
+}
 
     isAdmin(): boolean {
       const user = this.getCurrentUser();

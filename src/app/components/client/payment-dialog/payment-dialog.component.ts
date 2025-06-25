@@ -572,35 +572,35 @@ private loadDeliveryDetails(deliveryId: string): void {
       this.paymentProcessing = false;
     }
   }
+private async processCardPayment(): Promise<void> {
+  console.log('Processing card payment');
+  if (!this.clientSecret) {
+    this.showError('Payment session not initialized');
+    return;
+  }
 
-  private async processCardPayment(): Promise<void> {
-    console.log('Processing card payment');
-    if (!this.clientSecret) {
-      this.showError('Payment session not initialized');
-      return;
+  this.paymentProcessing = true;
+    
+  if (!this.billingDetails.name || !this.billingDetails.email) {
+    this.showError('Please fill in all required fields');
+    this.paymentProcessing = false;
+    return;
+  }
+
+  try {
+    const isReady = await this.stripeService.ensureReady();
+    if (!isReady) {
+      throw new Error('Payment system not ready');
     }
 
-    this.paymentProcessing = true;
-      
-    if (!this.billingDetails.name || !this.billingDetails.email) {
-      this.showError('Please fill in all required fields');
-      this.paymentProcessing = false;
-      return;
+    const stripe = await this.stripeService.stripePromise;
+    if (!stripe || !this.stripeService.card) {
+      throw new Error('Payment system not ready');
     }
 
-    try {
-      const isReady = await this.stripeService.ensureReady();
-      if (!isReady) {
-        throw new Error('Payment system not ready');
-      }
-
-      const stripe = await this.stripeService.stripePromise;
-      if (!stripe || !this.stripeService.card) {
-        throw new Error('Payment system not ready');
-      }
-
-      const { paymentMethod, error: pmError } = await stripe.createPaymentMethod({
-        type: 'card',
+    // Use the recommended approach: confirm payment with inline payment method
+    const { paymentIntent, error } = await stripe.confirmCardPayment(this.clientSecret, {
+      payment_method: {
         card: this.stripeService.card,
         billing_details: {
           name: this.billingDetails.name,
@@ -611,111 +611,151 @@ private loadDeliveryDetails(deliveryId: string): void {
             country: 'TN'
           }
         }
+      },
+      receipt_email: this.billingDetails.email
+    });
+
+    if (error) throw error;
+    
+    if (!paymentIntent) {
+      throw new Error('No payment intent returned');
+    }
+
+    console.log('Payment intent status:', paymentIntent.status);
+
+    // Handle different payment intent statuses
+    switch (paymentIntent.status) {
+      case 'succeeded':
+        await this.handleSuccessfulPayment(paymentIntent);
+        break;
+      case 'requires_action':
+        await this.handleRequiresAction(paymentIntent);
+        break;
+      case 'requires_payment_method':
+        throw new Error('Payment method was declined. Please try a different payment method.');
+      case 'processing':
+        // Payment is being processed, you might want to poll for status
+        throw new Error('Payment is being processed. Please wait and try again.');
+      default:
+        throw new Error(`Unexpected payment intent status: ${paymentIntent.status}`);
+    }
+
+  } catch (error: unknown) {
+    console.error('Payment processing error:', error);
+    let errorMessage = 'Payment failed';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+    
+    this.showError(errorMessage);
+  } finally {
+    this.paymentProcessing = false;
+  }
+}
+
+private async handleSuccessfulPayment(paymentIntent: any): Promise<void> {
+  const amountInDollars = paymentIntent.amount / 100;
+  const tndAmount = this.delivery!.finalAmountAfterDiscount;
+  
+  console.log('Payment successful. Confirming payment with:', {
+    transactionId: paymentIntent.id,
+    amount: amountInDollars
+  });
+
+  const paymentResponse = await firstValueFrom(
+    this.paymentService.confirmPayment(
+      paymentIntent.id,
+      amountInDollars
+    )
+  );
+
+  console.log('Payment confirmation response:', paymentResponse);
+
+  if (this.delivery) {
+    console.log('Updating delivery payment status with:', {
+      deliveryId: this.delivery.id,
+      paymentId: paymentResponse.data.id,
+      status: 'COMPLETED',
+      method: this.selectedMethod || undefined,
+      finalAmount: tndAmount,
+      originalAmount: this.delivery.amount,
+      discountAmount: this.delivery.discountAmount || 0,
+      discountCode: this.discountCode
+    });
+    
+    // CRITICAL UPDATE: Update local delivery object immediately
+    this.delivery.paymentStatus = PaymentStatus.COMPLETED;
+    this.delivery.paymentId = paymentResponse.data.id;
+    this.delivery.paymentDate = new Date().toISOString();
+    this.delivery.paymentMethod = this.selectedMethod || undefined;
+    this.delivery.finalAmountAfterDiscount = tndAmount;
+    this.delivery.discountAmount = this.delivery.discountAmount || 0;
+    this.delivery.discountCode = this.discountCode;
+    
+    // Update backend
+    await firstValueFrom(
+      this.deliveryService.updateDeliveryPaymentStatus(
+        this.delivery.id,
+        paymentResponse.data.id,
+        'COMPLETED',
+        this.selectedMethod || undefined,
+        tndAmount,
+        this.delivery.amount,
+        this.delivery.discountAmount || 0,
+        this.discountCode
+      )
+    );
+
+    // Clear cart
+    this.cartService.clearCart();
+    
+    if (this.dialogData) {
+      console.log('Closing dialog with success');
+      this.dialogRef.close({
+        success: true,
+        paymentId: paymentResponse.data.id,
+        delivery: this.delivery // Send updated delivery back
       });
-
-      if (pmError) throw pmError;
-      if (!paymentMethod) throw new Error('Failed to create payment method');
-
-      console.log('Payment method created:', paymentMethod.id);
-
-      const result = await stripe.confirmCardPayment(this.clientSecret, {
-        payment_method: paymentMethod.id,
-        receipt_email: this.billingDetails.email
-      });
-
-      if (result.error) throw result.error;
-
-      if (result.paymentIntent) {
-        const amountInDollars = result.paymentIntent.amount / 100;
-        const tndAmount = this.delivery!.finalAmountAfterDiscount;
-        
-        console.log('Payment successful. Confirming payment with:', {
-          transactionId: result.paymentIntent.id,
-          amount: amountInDollars
-        });
-
-        const paymentResponse = await firstValueFrom(
-          this.paymentService.confirmPayment(
-            result.paymentIntent.id,
-            amountInDollars
-          )
-        );
-
-        console.log('Payment confirmation response:', paymentResponse);
-
-        if (this.delivery) {
-          console.log('Updating delivery payment status with:', {
-            deliveryId: this.delivery.id,
-            paymentId: paymentResponse.data.id,
-            status: 'COMPLETED',
-            method: this.selectedMethod || undefined,
-            finalAmount: tndAmount,
-            originalAmount: this.delivery.amount,
-            discountAmount: this.delivery.discountAmount || 0,
-            discountCode: this.discountCode
-          });
-          
-          // CRITICAL UPDATE: Update local delivery object immediately
-          this.delivery.paymentStatus = PaymentStatus.COMPLETED;
-          this.delivery.paymentId = paymentResponse.data.id;
-          this.delivery.paymentDate = new Date().toISOString();
-          this.delivery.paymentMethod = this.selectedMethod || undefined;
-          this.delivery.finalAmountAfterDiscount = tndAmount;
-          this.delivery.discountAmount = this.delivery.discountAmount || 0;
-          this.delivery.discountCode = this.discountCode;
-          
-          // Update backend
-          await firstValueFrom(
-            this.deliveryService.updateDeliveryPaymentStatus(
-              this.delivery.id,
-              paymentResponse.data.id,
-              'COMPLETED',
-              this.selectedMethod || undefined,
-              tndAmount,
-              this.delivery.amount,
-              this.delivery.discountAmount || 0,
-              this.discountCode
-            )
-          );
-
-          // Clear cart
-          this.cartService.clearCart();
-          
-          if (this.dialogData) {
-            console.log('Closing dialog with success');
-            this.dialogRef.close({
-              success: true,
-              paymentId: paymentResponse.data.id,
-              delivery: this.delivery // Send updated delivery back
-            });
-          } else {
-            console.log('Navigating to dashboard');
-            this.router.navigate(['/client/dashboard'], {
-              queryParams: {
-                paymentId: paymentResponse.data.id,
-                success: 'true',
-                deliveryId: this.delivery.id,
-                refresh: Date.now().toString()
-              }
-            });
-          }
+    } else {
+      console.log('Navigating to dashboard');
+      this.router.navigate(['/client/dashboard'], {
+        queryParams: {
+          paymentId: paymentResponse.data.id,
+          success: 'true',
+          deliveryId: this.delivery.id,
+          refresh: Date.now().toString()
         }
-      }
-    } catch (error: unknown) {
-      console.error('Payment processing error:', error);
-      let errorMessage = 'Payment failed';
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      }
-      
-      this.showError(errorMessage);
-    } finally {
-      this.paymentProcessing = false;
+      });
     }
   }
+}
+
+private async handleRequiresAction(paymentIntent: any): Promise<void> {
+  console.log('Payment requires additional action (3D Secure)');
+  
+  const stripe = await this.stripeService.stripePromise;
+  if (!stripe) {
+    throw new Error('Stripe not available');
+  }
+
+  // Handle 3D Secure authentication
+  const { paymentIntent: confirmedPaymentIntent, error } = await stripe.confirmCardPayment(
+    paymentIntent.client_secret
+  );
+
+  if (error) {
+    throw error;
+  }
+
+  if (confirmedPaymentIntent && confirmedPaymentIntent.status === 'succeeded') {
+    await this.handleSuccessfulPayment(confirmedPaymentIntent);
+  } else {
+    throw new Error('Authentication failed or payment was not completed');
+  }
+}
 
   private showSuccess(message: string): void {
     this.toastService.showSuccess(message);
@@ -868,26 +908,26 @@ private loadDeliveryDetails(deliveryId: string): void {
     }
   }
 
-  private updateDeliveryPaymentStatus(deliveryId: string, paymentId: string): Observable<any> {
-    return this.deliveryService.updateDeliveryPaymentStatus(
-      deliveryId,
-      paymentId,
-      this.mapToDeliveryPaymentStatus(PaymentStatus.COMPLETED),
-      this.selectedMethod || undefined,
-      this.delivery?.finalAmountAfterDiscount || 0,
-      this.delivery?.amount || 0,
-      this.delivery?.discountAmount || 0,
-      this.discountCode
-    ).pipe(
-      tap(() => {
-        if (this.delivery) {
-          this.delivery.paymentStatus = PaymentStatus.COMPLETED;
-          this.delivery.paymentId = paymentId;
-          this.delivery.paymentDate = new Date();
-        }
-      })
-    );
-  }
+private updateDeliveryPaymentStatus(deliveryId: string, paymentId: string): Observable<any> {
+  return this.deliveryService.updateDeliveryPaymentStatus(
+    deliveryId,
+    paymentId,
+    'COMPLETED',
+    this.selectedMethod || undefined,
+    this.delivery?.finalAmountAfterDiscount || 0,
+    this.delivery?.amount || 0,
+    this.delivery?.discountAmount || 0,
+    this.discountCode
+  ).pipe(
+    tap(() => {
+      if (this.delivery) {
+this.delivery.paymentStatus = PaymentStatus.COMPLETED;
+        this.delivery.paymentId = paymentId;
+        this.delivery.paymentDate = new Date();
+      }
+    })
+  );
+}
 
   private mapToDeliveryPaymentStatus(status: PaymentStatus): DeliveryPaymentStatus {
     switch (status) {
