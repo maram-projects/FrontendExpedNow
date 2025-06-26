@@ -310,6 +310,8 @@
                     <th>Status</th>
                     <th>Payment</th>
                     <th>Payment Method</th>
+                    <th>Rating</th>
+
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -365,6 +367,31 @@
     </span>
     <span *ngIf="!delivery.paymentMethod" class="payment-method-na">-</span>
   </td>
+<!-- In your table row, add the rating column -->
+<td class="rating-cell">
+  <ng-container *ngIf="delivery?.status === 'DELIVERED' || delivery?.status === 'RATED'; else noRating">
+    <div *ngIf="delivery?.rated" class="rated-stars">
+      <span *ngFor="let star of [1,2,3,4,5]">
+        <i class="fas fa-star" [class.text-warning]="star <= (delivery?.rating || 0)"></i>
+      </span>
+    </div>
+    <div *ngIf="!delivery?.rated" class="rating-stars">
+      <span *ngFor="let star of [1,2,3,4,5]" 
+            (click)="rateDelivery(delivery, star)"
+            title="Rate {{star}} star">
+        <i class="far fa-star" [class.text-warning]="hoverRating >= star" 
+           (mouseover)="hoverRating = star"
+           (mouseout)="hoverRating = 0"></i>
+      </span>
+    </div>
+    <div *ngIf="!delivery?.rated && delivery?.processing" class="rating-loading">
+      <i class="fas fa-spinner fa-spin"></i>
+    </div>
+  </ng-container>
+  <ng-template #noRating>
+    <span>-</span>
+  </ng-template>
+</td>
   <td>
     <div class="action-buttons">
       <button (click)="viewDeliveryDetails(delivery.id)" 
@@ -590,6 +617,8 @@
                     <th>Method</th>
                     <th>Status</th>
                     <th>Description</th>
+                    <th>Rating</th>
+
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -651,4 +680,6 @@
       </div>
     </div>
   </div>
+</div><div *ngIf="errorMessage" class="alert alert-danger">
+  {{ errorMessage }}
 </div>

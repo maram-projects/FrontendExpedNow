@@ -3,9 +3,10 @@ export interface Payment {
   deliveryId?: string;
   clientId: string;
   amount: number;
+  originalAmount?: number; // Add this property
   finalAmountAfterDiscount: number;
-  method: PaymentMethod;
-  status: PaymentStatus;
+  method: PaymentMethod | string; // Allow string as well
+  status: PaymentStatus | string; // Allow string as well
   transactionId?: string;
   paymentDate?: Date | string;  
   receiptUrl?: string;
@@ -16,10 +17,10 @@ export interface Payment {
   discountId?: string;
   discountAmount?: number;
   discountCode?: string;
-  clientSecret?: string; // For Stripe payments
+  clientSecret?: string;
   createdAt?: Date;
   updatedAt?: Date;
-    invoiceUrl?: string;  // Add this
+  invoiceUrl?: string;
 }
 
 export enum PaymentStatus {

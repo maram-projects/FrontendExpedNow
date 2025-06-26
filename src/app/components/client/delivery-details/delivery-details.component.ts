@@ -2,11 +2,12 @@ import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angula
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, CurrencyPipe, CommonModule } from '@angular/common';
 import { Subject, takeUntil, finalize, catchError, of, retry, delay } from 'rxjs';
-import { DeliveryRequest, DeliveryService, DeliveryWithAssignedPersonResponse } from '../../../services/delivery-service.service';
+import { DeliveryRequest, DeliveryService, DeliveryWithAssignedPersonResponse, PaymentStatus } from '../../../services/delivery-service.service';
 import { PaymentService, PaymentResponse } from '../../../services/payment.service'; // Add this import
 import { environment } from '../../../../environments/environment';
 import { MapService } from '../../../services/map.service';
 import { latLng } from 'leaflet';
+import { UserService } from '../../../services/user.service';
 
 interface StatusConfig {
   class: string;
@@ -29,6 +30,11 @@ interface PaymentMethodConfig {
   imports: [CommonModule]
 })
 export class DeliveryDetailsComponent implements OnInit, OnDestroy {
+
+private readonly userService = inject(UserService);
+
+  isLoadingPerson = false;
+personError: string | null = null;
   private readonly destroy$ = new Subject<void>();
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -124,62 +130,93 @@ readonly paymentStatusConfig: Record<string, StatusConfig> = {
     this.loadDeliveryDetails();
   }
 
-  loadDeliveryDetails(): void {
-    if (this.retryCount >= this.maxRetryAttempts) {
-      this.handleError('Maximum retry attempts reached. Please refresh the page.');
-      return;
-    }
+ loadDeliveryDetails(): void {
+  if (this.retryCount >= this.maxRetryAttempts) {
+    this.handleError('Maximum retry attempts reached. Please refresh the page.');
+    return;
+  }
 
-    this.isLoading = true;
-    this.errorMessage = '';
-    this.retryCount++;
+  this.isLoading = true;
+  this.errorMessage = '';
+  this.retryCount++;
 
-    this.deliveryService.getDeliveryWithAssignedPerson(this.deliveryId)
-      .pipe(
-        retry(2),
-        delay(this.retryCount > 1 ? 1000 : 0),
-        takeUntil(this.destroy$),
-        catchError((error) => {
-          console.error('Error loading delivery details:', error);
-          return of(null);
-        }),
-        finalize(() => {
-          this.isLoading = false;
-          this.cdr.detectChanges();
-        })
-      )
-      .subscribe({
-        next: (response: DeliveryWithAssignedPersonResponse | null) => {
-          if (response) {
-            this.processDeliveryResponse(response);
-            this.retryCount = 0;
-          } else {
-            this.handleError('Failed to load delivery details. Please try again.');
-          }
-        },
-        error: (err) => {
-          console.error('Subscription error:', err);
-          this.handleError('An unexpected error occurred while loading delivery details');
+  this.deliveryService.getDeliveryWithAssignedPerson(this.deliveryId)
+    .pipe(
+      retry(2),
+      delay(this.retryCount > 1 ? 1000 : 0),
+      takeUntil(this.destroy$),
+      catchError((error) => {
+        console.error('Error loading delivery details:', error);
+        // Check for specific error cases
+        if (error.status === 404) {
+          this.handleError('Delivery not found');
+        } else if (error.status === 403) {
+          this.handleError('You do not have permission to view this delivery');
+        } else {
+          this.handleError('Failed to load delivery details. Please try again.');
         }
-      });
-  }
-  
-  private processDeliveryResponse(response: DeliveryWithAssignedPersonResponse): void {
-    try {
-      this.delivery = response.delivery;
-      this.assignedPerson = response.assignedDeliveryPerson || null;
-      
-      // Fetch payment details if paymentId exists but status is missing
-      if (!this.delivery.paymentStatus && this.delivery.paymentId) {
-        this.loadPaymentStatus(this.delivery.paymentId);
+        return of(null);
+      }),
+      finalize(() => {
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      })
+    )
+    .subscribe({
+      next: (response: DeliveryWithAssignedPersonResponse | null) => {
+        if (response) {
+          this.processDeliveryResponse(response);
+          this.retryCount = 0;
+          
+          // If we have a payment ID but no status, force load payment
+          if (response.delivery.paymentId && !response.delivery.paymentStatus) {
+            this.loadPaymentStatus(response.delivery.paymentId);
+          }
+        } else {
+          this.handleError('Failed to load delivery details. Please try again.');
+        }
+      },
+      error: (err) => {
+        console.error('Subscription error:', err);
+        this.handleError('An unexpected error occurred while loading delivery details');
       }
+    });
+}
+  
+private processDeliveryResponse(response: DeliveryWithAssignedPersonResponse): void {
+  try {
+    this.delivery = response.delivery;
+    
+    // Ensure assigned person data is properly handled
+    this.assignedPerson = response.assignedDeliveryPerson 
+      ? {
+          ...response.assignedDeliveryPerson,
+          // Map vehicle data if available
+          vehicle: response.assignedDeliveryPerson.vehicle 
+            ? {
+                model: response.assignedDeliveryPerson.vehicle.model || 'Unknown',
+                licensePlate: response.assignedDeliveryPerson.vehicle.licensePlate || 'N/A',
+                type: response.assignedDeliveryPerson.vehicle.type || 'CAR'
+              }
+            : null
+        }
+      : null;
+    
+    // Debug logs
+    console.log('Assigned person data:', this.assignedPerson);
+    console.log('Vehicle data:', this.assignedPerson?.vehicle);
 
-      this.initializeMap();
-    } catch (error) {
-      console.error('Error processing delivery response:', error);
-      this.handleError('Error processing delivery information');
+    // Fetch payment details if paymentId exists
+    if (this.delivery.paymentId) {
+      this.loadPaymentStatus(this.delivery.paymentId);
     }
+
+    this.initializeMap();
+  } catch (error) {
+    console.error('Error processing delivery response:', error);
+    this.handleError('Error processing delivery information');
   }
+}
 
 private loadPaymentStatus(paymentId: string): void {
   this.paymentService.getPayment(paymentId)
@@ -187,24 +224,44 @@ private loadPaymentStatus(paymentId: string): void {
     .subscribe({
       next: (response: PaymentResponse) => {
         if (response.success && response.data) {
-          // Update delivery with payment info - need to ensure proper typing
+          const payment = response.data;
+          
+          // Update delivery with comprehensive payment info
           if (this.delivery) {
             this.delivery = {
               ...this.delivery,
-              paymentStatus: response.data.status,
-              paymentMethod: response.data.method,
-              paymentDate: response.data.paymentDate
-            } as DeliveryRequest;
+              // Fix 1: Convert enum to string for paymentStatus
+paymentStatus: payment.status as PaymentStatus,
+              paymentMethod: payment.method.toString(),
+              // Fix 2: Handle Date type for paymentDate - convert to string if it's a Date
+              paymentDate: payment.paymentDate instanceof Date 
+                ? payment.paymentDate.toISOString() 
+                : payment.paymentDate,
+              paymentId: payment.id,
+              amount: payment.amount,
+              // Fix 3: Use finalAmountAfterDiscount instead of originalAmount
+              originalAmount: payment.amount, // Use amount as originalAmount fallback
+              discountAmount: payment.discountAmount,
+              discountCode: payment.discountCode,
+              // Add the finalAmountAfterDiscount property
+              finalAmountAfterDiscount: payment.finalAmountAfterDiscount
+            };
+            
+            console.log('Updated payment data:', this.delivery);
           }
           this.cdr.detectChanges();
         }
       },
       error: (err: any) => {
         console.error('Error fetching payment status:', err);
+        // Fix 4: Use string literal instead of enum
+        if (this.delivery) {
+this.delivery.paymentStatus = PaymentStatus.PENDING;
+          this.cdr.detectChanges();
+        }
       }
     });
 }
-
   formatDate(date: any): string {
     if (!date) return 'Not specified';
     
@@ -679,4 +736,51 @@ getFinalAmountDisplay(): number {
 hasValidDiscountAmount(): boolean {
   return !!(this.delivery?.discountAmount && this.delivery.discountAmount > 0);
 }
+
+
+getInitials(person: any): string {
+  if (person.firstName && person.lastName) {
+    return `${person.firstName.charAt(0)}${person.lastName.charAt(0)}`.toUpperCase();
+  }
+  if (person.firstName) return person.firstName.charAt(0).toUpperCase();
+  if (person.lastName) return person.lastName.charAt(0).toUpperCase();
+  return 'DP'; // Default initials
+}
+
+getAvatarColor(person: any): string {
+  // Create a consistent color based on person ID
+  const colors = ['#FF6633', '#FFB399', '#FF33FF', '#FFFF99', '#00B3E6'];
+  const idNum = parseInt(person.id.replace(/[^0-9]/g, ''), 10) || 0;
+  return colors[idNum % colors.length];
+}
+
+refreshDeliveryPerson(): void {
+  this.loadDeliveryPerson();
+}
+loadDeliveryPerson(): void {
+  if (!this.delivery?.deliveryPersonId) return;
+  
+  this.isLoadingPerson = true;
+  this.personError = null;
+  
+  this.userService.getUserById(this.delivery.deliveryPersonId)
+    .pipe(
+      finalize(() => this.isLoadingPerson = false),
+      takeUntil(this.destroy$)
+    )
+    .subscribe({
+      next: (person) => {
+        this.assignedPerson = person;
+      },
+      error: (err) => {
+        this.personError = 'Failed to load delivery person details';
+        console.error('Error loading delivery person:', err);
+      }
+    });
+}
+showMoreContactOptions() {
+  console.log("نفّذت الدالة showMoreContactOptions");
+  // مثلا نفتح modal أو نعرض خيارات إضافية
+}
+
 }

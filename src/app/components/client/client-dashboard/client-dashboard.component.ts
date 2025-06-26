@@ -15,6 +15,7 @@
   import { MatProgressBarModule } from '@angular/material/progress-bar';
   import { MatCardModule } from '@angular/material/card';
   import { MatButtonModule } from '@angular/material/button';
+import { ToastService } from '../../../services/toast.service';
 
   interface DashboardStats {
     totalOrders: number;
@@ -89,6 +90,9 @@
     ]
   })
   export class ClientDashboardComponent implements OnInit, OnDestroy {
+
+      hoverRating: number = 0;
+
   // Add this inside the ClientDashboardComponent class
   statusFilters: ('all' | 'paid' | 'unpaid' | 'cancelled' | 'expired')[] = [
     'all', 'paid', 'unpaid', 'cancelled', 'expired'
@@ -158,6 +162,8 @@
       private router: Router,
       private route: ActivatedRoute,
       private paymentService: PaymentService,
+        private toastService: ToastService // Add this line
+
     ) {
       const currentUser = this.authService.getCurrentUser();
       
@@ -571,7 +577,7 @@
           amount: payment.amount,
           paymentMethod: payment.method || 'UNKNOWN',
           paymentDate: paymentDate,
-          status: payment.status,
+status: payment.status as PaymentStatus,
           description: delivery 
             ? `Payment for delivery to ${delivery.deliveryAddress}`
             : 'Standalone payment',
@@ -1230,4 +1236,48 @@
   viewDeliveryDetails(deliveryId: string) {
     this.router.navigate(['/client/orders', deliveryId]);
   }
+
+
+rateDelivery(delivery: DeliveryRequest, rating: number): void {
+  if (!delivery?.id) {
+    console.error('Invalid delivery');
+    return;
+  }
+
+  // Validate delivery can be rated
+  if (delivery.status !== 'DELIVERED') {
+    this.errorMessage = 'You can only rate completed deliveries';
+    return;
+  }
+
+  if (rating < 1 || rating > 5) {
+    this.errorMessage = 'Rating must be between 1 and 5';
+    return;
+  }
+
+  if (delivery.rated) {
+    this.errorMessage = 'You have already rated this delivery';
+    return;
+  }
+
+  delivery.processing = true;
+  this.errorMessage = '';
+
+  this.deliveryService.rateDelivery(delivery.id, rating).subscribe({
+    next: () => {
+      // Update UI optimistically
+      delivery.rating = rating;
+      delivery.rated = true;
+      delivery.status = 'RATED';
+      
+      this.toastService.showSuccess('Rating submitted successfully');
+    },
+    error: (err) => {
+      console.error('Rating error:', err);
+      delivery.processing = false;
+      this.errorMessage = err.message || 'Failed to submit rating';
+      this.toastService.showError(this.errorMessage);
+    }
+  });
+}
   }

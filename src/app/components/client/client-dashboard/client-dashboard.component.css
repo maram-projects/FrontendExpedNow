@@ -1581,4 +1581,39 @@ body {
   background-color: #f8f9fa;
   color: #6c757d;
 }
+
+/* Add to your component's CSS */
+.rating-cell {
+  min-width: 120px;
+}
+
+.rating-stars, .rated-stars {
+  display: flex;
+  gap: 2px;
+}
+
+.rating-stars span {
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.rated-stars span {
+  font-size: 16px;
+}
+
+.rating-stars .fa-star {
+  color: #ddd;
+}
+
+.rating-stars .text-warning {
+  color: #ffc107;
+}
+
+.rated-stars .text-warning {
+  color: #ffc107;
+}
+
+.rating-loading {
+  color: #6c757d;
+}
 }

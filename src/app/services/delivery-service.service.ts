@@ -8,13 +8,14 @@
   import { PaymentMethod } from '../models/Payment.model'; // Add this import
 
 export enum DeliveryStatus {
-  PENDING = 'PENDING',
-  IN_TRANSIT = 'IN_TRANSIT',
-  DELIVERED = 'DELIVERED',
-  CANCELLED = 'CANCELLED',
-  APPROVED = 'APPROVED',
+   PENDING = 'PENDING',
   ASSIGNED = 'ASSIGNED',
-  EXPIRED = 'EXPIRED'
+  APPROVED = 'APPROVED',
+  IN_TRANSIT = 'IN_TRANSIT',
+  DELIVERED = 'DELIVERED',  // Rating should happen at this stage
+  CANCELLED = 'CANCELLED',
+  EXPIRED = 'EXPIRED',
+  RATED = 'RATED'  
 }
 
 export enum PaymentStatus {
@@ -24,6 +25,13 @@ export enum PaymentStatus {
   REFUNDED = 'REFUNDED'
 }
 
+
+// delivery-service.service.ts
+interface PaymentStatusUpdateBody {
+  paymentId: string;
+  paymentStatus: string;
+  paymentMethod?: PaymentMethod;
+}
   // Updated to match Java DeliveryResponseDTO
  export interface DeliveryRequest {
   id: string;
@@ -398,6 +406,22 @@ getDeliveryWithAssignedPerson(deliveryId: string): Observable<DeliveryWithAssign
       withCredentials: true
     }
   ).pipe(
+    map(response => {
+      // Ensure assigned person data has proper defaults
+      if (response.assignedDeliveryPerson) {
+        response.assignedDeliveryPerson = {
+          ...response.assignedDeliveryPerson,
+          fullName: response.assignedDeliveryPerson.fullName || 'Unknown',
+          phone: response.assignedDeliveryPerson.phone || 'Not provided',
+          vehicle: response.assignedDeliveryPerson.vehicle || {
+            model: 'Unknown',
+            licensePlate: 'N/A',
+            type: 'Unknown'
+          }
+        };
+      }
+      return response;
+    }),
     catchError((error: HttpErrorResponse) => {
       console.error('Error fetching delivery with assigned person:', error);
       if (error.status === 404) {
@@ -411,7 +435,8 @@ getDeliveryWithAssignedPerson(deliveryId: string): Observable<DeliveryWithAssign
   );
 }
 
-// In DeliveryService
+
+
 updateDeliveryPaymentStatus(
   deliveryId: string,
   paymentId: string,
@@ -422,16 +447,21 @@ updateDeliveryPaymentStatus(
   discountAmount?: number,
   discountCode?: string
 ): Observable<any> {
-  return this.http.patch(`${this.apiUrl}/${deliveryId}/payment-status`, {
+  const body = {
     paymentId,
     paymentStatus: status,
-    preferredPaymentMethod: method,
-    amount: finalAmount,
+    paymentMethod: method,
+    finalAmount,
     originalAmount,
     discountAmount,
     discountCode
-  }, { headers: this.getAuthHeaders() });
+  };
+
+  return this.http.patch(`${this.apiUrl}/${deliveryId}/payment-status`, body, { 
+    headers: this.getAuthHeaders() 
+  });
 }
+
 
 
   navigateToDashboard(queryParams: any = {}): void {
@@ -444,26 +474,32 @@ updateDeliveryPaymentStatus(
     });
   }
 
- rateDelivery(deliveryId: string, rating: number): Observable<any> {
-    return this.http.post(
-      `${this.apiUrl}/${deliveryId}/rate`, 
-      { rating },
-      { headers: this.getAuthHeaders() }
-    ).pipe(
-      catchError(this.handleError)
-    );
+rateDelivery(deliveryId: string, rating: number, comment?: string): Observable<any> {
+  if (!deliveryId || !rating) {
+    return throwError(() => new Error('Invalid rating data'));
   }
 
-  getDeliveryWithDetails(deliveryId: string): Observable<DeliveryWithDetails> {
-  return this.http.get<DeliveryWithDetails>(
-    `${this.apiUrl}/${deliveryId}/with-details`,
-    { headers: this.getAuthHeaders() }
+  const payload = { rating, comment };
+  
+  return this.http.post(
+    `${this.apiUrl}/${deliveryId}/rate`,
+    payload,
+    { 
+      headers: this.getAuthHeaders(),
+      withCredentials: true
+    }
   ).pipe(
-    catchError(this.handleError)
+    catchError((error: HttpErrorResponse) => {
+      console.error('Rating error details:', error);
+      console.error('Request body was:', payload);
+      let errorMsg = error.error?.error || 
+                    error.error?.message || 
+                    error.message || 
+                    'Failed to submit rating';
+      return throwError(() => new Error(errorMsg));
+    })
   );
 }
-
-
 
 }
 

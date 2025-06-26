@@ -1,3 +1,5 @@
+
+
 <div class="delivery-container" *ngIf="!isLoading && delivery && !errorMessage">
   
   <!-- Header Section -->
@@ -340,75 +342,145 @@
     </div>
 
     <!-- Assigned Person Section -->
-    <div class="assigned-person-card">
-      <div class="card-header">
-        <h3><i class="fas fa-user-tie"></i> Assigned Delivery Person</h3>
+<div class="assigned-person-card">
+  <div class="card-header">
+    <h3><i class="fas fa-user-tie"></i> Assigned Delivery Person</h3>
+    <button class="btn-refresh" (click)="refreshDeliveryPerson()" [disabled]="isLoadingPerson">
+      <i class="fas fa-sync-alt" [class.fa-spin]="isLoadingPerson"></i>
+      Refresh
+    </button>
+  </div>
+  
+  <!-- Loading State -->
+  <div class="loading-person" *ngIf="isLoadingPerson">
+    <div class="loading-spinner"></div>
+    <p>Loading delivery person details...</p>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-person" *ngIf="personError && !isLoadingPerson">
+    <i class="fas fa-exclamation-triangle"></i>
+    <p>{{ personError }}</p>
+    <button class="btn-retry" (click)="loadDeliveryPerson()">
+      <i class="fas fa-redo"></i> Try Again
+    </button>
+  </div>
+
+  <!-- Content -->
+  <div class="person-content" *ngIf="assignedPerson && !isLoadingPerson && !personError; else noAssignedPerson">
+    <div class="person-main-info">
+      <div class="avatar-container">
+        <div class="avatar" [ngStyle]="{'background-color': getAvatarColor(assignedPerson)}">
+          {{ getInitials(assignedPerson) }}
+        </div>
+        <div class="status-indicator" 
+             [ngClass]="{'online': assignedPerson.isOnline, 'offline': !assignedPerson.isOnline}"
+             [title]="assignedPerson.isOnline ? 'Online' : 'Offline'">
+        </div>
       </div>
       
-      <div class="person-content" *ngIf="assignedPerson; else noAssignedPerson">
-        <div class="person-main-info">
-          <div class="avatar-container">
-            <div class="avatar">
-              <i class="fas fa-user"></i>
-            </div>
-            <div class="status-indicator online" *ngIf="assignedPerson.isOnline"></div>
-          </div>
-          
-          <div class="person-details">
-            <h4 class="person-name">{{assignedPerson.fullName || 'Unknown'}}</h4>
-            <p class="person-phone" *ngIf="assignedPerson.phone">
-              <i class="fas fa-phone"></i>
-              <a href="tel:{{assignedPerson.phone}}">{{assignedPerson.phone}}</a>
-            </p>
-            <p class="person-id" *ngIf="assignedPerson.id">
-              <i class="fas fa-id-badge"></i>
-              ID: {{assignedPerson.id}}
-            </p>
-          </div>
-        </div>
-
-        <!-- Vehicle Information -->
-        <div class="vehicle-info" *ngIf="hasVehicleInfo()">
-          <h5><i class="fas fa-car"></i> Vehicle Information</h5>
-          <div class="vehicle-details">
-            <div class="vehicle-detail" *ngIf="assignedPerson.vehicle?.model">
-              <span class="label">Model:</span>
-              <span class="value">{{assignedPerson.vehicle.model}}</span>
-            </div>
-            <div class="vehicle-detail" *ngIf="assignedPerson.vehicle?.licensePlate">
-              <span class="label">License Plate:</span>
-              <span class="value license-plate">{{assignedPerson.vehicle.licensePlate}}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Contact Actions -->
-        <div class="contact-actions" *ngIf="assignedPerson.phone">
-          <a href="tel:{{assignedPerson.phone}}" class="btn-contact call">
+      <div class="person-details">
+        <h4 class="person-name">
+          {{ assignedPerson.firstName || assignedPerson.lastName ? 
+             (assignedPerson.firstName + ' ' + assignedPerson.lastName) : 
+             'Delivery Person #' + (assignedPerson.id | slice:0:8) }}
+        </h4>
+        
+        <div class="person-meta">
+          <p class="person-phone" *ngIf="assignedPerson.phone; else noPhone">
             <i class="fas fa-phone"></i>
-            Call
-          </a>
-          <a href="sms:{{assignedPerson.phone}}" class="btn-contact sms">
-            <i class="fas fa-sms"></i>
-            SMS
-          </a>
-          <a href="https://wa.me/{{assignedPerson.phone}}" class="btn-contact whatsapp" target="_blank">
-            <i class="fab fa-whatsapp"></i>
-            WhatsApp
-          </a>
+            <a href="tel:{{assignedPerson.phone}}">{{ assignedPerson.phone }}</a>
+          </p>
+          <ng-template #noPhone>
+            <p class="person-phone">
+              <i class="fas fa-phone-slash"></i>
+              <span>Phone not provided</span>
+            </p>
+          </ng-template>
+          
+          <p class="person-id">
+            <i class="fas fa-id-badge"></i>
+            ID: {{ assignedPerson.id | slice:0:8 }}
+          </p>
+          
+          <p class="person-rating" *ngIf="assignedPerson.rating !== undefined">
+            <i class="fas fa-star"></i>
+            Rating: 
+            <span class="rating-value">{{ assignedPerson.rating | number:'1.1-1' }}</span>
+            <span class="rating-count">({{ assignedPerson.ratingCount || 0 }} reviews)</span>
+          </p>
         </div>
       </div>
-      
-      <ng-template #noAssignedPerson>
-        <div class="no-data-message">
-          <i class="fas fa-user-slash"></i>
-          <div>
-            <h4>No Delivery Person Assigned</h4>
-            <p>A delivery person will be assigned once your order is processed</p>
-          </div>
-        </div>
-      </ng-template>
     </div>
+
+    <!-- Vehicle Information -->
+    <div class="vehicle-info" *ngIf="hasVehicleInfo(); else noVehicle">
+      <h5><i class="fas fa-car"></i> Vehicle Information</h5>
+      <div class="vehicle-details">
+        <div class="vehicle-detail">
+          <span class="label">Type:</span>
+          <span class="value">{{ assignedPerson.vehicle?.vehicleType || 'Unknown' }}</span>
+        </div>
+        <div class="vehicle-detail">
+          <span class="label">Model:</span>
+          <span class="value">{{ assignedPerson.vehicle?.vehicleModel || 'Unknown' }}</span>
+        </div>
+        <div class="vehicle-detail">
+          <span class="label">Plate:</span>
+          <span class="value license-plate">
+            {{ assignedPerson.vehicle?.vehiclePlateNumber || 'Not available' }}
+          </span>
+        </div>
+        <div class="vehicle-detail" *ngIf="assignedPerson.vehicle?.vehicleColor">
+          <span class="label">Color:</span>
+          <span class="value">
+            <span class="color-swatch" [style.background-color]="assignedPerson.vehicle.vehicleColor"></span>
+            {{ assignedPerson.vehicle.vehicleColor }}
+          </span>
+        </div>
+      </div>
+    </div>
+    <ng-template #noVehicle>
+      <div class="no-vehicle-info">
+        <i class="fas fa-car-crash"></i>
+        <p>No vehicle information available</p>
+      </div>
+    </ng-template>
+
+    <!-- Contact Actions -->
+    <div class="contact-actions" *ngIf="assignedPerson.phone; else noContactActions">
+      <a href="tel:{{assignedPerson.phone}}" class="btn-contact call">
+        <i class="fas fa-phone"></i>
+        Call
+      </a>
+      <a href="sms:{{assignedPerson.phone}}" class="btn-contact sms">
+        <i class="fas fa-sms"></i>
+        SMS
+      </a>
+      <a href="https://wa.me/{{assignedPerson.phone}}" class="btn-contact whatsapp" target="_blank">
+        <i class="fab fa-whatsapp"></i>
+        WhatsApp
+      </a>
+      <button class="btn-contact more" (click)="showMoreContactOptions()">
+        <i class="fas fa-ellipsis-h"></i>
+        More
+      </button>
+    </div>
+    <ng-template #noContactActions>
+      <div class="no-contact-actions">
+        <i class="fas fa-comment-slash"></i>
+        <p>No contact options available</p>
+      </div>
+    </ng-template>
+  </div>
+  
+  <ng-template #noAssignedPerson>
+    <div class="no-data-message" *ngIf="!isLoadingPerson && !personError">
+      <i class="fas fa-user-slash"></i>
+      
+    </div>
+  </ng-template>
+</div>
 
     <!-- Map Card -->
     <div class="map-card" *ngIf="delivery?.pickupLatitude && delivery?.pickupLongitude && delivery?.deliveryLatitude && delivery?.deliveryLongitude">   

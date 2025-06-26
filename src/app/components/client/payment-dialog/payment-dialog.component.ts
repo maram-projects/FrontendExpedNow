@@ -696,19 +696,14 @@ private async handleSuccessfulPayment(paymentIntent: any): Promise<void> {
     this.delivery.discountCode = this.discountCode;
     
     // Update backend
-    await firstValueFrom(
-      this.deliveryService.updateDeliveryPaymentStatus(
-        this.delivery.id,
-        paymentResponse.data.id,
-        'COMPLETED',
-        this.selectedMethod || undefined,
-        tndAmount,
-        this.delivery.amount,
-        this.delivery.discountAmount || 0,
-        this.discountCode
-      )
-    );
-
+await firstValueFrom(
+  this.deliveryService.updateDeliveryPaymentStatus(
+    this.delivery.id,
+    paymentResponse.data.id,
+    'COMPLETED',
+    this.selectedMethod || undefined
+  )
+);
     // Clear cart
     this.cartService.clearCart();
     
@@ -935,8 +930,8 @@ this.delivery.paymentStatus = PaymentStatus.COMPLETED;
         return 'PENDING' as DeliveryPaymentStatus;
       case PaymentStatus.PROCESSING:
         return 'PROCESSING' as DeliveryPaymentStatus;
-      case PaymentStatus.COMPLETED:
-        return 'COMPLETED' as DeliveryPaymentStatus;
+       case PaymentStatus.COMPLETED:
+            return 'DELIVERED' as DeliveryPaymentStatus; // Changed from 'COMPLETED'
       case PaymentStatus.FAILED:
         return 'FAILED' as DeliveryPaymentStatus;
       case PaymentStatus.CANCELLED:
