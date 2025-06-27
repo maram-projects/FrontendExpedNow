@@ -13,15 +13,12 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { FullCalendarModule } from '@fullcalendar/angular';
-import { DayOfWeek, DaySchedule, AvailabilitySchedule, TimeRange } from '../../../models/availability.model';
+import { DayOfWeek, DaySchedule, AvailabilitySchedule } from '../../../models/availability.model';
 import { AuthService } from '../../../services/auth.service';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { User } from '../../../models/user.model';
 import { UserService } from '../../../services/user.service';
 import { AvailabilityService } from '../../../services/availability.service';
-// Fix #2: Correct import for DateClickArg
-import { CalendarOptions, EventClickArg } from '@fullcalendar/core';
-import { DateClickArg } from '@fullcalendar/interaction'; // Import from correct module
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
@@ -31,39 +28,18 @@ import { finalize, takeUntil } from 'rxjs/operators';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-// Fix #3: Create a temporary placeholder for ConfirmDialogComponent
-// You'll need to create this component or adjust the import path
 import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
 
-interface ApiResponse<T> {
+import { DateClickArg } from '@fullcalendar/interaction'; // Correct import
+import { CalendarOptions, EventClickArg } from '@fullcalendar/core/index.js';
+
+
+interface ScheduleApiResponse {
   success: boolean;
   message?: string;
-  schedule?: T;
-  data?: T;
+  schedule?: AvailabilitySchedule;
+  data?: AvailabilitySchedule;
   isNewSchedule?: boolean;
-  existingSchedule?: any;
-}
-
-interface ValidationResponse {
-  valid: boolean;
-  errors: string[];
-  warnings: string[];
-}
-
-interface DeliveryPersonInfo {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  enabled: boolean;
-  available: boolean;
-}
-
-interface ScheduleStatistics {
-  totalDeliveryPersons: number;
-  withSchedule: number;
-  withoutSchedule: number;
-  scheduleCompletionRate: number;
 }
 
 interface CalendarEvent {
@@ -83,7 +59,7 @@ interface CalendarEvent {
 }
 
 @Component({
-  selector: 'app-availability-schedule',
+  selector: 'app-schedule',
   standalone: true,
   imports: [
     CommonModule, 
@@ -107,28 +83,29 @@ interface CalendarEvent {
   styleUrls: ['./schedule.component.css']
 })
 export class ScheduleComponent implements OnInit, OnDestroy {
+
+    @Input() isLoading: boolean = false;
+  @Input() selectedDeliveryPerson: User | null = null;
+  @Output() scheduleUpdated = new EventEmitter<AvailabilitySchedule>();
+  @Input() mode: 'admin' | 'delivery' = 'admin'; // أضف هذه السطر
   private destroy$ = new Subject<void>();
   autoDismissTime = 5000;
+
   // Schedule data
   @Input() schedule: AvailabilitySchedule | undefined;
   @Output() scheduleChange = new EventEmitter<AvailabilitySchedule>();
   availabilitySchedule: AvailabilitySchedule | null = null;
   weeklySchedule: Record<DayOfWeek, DaySchedule> = {} as Record<DayOfWeek, DaySchedule>;
 
-
   successMessage: string | null = null;
-error: string | null = null;
+  error: string | null = null;
   
   // User data
   currentUser: User | null = null;
   isAdmin: boolean = false;
   deliveryPersons: User[] = [];
-  selectedDeliveryPerson: User | null = null;
-  availableDeliveryPersons: string[] = []; // Fix #1: Add property for available delivery persons
   
   // UI state
-  isLoading = false;
- 
   showDateEditor = false;
   showWeekdaySelector = false;
   isOverride = false;
@@ -185,37 +162,49 @@ error: string | null = null;
     private userService: UserService,
     private availabilityService: AvailabilityService,
     private router: Router,
+    private route: ActivatedRoute,
     private dialog: MatDialog
   ) {
     this.initializeDefaultState();
   }
 
   ngOnInit(): void {
+    this.mode = this.route.snapshot.data['mode'] || 'admin';
     const currentAuthUser = this.authService.getCurrentUser();
     
-    if (currentAuthUser) {
-      this.currentUser = {
-        id: currentAuthUser.userId,
-        ...currentAuthUser,
-        firstName: currentAuthUser.firstName || '',
-        lastName: currentAuthUser.lastName || '',
-        phone: currentAuthUser.phone || '',
-        address: currentAuthUser.address || ''
-      } as User;
-      
-      this.isAdmin = this.authService.isAdmin();
-      
+    if (!currentAuthUser) {
+      this.handleAuthError();
+      return;
+    }
+
+    this.currentUser = {
+      id: currentAuthUser.userId,
+      email: currentAuthUser.email || '',
+      firstName: currentAuthUser.firstName || '',
+      lastName: currentAuthUser.lastName || '',
+      phone: currentAuthUser.phone || '',
+      address: currentAuthUser.address || '',
+      enabled: currentAuthUser.enabled || false
+    } as User;
+
+    this.isAdmin = this.authService.isAdmin() && this.mode === 'admin';
+
+    try {
       if (this.isAdmin) {
         this.loadDeliveryPersons();
       } else {
         this.loadAvailabilitySchedule(currentAuthUser.userId);
       }
-      
+
       if (this.schedule) {
         this.setScheduleData(this.schedule);
+      } else if (this.mode === 'delivery') {
+        this.initializeSchedule(currentAuthUser.userId);
       }
-    } else {
-      this.handleAuthError();
+    } catch (error) {
+      console.error('Error during schedule initialization:', error);
+      this.error = 'Failed to initialize schedule. Please try again.';
+      this.isLoading = false;
     }
   }
 
@@ -255,7 +244,7 @@ error: string | null = null;
   
     const person = this.deliveryPersons.find(p => p.id === userId);
     if (!person?.id) {
-      this.error = 'Selected delivery person not found or missing ID';
+      this.error = 'Selected delivery person not found';
       this.selectedDeliveryPerson = null;
       return;
     }
@@ -270,26 +259,37 @@ error: string | null = null;
     this.updateCalendarEvents();
   }
 
-  loadDeliveryPersons(): void {
-    this.isLoading = true;
-    this.userService.getDeliveryPersonnel()
-      .pipe(
-        takeUntil(this.destroy$),
-        finalize(() => {
-          this.isLoading = false;
-          this.cdr.detectChanges();
-        })
-      )
-      .subscribe({
-        next: (persons: User[]) => {
-          this.deliveryPersons = persons;
-        },
-        error: (err: HttpErrorResponse) => {
-          console.error('Failed to load delivery persons:', err);
-          this.error = 'Failed to load delivery persons';
+loadDeliveryPersons(): void {
+  this.isLoading = true;
+  this.userService.getDeliveryPersonnel()
+    .pipe(
+      takeUntil(this.destroy$),
+      finalize(() => {
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      })
+    )
+    .subscribe({
+      next: (persons: User[]) => {
+        this.deliveryPersons = persons;
+        if (persons.length > 0) {
+          // Add null check and fallback
+          const firstPerson = persons[0];
+          if (firstPerson.id) {
+            this.selectedDeliveryPerson = firstPerson;
+            this.loadAvailabilitySchedule(firstPerson.id);
+          } else {
+            console.error('First delivery person has no ID:', firstPerson);
+            this.error = 'Cannot load schedule: delivery person ID is missing';
+          }
         }
-      });
-  }
+      },
+      error: (err: HttpErrorResponse) => {
+        console.error('Failed to load delivery persons:', err);
+        this.error = 'Failed to load delivery persons';
+      }
+    });
+}
 
   loadAvailabilitySchedule(userId: string): void {
     if (!userId) {
@@ -309,13 +309,11 @@ error: string | null = null;
         })
       )
       .subscribe({
-        next: (response: ApiResponse<AvailabilitySchedule>) => {
-          if (response.success && response.data) {
-            this.setScheduleData(response.data);
-          } else if (response.schedule) {
-            this.setScheduleData(response.schedule);
+        next: (response: any) => {
+          if (response.success && (response.data || response.schedule)) {
+            this.setScheduleData(response.data || response.schedule);
           } else {
-            this.error = 'No schedule data received';
+            this.error = response.message || 'No schedule data received';
           }
         },
         error: (err: HttpErrorResponse) => {
@@ -338,7 +336,7 @@ error: string | null = null;
     this.isLoading = true;
     const emptySchedule: AvailabilitySchedule = this.createEmptySchedule(userId);
 
-    const createSchedule$: Observable<ApiResponse<AvailabilitySchedule>> = this.isAdmin && this.selectedDeliveryPerson
+    const createSchedule$: Observable<any> = this.isAdmin && this.selectedDeliveryPerson
       ? this.availabilityService.adminCreateScheduleForDeliveryPerson(userId, emptySchedule)
       : this.availabilityService.saveSchedule(emptySchedule);
 
@@ -351,17 +349,17 @@ error: string | null = null;
         })
       )
       .subscribe({
-        next: (response: ApiResponse<AvailabilitySchedule>) => {
+        next: (response: any) => {
           if (response.success && (response.data || response.schedule)) {
-            this.setScheduleData(response.data || response.schedule!);
+            this.setScheduleData(response.data || response.schedule);
             this.successMessage = 'Schedule created successfully!';
           } else {
-            this.error = 'Failed to create schedule: Invalid response';
+            this.error = response.message || 'Failed to create schedule: Invalid response';
           }
         },
         error: (err: HttpErrorResponse) => {
           console.error('Failed to create schedule:', err);
-          this.error = 'Failed to create schedule';
+          this.error = err.error?.message || 'Failed to create schedule';
         }
       });
   }
@@ -423,7 +421,7 @@ error: string | null = null;
       },
       error: (err: HttpErrorResponse) => {
         console.error('Failed to update day schedule:', err);
-        this.error = `Failed to update ${this.getDayName(day)} schedule`;
+        this.error = err.error?.message || `Failed to update ${this.getDayName(day)} schedule`;
       }
     });
   }
@@ -453,13 +451,13 @@ error: string | null = null;
         })
       )
       .subscribe({
-        next: (response: ApiResponse<AvailabilitySchedule>) => {
+        next: (response: any) => {
           if (response.success && (response.data || response.schedule)) {
-            this.setScheduleData(response.data || response.schedule!);
+            this.setScheduleData(response.data || response.schedule);
             this.successMessage = 'Weekly schedule saved successfully!';
             this.scheduleChange.emit(this.availabilitySchedule!);
           } else {
-            this.error = 'Failed to save schedule: Invalid response';
+            this.error = response.message || 'Failed to save schedule: Invalid response';
           }
         },
         error: (err: HttpErrorResponse) => {
@@ -476,7 +474,7 @@ error: string | null = null;
     if (!date) return;
     
     const dateStr = format(date, 'yyyy-MM-dd');
-    const daySchedule = this.availabilitySchedule.monthlySchedule[dateStr];
+    const daySchedule = this.availabilitySchedule.monthlySchedule?.[dateStr];
     
     if (daySchedule) {
       this.selectedDate = date;
@@ -562,7 +560,7 @@ error: string | null = null;
       },
       error: (err: HttpErrorResponse) => {
         console.error('Failed to update date schedule:', err);
-        this.error = 'Failed to update date schedule';
+        this.error = err.error?.message || 'Failed to update date schedule';
       }
     });
   }
@@ -624,7 +622,7 @@ error: string | null = null;
         },
         error: (err: HttpErrorResponse) => {
           console.error('Failed to remove date override:', err);
-          this.error = 'Failed to remove date override';
+          this.error = err.error?.message || 'Failed to remove date override';
         }
       });
   }
@@ -700,7 +698,7 @@ error: string | null = null;
       },
       error: (err: HttpErrorResponse) => {
         console.error('Error updating date range:', err);
-        this.error = err.error?.message || 'An unexpected error occurred';
+        this.error = err.error?.message || 'Failed to update date range';
       }
     });
   }
@@ -761,7 +759,7 @@ error: string | null = null;
       },
       error: (err: HttpErrorResponse) => {
         console.error('Failed to clear date range:', err);
-        this.error = 'Failed to clear date range';
+        this.error = err.error?.message || 'Failed to clear date range';
       }
     });
   }
@@ -827,7 +825,7 @@ error: string | null = null;
       },
       error: (err: HttpErrorResponse) => {
         console.error('Failed to generate monthly schedule:', err);
-        this.error = 'Failed to generate monthly schedule';
+        this.error = err.error?.message || 'Failed to generate monthly schedule';
       }
     });
   }
@@ -872,7 +870,7 @@ error: string | null = null;
         },
         error: (err: HttpErrorResponse) => {
           console.error('Failed to clear monthly schedule:', err);
-          this.error = 'Failed to clear monthly schedule';
+          this.error = err.error?.message || 'Failed to clear monthly schedule';
         }
       });
   }
@@ -898,7 +896,7 @@ error: string | null = null;
         },
         error: (err: HttpErrorResponse) => {
           console.error('Failed to check availability:', err);
-          this.error = 'Failed to check availability';
+          this.error = err.error?.message || 'Failed to check availability';
           this.cdr.detectChanges();
         }
       });
@@ -922,7 +920,7 @@ error: string | null = null;
             const dateStr = format(currentDate, 'yyyy-MM-dd');
             
             // Only add if there's no monthly override
-            if (!this.availabilitySchedule?.monthlySchedule[dateStr]) {
+            if (!this.availabilitySchedule?.monthlySchedule?.[dateStr]) {
               events.push(this.createCalendarEvent(
                 currentDate,
                 daySchedule,
@@ -951,7 +949,7 @@ error: string | null = null;
       });
     }
 
-    this.calendarOptions.events = events;
+    this.calendarOptions.events = [...events];
     this.cdr.detectChanges();
   }
 
@@ -991,8 +989,8 @@ error: string | null = null;
   }
 
   private clearMessages(): void {
-    this.error = '';
-    this.successMessage = '';
+    this.error = null;
+    this.successMessage = null;
   }
 
   private createEmptySchedule(userId: string): AvailabilitySchedule {
@@ -1008,7 +1006,7 @@ error: string | null = null;
   }
 
   private getDayOfWeekFromDate(date: Date): DayOfWeek {
-    const dayIndex = getDay(date); // 0 (Sunday) to 6 (Saturday)
+    const dayIndex = getDay(date);
     return [
       DayOfWeek.SUNDAY,
       DayOfWeek.MONDAY,
@@ -1020,39 +1018,11 @@ error: string | null = null;
     ][dayIndex];
   }
 
-
   dismissSuccess(): void {
-    const messageCard = document.querySelector('.success-message .message-card');
-    if (messageCard) {
-      messageCard.classList.add('exit');
-      setTimeout(() => {
-        this.successMessage = null;
-      }, 600);
-    }
+    this.successMessage = null;
   }
   
   dismissError(): void {
-    const messageCard = document.querySelector('.error-message .message-card');
-    if (messageCard) {
-      messageCard.classList.add('exit');
-      setTimeout(() => {
-        this.error = null;
-      }, 600);
-    }
+    this.error = null;
   }
-
-// Auto dismiss messages
-ngOnChanges() {
-  if (this.successMessage) {
-    setTimeout(() => {
-      this.dismissSuccess();
-    }, this.autoDismissTime);
-  }
-  
-  if (this.error) {
-    setTimeout(() => {
-      this.dismissError();
-    }, this.autoDismissTime);
-  }
-}
 }

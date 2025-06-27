@@ -1,22 +1,207 @@
 // bonus.model.ts
+
 export interface Bonus {
-    id: string;
-    deliveryPersonId: string;
-    amount: number;
-    deliveryCount: number;
-    startDate: Date;
-    endDate: Date;
-    status: BonusStatus;
-    createdAt?: Date;  // Add this
-    paidAt?: Date;
-    approvedAt?: Date;
-    approvedBy?: string;
-    rejectionReason?: string;  // Add this
+  id: string;
+  deliveryPersonId: string;
+  amount: number;
+  deliveryCount: number;
+  startDate: Date;
+  endDate: Date;
+  status: BonusStatus;
+  // Add these new properties
+  description?: string;
+  criteria?: string;
+  type?: string; // or use bonusType if you prefer
+  // Audit fields
+  createdAt?: Date;
+  updatedAt?: Date; // Add this for tracking updates
+  paidAt?: Date;
+  approvedAt?: Date;
+  rejectedAt?: Date; // Add this for tracking rejection time
+  
+  // Additional tracking fields
+  approvedBy?: string;
+  paidBy?: string; // Add this to track who processed payment
+  rejectedBy?: string; // Add this to track who rejected
+  rejectionReason?: string;
+  
+  // Optional fields that might come from API
+  reason?: string; // Description/reason for the bonus
+  deliveryId?: string; // Link to specific delivery if applicable
+  bonusType?: string; // Type of bonus (performance, milestone, etc.)
+  
+  // Delivery person info (might be populated in some API responses)
+  deliveryPersonName?: string;
+  deliveryPersonEmail?: string;
+  
+  // Additional metadata
+  notes?: string; // Any additional notes
+  isActive?: boolean; // To track if bonus is still active
+}
+
+export enum BonusStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  PAID = 'PAID',
+  REJECTED = 'REJECTED',
+  CANCELLED = 'CANCELLED' // Add this for cancelled bonuses
+}
+
+// Additional interfaces for bonus operations
+export interface CreateBonusRequest {
+  deliveryPersonId: string;
+  amount: number;
+  reason: string;
+  deliveryCount?: number;
+  startDate?: string | Date | undefined;  // Allow undefined
+  endDate?: string | Date | undefined;    // Allow undefined
+  deliveryId?: string;
+  bonusType?: string;
+  type?: string;
+  notes?: string;
+  description?: string;
+  criteria?: string;
+}
+
+
+export interface UpdateBonusRequest {
+  amount?: number;
+  reason?: string;
+  deliveryCount?: number;
+  startDate?: string | Date;
+  endDate?: string | Date;
+  notes?: string;
+}
+
+export interface BonusFilter {
+  status?: BonusStatus;
+  deliveryPersonId?: string;
+  startDate?: string | Date;
+  endDate?: string | Date;
+  minAmount?: number;
+  maxAmount?: number;
+  bonusType?: string;
+}
+
+export interface BonusSummary {
+  totalBonuses: number;
+  totalAmount: number;
+  pendingCount: number;
+  approvedCount: number;
+  paidCount: number;
+  rejectedCount: number;
+  pendingAmount: number;
+  approvedAmount: number;
+  paidAmount: number;
+}
+
+// Utility functions for bonus operations
+export class BonusUtils {
+  
+  /**
+   * Check if bonus can be approved
+   */
+  static canApprove(bonus: Bonus): boolean {
+    return bonus.status === BonusStatus.PENDING;
   }
-    
-    export enum BonusStatus {
-      PENDING = 'PENDING',
-      APPROVED = 'APPROVED',
-      PAID = 'PAID',
-      REJECTED = 'REJECTED'
+  
+  /**
+   * Check if bonus can be paid
+   */
+  static canPay(bonus: Bonus): boolean {
+    return bonus.status === BonusStatus.APPROVED;
+  }
+  
+  /**
+   * Check if bonus can be rejected
+   */
+  static canReject(bonus: Bonus): boolean {
+    return bonus.status === BonusStatus.PENDING || bonus.status === BonusStatus.APPROVED;
+  }
+  
+  /**
+   * Check if bonus can be cancelled
+   */
+  static canCancel(bonus: Bonus): boolean {
+    return bonus.status !== BonusStatus.PAID;
+  }
+  
+  /**
+   * Get bonus status display text
+   */
+  static getStatusText(status: BonusStatus): string {
+    switch (status) {
+      case BonusStatus.PENDING:
+        return 'في الانتظار / Pending';
+      case BonusStatus.APPROVED:
+        return 'معتمد / Approved';
+      case BonusStatus.PAID:
+        return 'مدفوع / Paid';
+      case BonusStatus.REJECTED:
+        return 'مرفوض / Rejected';
+      case BonusStatus.CANCELLED:
+        return 'ملغي / Cancelled';
+      default:
+        return 'غير معروف / Unknown';
     }
+  }
+  
+  /**
+   * Get bonus status color class for UI
+   */
+  static getStatusColorClass(status: BonusStatus): string {
+    switch (status) {
+      case BonusStatus.PENDING:
+        return 'text-warning bg-warning-light';
+      case BonusStatus.APPROVED:
+        return 'text-info bg-info-light';
+      case BonusStatus.PAID:
+        return 'text-success bg-success-light';
+      case BonusStatus.REJECTED:
+        return 'text-danger bg-danger-light';
+      case BonusStatus.CANCELLED:
+        return 'text-secondary bg-secondary-light';
+      default:
+        return 'text-muted bg-light';
+    }
+  }
+  
+  /**
+   * Format bonus amount for display
+   */
+  static formatAmount(amount: number, currency: string = 'TND'): string {
+    return new Intl.NumberFormat('ar-TN', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 2
+    }).format(amount);
+  }
+  
+  /**
+   * Calculate days since bonus creation
+   */
+  static getDaysSinceCreation(bonus: Bonus): number {
+    if (!bonus.createdAt) return 0;
+    const now = new Date();
+    const created = new Date(bonus.createdAt);
+    const diffTime = Math.abs(now.getTime() - created.getTime());
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }
+  
+  /**
+   * Check if bonus is overdue (pending for more than X days)
+   */
+  static isOverdue(bonus: Bonus, maxDays: number = 7): boolean {
+    if (bonus.status !== BonusStatus.PENDING) return false;
+    return this.getDaysSinceCreation(bonus) > maxDays;
+  }
+}
+
+// Constants
+export const BONUS_CONSTANTS = {
+  MAX_AMOUNT: 1000,
+  MIN_AMOUNT: 1,
+  DEFAULT_PAGE_SIZE: 10,
+  MAX_PENDING_DAYS: 7,
+  BULK_OPERATION_LIMIT: 50
+} as const;

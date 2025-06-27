@@ -72,6 +72,21 @@ interface PaymentStatusUpdateBody {
   rating?: number | null;
   rated?: boolean | null;
 
+
+  
+  // Add these missing properties
+  recipient?: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+  };
+  recipientName?: string;
+  recipientPhone?: string;
+  address?: string;
+  priority?: string;
+  estimatedDeliveryTime?: Date;
+  scheduledDeliveryTime?: Date;
+
 }
 
 export interface DeliveryWithAssignedPersonResponse {
@@ -501,6 +516,22 @@ rateDelivery(deliveryId: string, rating: number, comment?: string): Observable<a
   );
 }
 
+// In your delivery-service.service.ts
+getTodayCompletedDeliveries(): Observable<number> {
+  const userId = this.authService.getCurrentUser()?.userId;
+  const url = `${this.apiUrl}/today-completed`;
+  
+  return this.http.get<number>(url, { 
+    headers: this.getAuthHeaders(),
+    params: { userId: userId || '' }
+  }).pipe(
+    catchError(error => {
+      console.error('Error fetching today\'s completed deliveries:', error);
+      return throwError(() => new Error('Failed to load today\'s completed deliveries'));
+    })
+  );
+}
+
 }
 
 interface DeliveryWithDetails extends DeliveryRequest {
@@ -517,4 +548,6 @@ interface DeliveryWithDetails extends DeliveryRequest {
       licensePlate: string;
     };
   };
+
+  
 }

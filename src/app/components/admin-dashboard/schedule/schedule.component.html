@@ -48,8 +48,8 @@
     </div>
   </div>
 
-  <!-- Admin Section -->
-  <div *ngIf="isAdmin" class="admin-section">
+  <!-- Admin Section - Only shown in admin mode -->
+  <div *ngIf="mode === 'admin'" class="admin-section">
     <mat-card>
       <mat-card-header>
         <mat-card-title>Delivery Person Management</mat-card-title>
@@ -72,11 +72,13 @@
     </mat-card>
   </div>
 
-  <!-- Main Tabs -->
+  <!-- Main Tabs - Shown in both modes -->
   <mat-card class="main-card">
     <mat-card-header>
       <mat-card-title>
-        {{ isAdmin && selectedDeliveryPerson ? (selectedDeliveryPerson.firstName + ' ' + selectedDeliveryPerson.lastName + '\'s Schedule') : 'My Availability Schedule' }}
+        {{ mode === 'admin' && selectedDeliveryPerson ? 
+            (selectedDeliveryPerson.firstName + ' ' + selectedDeliveryPerson.lastName + '\'s Schedule') : 
+            'My Availability Schedule' }}
       </mat-card-title>
       <mat-card-subtitle>Manage when you're available for deliveries</mat-card-subtitle>
     </mat-card-header>

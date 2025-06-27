@@ -1,57 +1,620 @@
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h5>Bonuses Management</h5>
-      <div class="d-flex gap-2">
-        <input type="text" class="form-control" placeholder="Search..." [(ngModel)]="searchTerm" (input)="filterBonuses()">
-        <select class="form-select" [(ngModel)]="selectedStatus" (change)="filterBonuses()">
-          <option value="ALL">All Statuses</option>
-          <option *ngFor="let status of getEnumValues(BonusStatus)" [value]="status">{{status}}</option>
-        </select>
-      </div>
-    </div>
-    <div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-hover">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Delivery Person</th>
-              <th>Deliveries</th>
-              <th>Amount</th>
-              <th>Period</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let bonus of filteredBonuses">
-              <td>{{bonus.id | shorten: 8}}</td>
-              <td>{{bonus.deliveryPersonId | shorten: 8}}</td>
-              <td>{{bonus.deliveryCount}}</td>
-              <td>{{bonus.amount | currency:'TND'}}</td>
-              <td>
-                {{bonus.startDate | date:'shortDate'}} - 
-                {{bonus.endDate | date:'shortDate'}}
-              </td>
-              <td><span [class]="getStatusClass(bonus.status)">{{bonus.status}}</span></td>
-              <td>
-                <button *ngIf="bonus.status === BonusStatus.PENDING"
-                       class="btn btn-sm btn-primary"
-                       (click)="approveBonus(bonus.id)">
-                  Approve
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Bonuses Management</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .bonus-card {
+            transition: transform 0.2s;
+            border-left: 4px solid #007bff;
+        }
+        .bonus-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .status-pending { border-left-color: #ffc107; }
+        .status-approved { border-left-color: #17a2b8; }
+        .status-paid { border-left-color: #28a745; }
+        .status-rejected { border-left-color: #dc3545; }
+        
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+        }
+        
+        .action-buttons .btn {
+            margin: 2px;
+            min-width: 80px;
+        }
+        
+        .bulk-actions {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+        
+        .search-filters {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .table-responsive {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        
+        .pagination-container {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-top: 20px;
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .form-floating label {
+            color: #6c757d;
+        }
+        
+        .alert-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            min-width: 300px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container-fluid py-4">
+        <!-- Header Section -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 mb-0">
+                <i class="fas fa-gift text-primary me-2"></i>
+                Bonus Management
+            </h1>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary" (click)="refreshData()">
+                    <i class="fas fa-sync-alt me-1"></i>
+                    Refresh
                 </button>
-                <button *ngIf="bonus.status === BonusStatus.APPROVED"
-                       class="btn btn-sm btn-success ms-2"
-                       (click)="payBonus(bonus.id)">
-                  Pay
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createBonusModal">
+                    <i class="fas fa-plus me-1"></i>
+                    Create Bonus
                 </button>
-                <a [routerLink]="['/admin/bonuses', bonus.id]" class="btn btn-sm btn-info ms-2">
-                  Details
-                </a>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+                <button class="btn btn-info" (click)="exportBonuses()">
+                    <i class="fas fa-download me-1"></i>
+                    Export
+                </button>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row mb-4" *ngIf="bonusStats">
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card stats-card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-gift fa-2x mb-2"></i>
+                        <h4 class="mb-1">{{ bonusStats.totalBonuses | number }}</h4>
+                        <p class="mb-0">Total Bonuses</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card bg-success text-white h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-dollar-sign fa-2x mb-2"></i>
+                        <h4 class="mb-1">${{ bonusStats.totalAmount | number:'1.2-2' }}</h4>
+                        <p class="mb-0">Total Amount</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card bg-warning text-dark h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-clock fa-2x mb-2"></i>
+                        <h4 class="mb-1">{{ getStatusBreakdownValue('PENDING') | number }}</h4>
+                        <p class="mb-0">Pending</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card bg-info text-white h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-check fa-2x mb-2"></i>
+                        <h4 class="mb-1">{{ getStatusBreakdownValue('PAID') | number }}</h4>
+                        <p class="mb-0">Paid</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Alert -->
+        <div class="alert alert-danger alert-dismissible fade show" *ngIf="error" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            {{ error }}
+            <button type="button" class="btn-close" (click)="error = ''"></button>
+        </div>
+
+        <!-- Search and Filters -->
+        <div class="search-filters">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <div class="form-floating">
+                        <input 
+                            type="text" 
+                            class="form-control" 
+                            id="searchInput"
+                            [(ngModel)]="searchTerm" 
+                            (input)="onSearchChange()"
+                            placeholder="Search bonuses...">
+                        <label for="searchInput">
+                            <i class="fas fa-search me-1"></i>
+                            Search bonuses
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-floating">
+                        <select 
+                            class="form-select" 
+                            id="statusFilter"
+                            [(ngModel)]="selectedStatus" 
+                            (change)="onStatusFilterChange()">
+                            <option value="ALL">All Statuses</option>
+                            <option value="PENDING">Pending</option>
+                            <option value="APPROVED">Approved</option>
+                            <option value="PAID">Paid</option>
+                            <option value="REJECTED">Rejected</option>
+                        </select>
+                        <label for="statusFilter">Status Filter</label>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-floating">
+                        <input 
+                            type="date" 
+                            class="form-control" 
+                            id="startDate"
+                            [(ngModel)]="dateFilter.startDate" 
+                            (change)="onDateFilterChange()">
+                        <label for="startDate">Start Date</label>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-floating">
+                        <input 
+                            type="date" 
+                            class="form-control" 
+                            id="endDate"
+                            [(ngModel)]="dateFilter.endDate" 
+                            (change)="onDateFilterChange()">
+                        <label for="endDate">End Date</label>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-floating">
+                        <select 
+                            class="form-select" 
+                            id="pageSizeSelect"
+                            [(ngModel)]="pageSize" 
+                            (change)="loadBonuses()">
+                            <option value="10">10 per page</option>
+                            <option value="25">25 per page</option>
+                            <option value="50">50 per page</option>
+                            <option value="100">100 per page</option>
+                        </select>
+                        <label for="pageSizeSelect">Page Size</label>
+                    </div>
+                </div>
+                <div class="col-md-1">
+                    <button class="btn btn-outline-secondary h-100" (click)="clearFilters()" title="Clear Filters">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bulk Actions -->
+        <div class="bulk-actions" *ngIf="showBulkActions">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-bold">
+                    <i class="fas fa-check-square me-2"></i>
+                    {{ selectedBonuses.size }} bonuses selected
+                </span>
+                <div class="btn-group">
+                    <button class="btn btn-success btn-sm" (click)="bulkApprove()">
+                        <i class="fas fa-check me-1"></i>
+                        Bulk Approve
+                    </button>
+                    <button class="btn btn-info btn-sm" (click)="bulkPay()">
+                        <i class="fas fa-dollar-sign me-1"></i>
+                        Bulk Pay
+                    </button>
+                    <button class="btn btn-danger btn-sm" (click)="bulkReject()">
+                        <i class="fas fa-times me-1"></i>
+                        Bulk Reject
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div class="loading-spinner" *ngIf="loading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+
+        <!-- Bonuses Table -->
+        <div class="table-responsive" *ngIf="!loading">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>
+                            <input 
+                                type="checkbox" 
+                                class="form-check-input"
+                                [checked]="isAllSelected()"
+                                (change)="toggleAllBonuses()">
+                        </th>
+                        <th class="sortable" (click)="sortBonuses('id')">
+                            ID
+                            <i [class]="getSortIcon('id')"></i>
+                        </th>
+                        <th class="sortable" (click)="sortBonuses('deliveryPersonId')">
+                            Delivery Person
+                            <i [class]="getSortIcon('deliveryPersonId')"></i>
+                        </th>
+                        <th class="sortable" (click)="sortBonuses('amount')">
+                            Amount
+                            <i [class]="getSortIcon('amount')"></i>
+                        </th>
+                        <th class="sortable" (click)="sortBonuses('status')">
+                            Status
+                            <i [class]="getSortIcon('status')"></i>
+                        </th>
+                        <th class="sortable" (click)="sortBonuses('startDate')">
+                            Period
+                            <i [class]="getSortIcon('startDate')"></i>
+                        </th>
+                        <th class="sortable" (click)="sortBonuses('createdAt')">
+                            Created
+                            <i [class]="getSortIcon('createdAt')"></i>
+                        </th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let bonus of filteredBonuses; trackBy: trackByBonusId" 
+                        [class]="'status-' + bonus.status.toLowerCase()">
+                        <td>
+                            <input 
+                                type="checkbox" 
+                                class="form-check-input"
+                                [checked]="isBonusSelected(bonus.id)"
+                                (change)="toggleBonusSelection(bonus.id)">
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ bonus.id | slice:0:8 }}</span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-user-tie me-2 text-muted"></i>
+                                <span>{{ bonus.deliveryPersonId | slice:0:8 }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="fw-bold text-success">${{ bonus.amount | number:'1.2-2' }}</span>
+                        </td>
+                        <td>
+                            <span [class]="getStatusClass(bonus.status)">
+                                {{ getStatusText(bonus.status) }}
+                            </span>
+                        </td>
+                        <td>
+                            <small class="text-muted">
+                                {{ bonus.startDate | date:'short' }} - 
+                                {{ bonus.endDate | date:'short' }}
+                            </small>
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ bonus.createdAt | date:'short' }}</small>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <button 
+                                    *ngIf="canApprove(bonus)"
+                                    class="btn btn-success btn-sm"
+                                    (click)="approveBonus(bonus.id)"
+                                    title="Approve Bonus">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button 
+                                    *ngIf="canPay(bonus)"
+                                    class="btn btn-info btn-sm"
+                                    (click)="payBonus(bonus.id)"
+                                    title="Mark as Paid">
+                                    <i class="fas fa-dollar-sign"></i>
+                                </button>
+                                <button 
+                                    *ngIf="canReject(bonus)"
+                                    class="btn btn-danger btn-sm"
+                                    (click)="rejectBonus(bonus.id)"
+                                    title="Reject Bonus">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <button 
+                                    *ngIf="canCancel(bonus)"
+                                    class="btn btn-warning btn-sm"
+                                    (click)="cancelBonus(bonus.id)"
+                                    title="Cancel Bonus">
+                                    <i class="fas fa-ban"></i>
+                                </button>
+                                <button 
+                                    class="btn btn-outline-primary btn-sm"
+                                    [routerLink]="['/admin/bonuses', bonus.id]"
+                                    title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Empty State -->
+        <div class="text-center py-5" *ngIf="!loading && filteredBonuses.length === 0">
+            <i class="fas fa-gift fa-3x text-muted mb-3"></i>
+            <h4 class="text-muted">No bonuses found</h4>
+            <p class="text-muted">Try adjusting your filters or create a new bonus.</p>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createBonusModal">
+                <i class="fas fa-plus me-1"></i>
+                Create First Bonus
+            </button>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-container" *ngIf="totalPages > 1">
+            <div class="d-flex align-items-center">
+                <span class="text-muted me-3">
+                    Showing {{ (currentPage - 1) * pageSize + 1 }} to 
+                    {{ Math.min(currentPage * pageSize, totalElements) }} of 
+                    {{ totalElements }} entries
+                </span>
+            </div>
+            
+            <nav aria-label="Bonuses pagination">
+                <ul class="pagination mb-0">
+                    <li class="page-item" [class.disabled]="!hasPrevious">
+                        <button class="page-link" (click)="previousPage()">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                    </li>
+                    
+                    <li class="page-item" [class.active]="currentPage === 1" *ngIf="shouldShowPage(1)">
+                        <button class="page-link" (click)="goToPage(1)">1</button>
+                    </li>
+                    
+                    <li class="page-item disabled" *ngIf="currentPage > 4">
+                        <span class="page-link">...</span>
+                    </li>
+                    
+                    <li class="page-item" 
+                        [class.active]="currentPage === pageNum"
+                        *ngFor="let pageNum of [].constructor(totalPages); let i = index; trackBy: trackByBonusId"
+                        [hidden]="!shouldShowPage(i + 1)">
+                        <button class="page-link" (click)="goToPage(i + 1)">{{ i + 1 }}</button>
+                    </li>
+                    
+                    <li class="page-item disabled" *ngIf="currentPage < totalPages - 3">
+                        <span class="page-link">...</span>
+                    </li>
+                    
+                    <li class="page-item" [class.active]="currentPage === totalPages" *ngIf="shouldShowPage(totalPages) && totalPages > 1">
+                        <button class="page-link" (click)="goToPage(totalPages)">{{ totalPages }}</button>
+                    </li>
+                    
+                    <li class="page-item" [class.disabled]="!hasNext">
+                        <button class="page-link" (click)="nextPage()">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
     </div>
+
+    <!-- Create Bonus Modal -->
+    <div class="modal fade" id="createBonusModal" tabindex="-1" aria-labelledby="createBonusModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createBonusModalLabel">
+                        <i class="fas fa-plus me-2"></i>
+                        Create New Bonus
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form #createBonusForm="ngForm">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input 
+                                        type="text" 
+                                        class="form-control" 
+                                        id="deliveryPersonId"
+                                        name="deliveryPersonId"
+                                        #deliveryPersonId="ngModel"
+                                        [(ngModel)]="newBonus.deliveryPersonId"
+                                        required
+                                        placeholder="Delivery Person ID">
+                                    <label for="deliveryPersonId">Delivery Person ID *</label>
+                                </div>
+                                <div class="invalid-feedback" [style.display]="deliveryPersonId.invalid && deliveryPersonId.touched ? 'block' : 'none'">
+                                    Delivery Person ID is required
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input 
+                                        type="number" 
+                                        class="form-control" 
+                                        id="bonusAmount"
+                                        name="amount"
+                                        #amount="ngModel"
+                                        [(ngModel)]="newBonus.amount"
+                                        required
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="Bonus Amount">
+                                    <label for="bonusAmount">Bonus Amount ($) *</label>
+                                </div>
+                                <div class="invalid-feedback" [style.display]="amount.invalid && amount.touched ? 'block' : 'none'">
+                                    Valid bonus amount is required
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input 
+                                        type="date" 
+                                        class="form-control" 
+                                        id="startDate"
+                                        name="startDate"
+                                        #startDate="ngModel"
+                                        [(ngModel)]="newBonus.startDate"
+                                        required
+                                        placeholder="Start Date">
+                                    <label for="startDate">Start Date *</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    <input 
+                                        type="date" 
+                                        class="form-control" 
+                                        id="endDate"
+                                        name="endDate"
+                                        #endDate="ngModel"
+                                        [(ngModel)]="newBonus.endDate"
+                                        required
+                                        placeholder="End Date">
+                                    <label for="endDate">End Date *</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <select 
+                                        class="form-select" 
+                                        id="bonusType"
+                                        name="type"
+                                        [(ngModel)]="newBonus.type">
+                                        <option value="PERFORMANCE">Performance Bonus</option>
+                                        <option value="DELIVERY_COUNT">Delivery Count Bonus</option>
+                                        <option value="CUSTOMER_RATING">Customer Rating Bonus</option>
+                                        <option value="SPECIAL">Special Bonus</option>
+                                    </select>
+                                    <label for="bonusType">Bonus Type</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <textarea 
+                                        class="form-control" 
+                                        id="description"
+                                        name="description"
+                                        [(ngModel)]="newBonus.description"
+                                        style="height: 100px"
+                                        placeholder="Bonus description..."></textarea>
+                                    <label for="description">Description</label>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <textarea 
+                                        class="form-control" 
+                                        id="criteria"
+                                        name="criteria"
+                                        [(ngModel)]="newBonus.criteria"
+                                        style="height: 80px"
+                                        placeholder="Bonus criteria..."></textarea>
+                                    <label for="criteria">Criteria</label>
+                                </div>
+                            </div>
+
+                            <!-- Add this to your form -->
+<div class="col-12">
+  <div class="form-floating">
+    <input 
+      type="text" 
+      class="form-control" 
+      id="reason"
+      name="reason"
+      #reason="ngModel"
+      [(ngModel)]="newBonus.reason"
+      required
+      placeholder="Reason for bonus">
+    <label for="reason">Reason *</label>
   </div>
+  <div class="invalid-feedback" [style.display]="reason.invalid && reason.touched ? 'block' : 'none'">
+    Reason is required
+  </div>
+</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>
+                        Cancel
+                    </button>
+                    <button 
+                        type="button" 
+                        class="btn btn-success"
+                        [disabled]="createBonusForm.invalid || creatingBonus"
+                        (click)="createBonus()">
+                        <i class="fas fa-spinner fa-spin me-1" *ngIf="creatingBonus"></i>
+                        <i class="fas fa-plus me-1" *ngIf="!creatingBonus"></i>
+                        {{ creatingBonus ? 'Creating...' : 'Create Bonus' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Add some interactivity for demo purposes
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -7,14 +7,14 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { trigger, state, style, transition, animate, query, stagger } from '@angular/animations';
 import { firstValueFrom } from 'rxjs';
-import { format, isValid, parse } from 'date-fns';
-import { PaymentService } from '../../../services/payment.service';
 import { DatePipe } from '@angular/common';
 
+import { PaymentService } from '../../../services/payment.service';
 import { 
   Payment, 
   PaymentStatus, 
-  PaymentMethod} from '../../../models/Payment.model';
+  PaymentMethod
+} from '../../../models/Payment.model';
 import { ShortenPipe } from '../../../pipes/shorten.pipe';
 
 @Component({
@@ -28,7 +28,7 @@ import { ShortenPipe } from '../../../pipes/shorten.pipe';
     MatSnackBarModule,
     MatProgressSpinnerModule
   ],
-   providers: [DatePipe],
+  providers: [DatePipe],
   templateUrl: './admin-payment.component.html',
   styleUrls: ['./admin-payment.component.css'],
   animations: [
@@ -83,8 +83,8 @@ export class AdminPaymentComponent implements OnInit {
 
   constructor(
     private paymentService: PaymentService,
-    private snackBar: MatSnackBar,   private datePipe: DatePipe
-
+    private snackBar: MatSnackBar,
+    private datePipe: DatePipe
   ) {}
 
   ngOnInit(): void {
@@ -96,145 +96,64 @@ export class AdminPaymentComponent implements OnInit {
     return payment.id;
   }
 
-async loadPayments(): Promise<void> {
-  this.isLoading = true;
-  
-  try {
-    const response = await firstValueFrom(this.paymentService.getAllPaymentsSimple());
+  async loadPayments(): Promise<void> {
+    this.isLoading = true;
     
-    if (response.success && response.data) {
-      this.payments = response.data.map(payment => {
-        // Ensure amounts are properly formatted
-        const parsedPayment = {
-          ...payment,
-          amount: payment.amount || 0,
-          finalAmountAfterDiscount: payment.finalAmountAfterDiscount || payment.amount || 0,
-          discountAmount: payment.discountAmount || 0,
-          paymentDate: this.parseDate(payment.paymentDate),
-          createdAt: this.parseDate(payment.createdAt),
-          updatedAt: this.parseDate(payment.updatedAt)
-        };
-        
-        return parsedPayment;
-      });
+    try {
+      const response = await firstValueFrom(this.paymentService.getAllPaymentsSimple());
       
-      this.filteredPayments = [...this.payments];
-    } else {
-      this.showError('Failed to load payments');
+      if (response.success && response.data) {
+        this.payments = response.data.map(payment => this.processPaymentData(payment));
+        this.filteredPayments = [...this.payments];
+      } else {
+        this.showError('Failed to load payments');
+      }
+    } catch (error: any) {
+      console.error('Error loading payments:', error);
+      this.showError('Error loading payments: ' + error.message);
+    } finally {
+      this.isLoading = false;
     }
-  } catch (error: any) {
-    console.error('Error loading payments:', error);
-    this.showError('Error loading payments: ' + error.message);
-  } finally {
-    this.isLoading = false;
   }
-}
 
+  private processPaymentData(payment: Payment): Payment {
+    return {
+      ...payment,
+      amount: this.safeParseNumber(payment.amount),
+      finalAmountAfterDiscount: this.safeParseNumber(payment.finalAmountAfterDiscount) || this.safeParseNumber(payment.amount),
+      discountAmount: this.safeParseNumber(payment.discountAmount),
+      paymentDate: this.parseDate(payment.paymentDate),
+      createdAt: this.parseDate(payment.createdAt),
+      updatedAt: this.parseDate(payment.updatedAt)
+    };
+  }
 
-private parseDate(date: any): Date | undefined {
-  if (!date) return undefined;
-  
-  try {
-    // If it's already a Date object
-    if (date instanceof Date) {
-      return isNaN(date.getTime()) ? undefined : new Date(date);
+  private safeParseNumber(value: any): number {
+    if (value === null || value === undefined || value === '') return 0;
+    if (typeof value === 'number') return isNaN(value) ? 0 : value;
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? 0 : parsed;
     }
+    return 0;
+  }
+
+  private parseDate(date: any): Date | undefined {
+    if (!date) return undefined;
     
-    // If it's a string
-    if (typeof date === 'string') {
-      // Try parsing ISO format first
-      if (date.includes('T') || date.includes('Z')) {
-        const parsed = new Date(date);
-        if (!isNaN(parsed.getTime())) return parsed;
+    try {
+      // If it's already a Date object
+      if (date instanceof Date) {
+        return isNaN(date.getTime()) ? undefined : new Date(date);
       }
       
-      // Try parsing as timestamp
-      const timestamp = Date.parse(date);
-      if (!isNaN(timestamp)) return new Date(timestamp);
-      
-      // Try other common formats manually
-      const commonFormats = [
-        /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/, // yyyy-MM-dd HH:mm:ss
-        /^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/, // yyyy/MM/dd HH:mm:ss
-        /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/, // MM/dd/yyyy HH:mm:ss
-        /^\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2}$/   // dd-MM-yyyy HH:mm:ss
-      ];
-      
-      for (const regex of commonFormats) {
-        if (regex.test(date)) {
-          const parsed = new Date(date);
-          if (!isNaN(parsed.getTime())) return parsed;
-        }
-      }
-      
+      // If it's a string or number
+      const parsedDate = new Date(date);
+      return isNaN(parsedDate.getTime()) ? undefined : parsedDate;
+    } catch (e) {
+      console.error('Error parsing date:', e, 'Input date:', date);
       return undefined;
     }
-    
-    // If it's a number (timestamp)
-    if (typeof date === 'number') {
-      return new Date(date);
-    }
-    
-    return undefined;
-  } catch (e) {
-    console.error('Error parsing date:', e, 'Input date:', date);
-    return undefined;
-  }
-}
- private loadMockPayments(): void {
-    this.payments = [
-      {
-        id: 'pay_001',
-        deliveryId: 'del_001',
-        clientId: 'client_001',
-        amount: 50.00,
-        finalAmountAfterDiscount: 45.00,
-        method: PaymentMethod.CREDIT_CARD,
-        status: PaymentStatus.COMPLETED,
-        transactionId: 'txn_001',
-        paymentDate: new Date(),
-        cardLast4: '4242',
-        cardBrand: 'Visa',
-        discountAmount: 5.00,
-        discountCode: 'SAVE5'
-      },
-      {
-        id: 'pay_002',
-        deliveryId: 'del_002',
-        clientId: 'client_002',
-        amount: 30.00,
-        finalAmountAfterDiscount: 30.00,
-        method: PaymentMethod.BANK_TRANSFER,
-        status: PaymentStatus.PENDING,
-        paymentDate: new Date()
-      },
-      {
-        id: 'pay_003',
-        deliveryId: 'del_003',
-        clientId: 'client_003',
-        amount: 75.00,
-        finalAmountAfterDiscount: 75.00,
-        method: PaymentMethod.WALLET,
-        status: PaymentStatus.FAILED,
-        paymentDate: new Date()
-      },
-      {
-        id: 'pay_004',
-        deliveryId: 'del_004',
-        clientId: 'client_004',
-        amount: 120.00,
-        finalAmountAfterDiscount: 100.00,
-        method: PaymentMethod.CREDIT_CARD,
-        status: PaymentStatus.REFUNDED,
-        transactionId: 'txn_004',
-        paymentDate: new Date(Date.now() - 86400000), // Yesterday
-        cardLast4: '1234',
-        cardBrand: 'Mastercard',
-        discountAmount: 20.00,
-        discountCode: 'SAVE20'
-      }
-    ];
-    this.filteredPayments = [...this.payments];
   }
 
   filterPayments(): void {
@@ -251,7 +170,7 @@ private parseDate(date: any): Date | undefined {
     });
   }
 
-async refundPayment(paymentId: string): Promise<void> {
+  async refundPayment(paymentId: string): Promise<void> {
     if (!confirm('Are you sure you want to refund this payment?')) {
       return;
     }
@@ -271,7 +190,7 @@ async refundPayment(paymentId: string): Promise<void> {
       if (response.success && response.data) {
         const index = this.payments.findIndex(p => p.id === paymentId);
         if (index !== -1) {
-          this.payments[index] = response.data;
+          this.payments[index] = this.processPaymentData(response.data);
           this.filterPayments();
         }
         this.showSuccess('Payment refunded successfully');
@@ -286,7 +205,7 @@ async refundPayment(paymentId: string): Promise<void> {
     }
   }
 
-async cancelPayment(paymentId: string): Promise<void> {
+  async cancelPayment(paymentId: string): Promise<void> {
     if (!confirm('Are you sure you want to cancel this payment?')) {
       return;
     }
@@ -299,7 +218,7 @@ async cancelPayment(paymentId: string): Promise<void> {
       if (response.success && response.data) {
         const index = this.payments.findIndex(p => p.id === paymentId);
         if (index !== -1) {
-          this.payments[index] = response.data;
+          this.payments[index] = this.processPaymentData(response.data);
           this.filterPayments();
         }
         this.showSuccess('Payment cancelled successfully');
@@ -325,7 +244,7 @@ async cancelPayment(paymentId: string): Promise<void> {
       if (response.success && response.data) {
         const index = this.payments.findIndex(p => p.id === paymentId);
         if (index !== -1) {
-          this.payments[index] = response.data;
+          this.payments[index] = this.processPaymentData(response.data);
           this.filterPayments();
         }
         this.showSuccess('Payment status updated successfully');
@@ -335,6 +254,32 @@ async cancelPayment(paymentId: string): Promise<void> {
     } catch (error: any) {
       console.error('Error updating payment status:', error);
       this.showError('Failed to update payment status: ' + error.message);
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  async releaseToDeliveryPerson(paymentId: string): Promise<void> {
+    if (!confirm('Are you sure you want to release payment to delivery person?')) {
+      return;
+    }
+
+    this.isLoading = true;
+    
+    try {
+      const response = await firstValueFrom(
+        this.paymentService.releaseToDeliveryPerson(paymentId)
+      );
+      
+      if (response.success) {
+        this.showSuccess('Payment released to delivery person successfully');
+        this.loadPayments(); // Refresh the list
+      } else {
+        throw new Error(response.message || 'Release failed');
+      }
+    } catch (error: any) {
+      console.error('Error releasing payment:', error);
+      this.showError('Failed to release payment: ' + error.message);
     } finally {
       this.isLoading = false;
     }
@@ -354,8 +299,9 @@ async cancelPayment(paymentId: string): Promise<void> {
     });
   }
 
-  getStatusClass(status: PaymentStatus): string {
-    switch (status) {
+  getStatusClass(status: PaymentStatus | string): string {
+    const paymentStatus = status as PaymentStatus;
+    switch (paymentStatus) {
       case PaymentStatus.COMPLETED: return 'status-completed';
       case PaymentStatus.PENDING: return 'status-pending';
       case PaymentStatus.PROCESSING: return 'status-processing';
@@ -369,8 +315,9 @@ async cancelPayment(paymentId: string): Promise<void> {
     }
   }
 
-  getPaymentMethodIcon(method: PaymentMethod): string {
-    switch (method) {
+  getPaymentMethodIcon(method: PaymentMethod | string): string {
+    const paymentMethod = method as PaymentMethod;
+    switch (paymentMethod) {
       case PaymentMethod.CREDIT_CARD: return '💳';
       case PaymentMethod.BANK_TRANSFER: return '🏦';
       case PaymentMethod.WALLET: return '👛';
@@ -388,7 +335,9 @@ async cancelPayment(paymentId: string): Promise<void> {
   }
 
   getTotalAmount(): number {
-    return this.payments.reduce((total, payment) => total + payment.finalAmountAfterDiscount, 0);
+    return this.payments.reduce((total, payment) => 
+      total + (payment.finalAmountAfterDiscount || 0), 0
+    );
   }
 
   getStatusCount(status: PaymentStatus): number {
@@ -410,6 +359,7 @@ async cancelPayment(paymentId: string): Promise<void> {
   getRefundedPaymentsCount(): number {
     return this.getStatusCount(PaymentStatus.REFUNDED);
   }
+
   exportPayments(): void {
     try {
       const headers = [
@@ -431,9 +381,9 @@ async cancelPayment(paymentId: string): Promise<void> {
       const csvData = this.filteredPayments.map(payment => [
         payment.id,
         payment.clientId,
-        payment.deliveryId,
-        payment.amount.toString(),
-        payment.finalAmountAfterDiscount.toString(),
+        payment.deliveryId || '',
+        (payment.amount || 0).toString(),
+        (payment.finalAmountAfterDiscount || 0).toString(),
         payment.method,
         payment.status,
         payment.paymentDate ? this.formatDate(payment.paymentDate) : '',
@@ -441,7 +391,7 @@ async cancelPayment(paymentId: string): Promise<void> {
         payment.cardLast4 || '',
         payment.cardBrand || '',
         payment.discountCode || '',
-        payment.discountAmount ? payment.discountAmount.toString() : '0'
+        (payment.discountAmount || 0).toString()
       ]);
 
       const csvContent = [headers, ...csvData]
@@ -478,13 +428,21 @@ async cancelPayment(paymentId: string): Promise<void> {
            payment.status === PaymentStatus.PROCESSING;
   }
 
-  formatCurrency(amount: number): string {
+  canReleaseToDelivery(payment: Payment): boolean {
+    return payment.status === PaymentStatus.COMPLETED && 
+           !payment.deliveryPersonPaid && 
+           !!payment.deliveryPersonId;
+  }
+
+  formatCurrency(amount: number | undefined | null): string {
+    if (amount === undefined || amount === null) return 'TND 0.00';
     return new Intl.NumberFormat('en-TN', {
       style: 'currency',
       currency: 'TND'
     }).format(amount);
   }
- formatDate(date: Date | string | null | undefined): string {
+
+  formatDate(date: Date | string | null | undefined): string {
     if (!date) return 'N/A';
     
     try {
@@ -503,7 +461,8 @@ async cancelPayment(paymentId: string): Promise<void> {
       return 'N/A';
     }
   }
-formatDateOnly(date: Date | string | null | undefined): string {
+
+  formatDateOnly(date: Date | string | null | undefined): string {
     if (!date) return 'N/A';
     
     try {
@@ -520,6 +479,7 @@ formatDateOnly(date: Date | string | null | undefined): string {
       return 'N/A';
     }
   }
+
   formatTimeOnly(date: Date | string | null | undefined): string {
     if (!date) return 'N/A';
     
@@ -537,14 +497,20 @@ formatDateOnly(date: Date | string | null | undefined): string {
     }
   }
 
-isValidDate(date: Date | string | null | undefined): boolean {
+  isValidDate(date: Date | string | null | undefined): boolean {
     if (!date) return false;
     
     try {
       const dateObj = this.parseDate(date);
-      return dateObj !== null;
+      return dateObj !== null && dateObj !== undefined;
     } catch (error) {
       return false;
     }
   }
+
+  getFilteredTotalAmount(): number {
+  return this.filteredPayments.reduce((sum, payment) => 
+    sum + (payment.finalAmountAfterDiscount || 0), 0
+  );
+}
 }

@@ -21,6 +21,8 @@ export interface Payment {
   createdAt?: Date;
   updatedAt?: Date;
   invoiceUrl?: string;
+   deliveryPersonId?: string;
+  deliveryPersonPaid?: boolean;
 }
 
 export enum PaymentStatus {

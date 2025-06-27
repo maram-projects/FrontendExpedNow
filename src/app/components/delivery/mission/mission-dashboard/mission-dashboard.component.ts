@@ -14,7 +14,7 @@ import { MissionDetailsComponent } from "../mission-details/mission-details.comp
     
   ],
   templateUrl: './mission-dashboard.component.html',
-  styleUrls: ['./mission-dashboard.component.css']
+ styleUrls: ['./mission-dashboard.component.css'] 
 })
 export class MissionDashboardComponent implements OnInit {
   missions: any[] = [];

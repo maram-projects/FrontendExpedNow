@@ -24,6 +24,7 @@ import { ProfessionalRegisterComponent } from './components/registers/profession
 import { ForgetPasswordComponent } from './components/forget-password/forget-password.component';
 import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
 import { UserDetailsComponent } from './components/profile/user-details/user-details.component';
+import { DeliveryScheduleComponent } from './components/delivery/delivery-schedule/delivery-schedule.component';
 
 export const routes: Routes = [
   // Public routes
@@ -71,6 +72,11 @@ export const routes: Routes = [
     data: { role: 'delivery' },
     loadChildren: () => import('./components/delivery/delivery-dashboard/delivery.routes').then(m => m.DELIVERY_ROUTES)
   },
+   { 
+        path: 'schedule', 
+        component: DeliveryScheduleComponent,
+        data: { title: 'My Schedule' }
+      },
 
   // Admin routes
   {

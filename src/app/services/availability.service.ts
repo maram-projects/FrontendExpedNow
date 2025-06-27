@@ -1,39 +1,39 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { catchError, Observable, of, throwError } from 'rxjs';
-import { AvailabilitySchedule, DayOfWeek, TimeRange, DaySchedule } from '../models/availability.model';
+import { catchError, forkJoin, Observable, throwError } from 'rxjs';
+import { AvailabilitySchedule, DayOfWeek, DaySchedule } from '../models/availability.model';
 import { environment } from '../../environments/environment';
 
-// Response interfaces to match Spring controller responses
-interface ApiResponse<T> {
+// Fixed response interfaces to match actual backend responses
+interface BaseApiResponse {
   success: boolean;
   message?: string;
-  schedule?: T;
-  data?: T;
-  isNewSchedule?: boolean;
-  existingSchedule?: any;
 }
 
-interface ValidationResponse {
+interface ScheduleResponse extends BaseApiResponse {
+  schedule?: AvailabilitySchedule;
+  data?: AvailabilitySchedule;
+  isNewSchedule?: boolean;
+}
+
+interface DeliveryPersonsResponse extends BaseApiResponse {
+  deliveryPersonsWithoutSchedule: any[];
+  total: number;
+}
+
+interface StatisticsResponse extends BaseApiResponse {
+  statistics: {
+    totalDeliveryPersons: number;
+    withSchedule: number;
+    withoutSchedule: number;
+    scheduleCompletionRate: number;
+  };
+}
+
+interface ValidationResponse extends BaseApiResponse {
   valid: boolean;
   errors: string[];
   warnings: string[];
-}
-
-interface DeliveryPersonInfo {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  enabled: boolean;
-  available: boolean;
-}
-
-interface ScheduleStatistics {
-  totalDeliveryPersons: number;
-  withSchedule: number;
-  withoutSchedule: number;
-  scheduleCompletionRate: number;
 }
 
 @Injectable({
@@ -44,64 +44,50 @@ export class AvailabilityService {
 
   constructor(private http: HttpClient) {}
 
-  // Basic CRUD operations
-  getSchedule(userId: string): Observable<ApiResponse<AvailabilitySchedule>> {
-    return this.http.get<ApiResponse<AvailabilitySchedule>>(`${this.apiUrl}/${userId}`)
-      .pipe(
-        catchError((error: HttpErrorResponse) => {
-          if (error.status === 404) {
-            // Return a consistent response structure
-            return of({
-              success: false,
-              message: 'No schedule found',
-              isNewSchedule: true
-            });
-          }
-          // Ensure other errors have a consistent structure
-          return throwError(() => ({
-            success: false,
-            message: error.error?.message || error.message || 'Unknown error',
-            status: error.status
-          }));
-        })
-      );
-  }
-
-  saveSchedule(schedule: AvailabilitySchedule): Observable<ApiResponse<AvailabilitySchedule>> {
-    return this.http.post<ApiResponse<AvailabilitySchedule>>(this.apiUrl, schedule)
+  // Get schedule for a user
+  getSchedule(userId: string): Observable<ScheduleResponse> {
+    return this.http.get<ScheduleResponse>(`${this.apiUrl}/${userId}`)
       .pipe(catchError(this.handleError));
   }
 
-  // Admin operations for delivery persons
+  // Save schedule
+  saveSchedule(schedule: AvailabilitySchedule): Observable<ScheduleResponse> {
+    return this.http.post<ScheduleResponse>(this.apiUrl, schedule)
+      .pipe(catchError(this.handleError));
+  }
+
+  // Admin create schedule for delivery person
   adminCreateScheduleForDeliveryPerson(
     deliveryPersonId: string, 
     schedule: AvailabilitySchedule
-  ): Observable<ApiResponse<AvailabilitySchedule>> {
-    return this.http.post<ApiResponse<AvailabilitySchedule>>(
+  ): Observable<ScheduleResponse> {
+    return this.http.post<ScheduleResponse>(
       `${this.apiUrl}/admin/create-for-delivery-person/${deliveryPersonId}`, 
       schedule
     ).pipe(catchError(this.handleError));
   }
 
-  getDeliveryPersonsWithoutSchedule(): Observable<ApiResponse<DeliveryPersonInfo[]>> {
-    return this.http.get<ApiResponse<DeliveryPersonInfo[]>>(
+  // Get delivery persons without schedule
+  getDeliveryPersonsWithoutSchedule(): Observable<DeliveryPersonsResponse> {
+    return this.http.get<DeliveryPersonsResponse>(
       `${this.apiUrl}/admin/delivery-persons-without-schedule`
     ).pipe(catchError(this.handleError));
   }
 
-  getScheduleStatistics(): Observable<ApiResponse<{ statistics: ScheduleStatistics }>> {
-    return this.http.get<ApiResponse<{ statistics: ScheduleStatistics }>>(
+  // Get schedule statistics
+  getScheduleStatistics(): Observable<StatisticsResponse> {
+    return this.http.get<StatisticsResponse>(
       `${this.apiUrl}/admin/schedule-statistics`
     ).pipe(catchError(this.handleError));
   }
 
-  // Schedule validation
+  // Validate schedule
   validateSchedule(schedule: AvailabilitySchedule): Observable<ValidationResponse> {
     return this.http.post<ValidationResponse>(`${this.apiUrl}/validate`, schedule)
       .pipe(catchError(this.handleError));
   }
 
-  // Weekly schedule operations
+  // Update day availability
   updateDayAvailability(
     userId: string,
     day: DayOfWeek,
@@ -117,11 +103,12 @@ export class AvailabilityService {
 
     return this.http.put<AvailabilitySchedule>(
       `${this.apiUrl}/${userId}/day/${day}`,
-      null,
+      {},
       { params }
     ).pipe(catchError(this.handleError));
   }
 
+  // Check day availability
   checkDayAvailability(userId: string, day: DayOfWeek, time: string): Observable<boolean> {
     const params = new HttpParams()
       .set('day', day)
@@ -131,14 +118,18 @@ export class AvailabilityService {
       .pipe(catchError(this.handleError));
   }
 
-  // Date-specific operations
+  // Update date availability
   updateDateAvailability(
     userId: string,
-    date: string,
+    date: string,  // ISO date string (YYYY-MM-DD)
     isWorking: boolean,
     startTime?: string,
     endTime?: string
   ): Observable<AvailabilitySchedule> {
+    if (!this.isValidDate(date)) {
+      return throwError(() => new Error('Invalid date format'));
+    }
+
     let params = new HttpParams().set('isWorking', isWorking.toString());
 
     if (isWorking && startTime && endTime) {
@@ -147,11 +138,12 @@ export class AvailabilityService {
 
     return this.http.put<AvailabilitySchedule>(
       `${this.apiUrl}/${userId}/date/${date}`,
-      null,
+      {},
       { params }
     ).pipe(catchError(this.handleError));
   }
 
+  // Update date range availability
   updateDateRangeAvailability(
     userId: string,
     startDate: string,
@@ -160,6 +152,10 @@ export class AvailabilityService {
     startTime?: string,
     endTime?: string
   ): Observable<AvailabilitySchedule> {
+    if (!this.isValidDate(startDate) || !this.isValidDate(endDate)) {
+      return throwError(() => new Error('Invalid date format'));
+    }
+
     let params = new HttpParams()
       .set('startDate', startDate)
       .set('endDate', endDate)
@@ -171,12 +167,17 @@ export class AvailabilityService {
 
     return this.http.put<AvailabilitySchedule>(
       `${this.apiUrl}/${userId}/daterange`,
-      null,
+      {},
       { params }
     ).pipe(catchError(this.handleError));
   }
 
+  // Check date availability
   checkDateAvailability(userId: string, date: string, time: string): Observable<boolean> {
+    if (!this.isValidDate(date) || !this.isValidTime(time)) {
+      return throwError(() => new Error('Invalid date or time format'));
+    }
+    
     const params = new HttpParams()
       .set('date', date)
       .set('time', time);
@@ -185,30 +186,40 @@ export class AvailabilityService {
       .pipe(catchError(this.handleError));
   }
 
+  // Check datetime availability
   checkDateTimeAvailability(userId: string, dateTime: string): Observable<boolean> {
+    if (!this.isValidDateTime(dateTime)) {
+      return throwError(() => new Error('Invalid datetime format'));
+    }
+    
     const params = new HttpParams().set('dateTime', dateTime);
 
     return this.http.get<boolean>(`${this.apiUrl}/${userId}/check/datetime`, { params })
       .pipe(catchError(this.handleError));
   }
 
-  // Utility operations
+  // Generate monthly from weekly
   generateMonthlyFromWeekly(
     userId: string,
     startDate: string,
     endDate: string
   ): Observable<AvailabilitySchedule> {
+    if (!this.isValidDate(startDate) || !this.isValidDate(endDate)) {
+      return throwError(() => new Error('Invalid date format'));
+    }
+
     const params = new HttpParams()
       .set('startDate', startDate)
       .set('endDate', endDate);
 
     return this.http.post<AvailabilitySchedule>(
       `${this.apiUrl}/${userId}/generate-monthly`,
-      null,
+      {},
       { params }
     ).pipe(catchError(this.handleError));
   }
 
+  // Set weekdays in range
   setWeekdaysInRange(
     userId: string,
     startDate: string,
@@ -218,12 +229,15 @@ export class AvailabilityService {
     startTime?: string,
     endTime?: string
   ): Observable<AvailabilitySchedule> {
+    if (!this.isValidDate(startDate) || !this.isValidDate(endDate)) {
+      return throwError(() => new Error('Invalid date format'));
+    }
+
     let params = new HttpParams()
       .set('startDate', startDate)
       .set('endDate', endDate)
       .set('isWorking', isWorking.toString());
 
-    // Add each day of week as a separate parameter
     daysOfWeek.forEach(day => {
       params = params.append('daysOfWeek', day);
     });
@@ -234,33 +248,40 @@ export class AvailabilityService {
 
     return this.http.put<AvailabilitySchedule>(
       `${this.apiUrl}/${userId}/weekdays-in-range`,
-      null,
+      {},
       { params }
     ).pipe(catchError(this.handleError));
   }
 
+  // Copy month availability
   copyMonthAvailability(
     userId: string,
-    sourceMonth: string,
-    targetMonth: string
+    sourceMonth: string,  // YYYY-MM-DD
+    targetMonth: string   // YYYY-MM-DD
   ): Observable<AvailabilitySchedule> {
+    if (!this.isValidDate(sourceMonth) || !this.isValidDate(targetMonth)) {
+      return throwError(() => new Error('Invalid date format'));
+    }
+
     const params = new HttpParams()
       .set('sourceMonth', sourceMonth)
       .set('targetMonth', targetMonth);
 
     return this.http.post<AvailabilitySchedule>(
       `${this.apiUrl}/${userId}/copy-month`,
-      null,
+      {},
       { params }
     ).pipe(catchError(this.handleError));
   }
 
+  // Clear monthly schedule
   clearMonthlySchedule(userId: string): Observable<AvailabilitySchedule> {
-    return this.http.delete<AvailabilitySchedule>(`${this.apiUrl}/${userId}/clear-monthly`)
-      .pipe(catchError(this.handleError));
+    return this.http.delete<AvailabilitySchedule>(
+      `${this.apiUrl}/${userId}/clear-monthly`
+    ).pipe(catchError(this.handleError));
   }
 
-  // Admin-specific operations
+  // Admin update date availability
   adminUpdateDateAvailability(
     userId: string,
     date: string,
@@ -268,6 +289,10 @@ export class AvailabilityService {
     startTime?: string,
     endTime?: string
   ): Observable<AvailabilitySchedule> {
+    if (!this.isValidDate(date)) {
+      return throwError(() => new Error('Invalid date format'));
+    }
+
     let params = new HttpParams().set('isWorking', isWorking.toString());
 
     if (isWorking && startTime && endTime) {
@@ -276,11 +301,12 @@ export class AvailabilityService {
 
     return this.http.put<AvailabilitySchedule>(
       `${this.apiUrl}/admin/${userId}/date/${date}`,
-      null,
+      {},
       { params }
     ).pipe(catchError(this.handleError));
   }
 
+  // Admin update date range availability
   adminUpdateDateRangeAvailability(
     userId: string,
     startDate: string,
@@ -289,6 +315,10 @@ export class AvailabilityService {
     startTime?: string,
     endTime?: string
   ): Observable<AvailabilitySchedule> {
+    if (!this.isValidDate(startDate) || !this.isValidDate(endDate)) {
+      return throwError(() => new Error('Invalid date format'));
+    }
+
     let params = new HttpParams()
       .set('startDate', startDate)
       .set('endDate', endDate)
@@ -300,30 +330,49 @@ export class AvailabilityService {
 
     return this.http.put<AvailabilitySchedule>(
       `${this.apiUrl}/admin/${userId}/daterange`,
-      null,
+      {},
       { params }
     ).pipe(catchError(this.handleError));
   }
 
-  // Delete operations
+  // Clear date availability
   clearDateAvailability(userId: string, date: string): Observable<AvailabilitySchedule> {
-    return this.http.delete<AvailabilitySchedule>(`${this.apiUrl}/${userId}/date/${date}`)
-      .pipe(catchError(this.handleError));
+    if (!this.isValidDate(date)) {
+      return throwError(() => new Error('Invalid date format'));
+    }
+
+    return this.http.delete<AvailabilitySchedule>(
+      `${this.apiUrl}/${userId}/date/${date}`
+    ).pipe(catchError(this.handleError));
   }
 
+  // Admin clear date availability
   adminClearDateAvailability(userId: string, date: string): Observable<AvailabilitySchedule> {
-    return this.http.delete<AvailabilitySchedule>(`${this.apiUrl}/admin/${userId}/date/${date}`)
-      .pipe(catchError(this.handleError));
+    if (!this.isValidDate(date)) {
+      return throwError(() => new Error('Invalid date format'));
+    }
+
+    return this.http.delete<AvailabilitySchedule>(
+      `${this.apiUrl}/admin/${userId}/date/${date}`
+    ).pipe(catchError(this.handleError));
   }
 
+  // Get monthly schedule
   getMonthlySchedule(
     userId: string,
     monthStart: string,
     monthEnd?: string
   ): Observable<Record<string, DaySchedule>> {
+    if (!this.isValidDate(monthStart)) {
+      return throwError(() => new Error('Invalid date format'));
+    }
+
     let params = new HttpParams().set('monthStart', monthStart);
 
     if (monthEnd) {
+      if (!this.isValidDate(monthEnd)) {
+        return throwError(() => new Error('Invalid end date format'));
+      }
       params = params.set('monthEnd', monthEnd);
     }
 
@@ -333,11 +382,16 @@ export class AvailabilityService {
     ).pipe(catchError(this.handleError));
   }
 
+  // Clear date range availability
   clearDateRangeAvailability(
     userId: string,
     startDate: string,
     endDate: string
   ): Observable<AvailabilitySchedule> {
+    if (!this.isValidDate(startDate) || !this.isValidDate(endDate)) {
+      return throwError(() => new Error('Invalid date format'));
+    }
+
     const params = new HttpParams()
       .set('startDate', startDate)
       .set('endDate', endDate);
@@ -348,11 +402,16 @@ export class AvailabilityService {
     ).pipe(catchError(this.handleError));
   }
 
+  // Admin clear date range availability
   adminClearDateRangeAvailability(
     userId: string,
     startDate: string,
     endDate: string
   ): Observable<AvailabilitySchedule> {
+    if (!this.isValidDate(startDate) || !this.isValidDate(endDate)) {
+      return throwError(() => new Error('Invalid date format'));
+    }
+
     const params = new HttpParams()
       .set('startDate', startDate)
       .set('endDate', endDate);
@@ -363,38 +422,37 @@ export class AvailabilityService {
     ).pipe(catchError(this.handleError));
   }
 
-  // Delivery person availability queries
+  // Find available delivery persons on date
   findAvailableDeliveryPersonsOnDate(date: string, time: string): Observable<string[]> {
+    if (!this.isValidDate(date) || !this.isValidTime(time)) {
+      return throwError(() => new Error('Invalid date or time format'));
+    }
+    
     const params = new HttpParams()
       .set('date', date)
       .set('time', time);
 
-    return this.http.get<string[]>(`${this.apiUrl}/available-delivery-persons/date`, { params })
-      .pipe(catchError(this.handleError));
+    return this.http.get<string[]>(
+      `${this.apiUrl}/available-delivery-persons/date`, 
+      { params }
+    ).pipe(catchError(this.handleError));
   }
 
+  // Find available delivery persons on datetime
   findAvailableDeliveryPersonsOnDateTime(dateTime: string): Observable<string[]> {
-    const params = new HttpParams().set('dateTime', dateTime);
-
-    return this.http.get<string[]>(`${this.apiUrl}/available-delivery-persons/datetime`, { params })
-      .pipe(catchError(this.handleError));
-  }
-
-  // Helper method for error handling
-  private handleError(error: any): Observable<never> {
-    console.error('API Error:', error);
-    
-    let errorMessage = 'An error occurred';
-    if (error.error && error.error.message) {
-      errorMessage = error.error.message;
-    } else if (error.message) {
-      errorMessage = error.message;
+    if (!this.isValidDateTime(dateTime)) {
+      return throwError(() => new Error('Invalid datetime format'));
     }
     
-    return throwError(() => new Error(errorMessage));
+    const params = new HttpParams().set('dateTime', dateTime);
+
+    return this.http.get<string[]>(
+      `${this.apiUrl}/available-delivery-persons/datetime`, 
+      { params }
+    ).pipe(catchError(this.handleError));
   }
 
-  // Convenience methods for common operations
+  // Set user schedule for week
   setUserScheduleForWeek(
     userId: string,
     weeklySchedule: Record<DayOfWeek, { isWorking: boolean; startTime?: string; endTime?: string }>
@@ -413,21 +471,39 @@ export class AvailabilityService {
       );
     });
 
-    // Note: This returns an array of observables. In your component, you might want to use forkJoin
-    // to wait for all updates to complete
-    return throwError(() => new Error('Use forkJoin to combine multiple updates'));
+    return forkJoin(updates);
   }
 
-  // Check if user has any schedule configured
-  hasScheduleConfigured(schedule: AvailabilitySchedule): boolean {
-    // Check weekly schedule
-    const hasWeeklySchedule = schedule.weeklySchedule && 
-      Object.values(schedule.weeklySchedule).some(day => day.working);
+  // Error handling
+  private handleError(error: HttpErrorResponse): Observable<never> {
+    let errorMessage = 'An unknown error occurred';
     
-    // Check monthly schedule
-    const hasMonthlySchedule = schedule.monthlySchedule && 
-      Object.values(schedule.monthlySchedule).some(day => day.working);
+    if (error.error instanceof ErrorEvent) {
+      // Client-side error
+      errorMessage = `Error: ${error.error.message}`;
+    } else {
+      // Server-side error
+      if (error.error?.message) {
+        errorMessage = error.error.message;
+      } else if (error.statusText) {
+        errorMessage = `${error.status}: ${error.statusText}`;
+      }
+    }
     
-    return hasWeeklySchedule || hasMonthlySchedule;
+    console.error('API Error:', error);
+    return throwError(() => new Error(errorMessage));
+  }
+
+  // Utility functions for validation
+  private isValidDate(date: string): boolean {
+    return /^\d{4}-\d{2}-\d{2}$/.test(date) && !isNaN(Date.parse(date));
+  }
+
+  private isValidTime(time: string): boolean {
+    return /^([01]\d|2[0-3]):([0-5]\d)$/.test(time);
+  }
+
+  private isValidDateTime(dateTime: string): boolean {
+    return !isNaN(Date.parse(dateTime));
   }
 }

@@ -570,4 +570,18 @@ getPaymentDetails(paymentId: string): Observable<PaymentResponse> {
     catchError(this.handleError)
   );
 }
+
+
+releaseToDeliveryPerson(paymentId: string): Observable<any> {
+    return this.http.post(
+      `${this.apiUrl}/${paymentId}/release-to-delivery`, 
+      {}
+    );
+  }
+
+  getDeliveryPersonPayments(deliveryPersonId: string): Observable<Payment[]> {
+    return this.http.get<Payment[]>(
+      `${this.apiUrl}/delivery-person/${deliveryPersonId}`
+    );
+  }
 }

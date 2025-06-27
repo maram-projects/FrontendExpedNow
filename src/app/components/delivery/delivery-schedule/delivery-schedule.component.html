@@ -1,0 +1,23 @@
+<!-- في قسم ال dashboard-content، أضف هذا الجزء -->
+<div class="working-days-section">
+  <h3>My Working Days</h3>
+  
+  <div *ngIf="currentSchedule" class="days-list">
+    <div *ngFor="let day of getDaysOfWeek()" class="day-item">
+      <mat-card [class.working-day]="isWorkingDay(day)">
+        <mat-card-header>
+          <mat-card-title>{{ day }}</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div *ngIf="isWorkingDay(day)">
+            <p>From: {{ getDayStartTime(day) }}</p>
+            <p>To: {{ getDayEndTime(day) }}</p>
+          </div>
+          <div *ngIf="!isWorkingDay(day)">
+            <p>Not working</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+</div>
