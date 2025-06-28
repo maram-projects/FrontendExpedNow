@@ -456,75 +456,82 @@ private loadDeliveryDetails(deliveryId: string): void {
     }
   }
 
-  private async createPaymentIntent(): Promise<void> {
-    if (!this.delivery) {
-      this.toastService.showError('Delivery information not available');
+ private async createPaymentIntent(): Promise<void> {
+  if (!this.delivery) {
+    this.toastService.showError('Delivery information not available');
+    return;
+  }
+  const tndAmount = this.delivery.finalAmountAfterDiscount;
+  const minTndAmount = 1.56; // $0.50 USD / 0.32 exchange rate
+
+  // Validate minimum TND amount
+  if (tndAmount < minTndAmount) {
+    this.showError(`Amount too small. Minimum charge is ${minTndAmount} TND (≈$0.50 USD)`);
+    return;
+  }
+  console.log('Creating payment intent');
+
+  try {
+    const isStripeReady = await this.stripeService.ensureReady();
+    if (!isStripeReady) {
+      this.toastService.showError('Payment system not ready. Please try again.');
       return;
     }
 
-    console.log('Creating payment intent');
+    const tndAmount = this.delivery.finalAmountAfterDiscount;
 
-    try {
-      const isStripeReady = await this.stripeService.ensureReady();
-      if (!isStripeReady) {
-        this.toastService.showError('Payment system not ready. Please try again.');
-        return;
-      }
-
-      const tndAmount = this.delivery.finalAmountAfterDiscount;
-      const usdAmount = tndAmount * this.exchangeRate;
-
-      if (usdAmount < this.minimumUsdAmount) {
-        const minTndAmount = this.minimumUsdAmount / this.exchangeRate;
-        this.toastService.showError(
-          `Minimum payment is ${minTndAmount.toFixed(2)} TND (equivalent to $${this.minimumUsdAmount} USD)`
-        );
-        return;
-      }
-
-      if (tndAmount <= 0) {
-        this.toastService.showError('Payment amount must be greater than zero');
-        return;
-      }
-
-      const paymentData = {
-        deliveryId: this.delivery.id,
-        clientId: this.clientId,
-        amount: Math.round(usdAmount * 100),
-        currency: 'usd',
-        paymentMethod: PaymentMethod.CREDIT_CARD
-      };
-
-      const response = await firstValueFrom(
-        this.paymentService.createPaymentIntent(paymentData)
-      );
-      
-      if (!response || !response.clientSecret || !response.paymentId) {
-        console.error('Invalid response from payment service:', response);
-        throw new Error('Payment service returned invalid response');
-      }
-      
-      this.clientSecret = response.clientSecret;
-      this.paymentId = response.paymentId;
-      
-      console.log('PaymentIntent created:', {
-        clientSecret: this.clientSecret,
-        paymentId: this.paymentId
-      });
-      
-    } catch (error: any) {
-      console.error('Payment intent creation failed:', error);
-      let errorMsg = 'Failed to initialize payment';
-      
-      if (error.error?.message) {
-        errorMsg += `: ${error.error.message}`;
-      } else if (error.message) {
-        errorMsg += `: ${error.message}`;
-      }
-      
-      this.showError(errorMsg);
+    // Validate in TND
+    if (tndAmount <= 0) {
+      this.toastService.showError('Payment amount must be greater than zero');
+      return;
     }
+
+    // Send original TND amount to backend
+    const paymentData = {
+      deliveryId: this.delivery.id,
+      clientId: this.clientId,
+      amount: tndAmount,
+       currency: 'TND', // Always send as TND
+      paymentMethod: PaymentMethod.CREDIT_CARD
+    };
+
+    const response = await firstValueFrom(
+      this.paymentService.createPaymentIntent(paymentData)
+    );
+    
+    if (!response || !response.clientSecret || !response.paymentId) {
+      console.error('Invalid response from payment service:', response);
+      throw new Error('Payment service returned invalid response');
+    }
+    
+    this.clientSecret = response.clientSecret;
+    this.paymentId = response.paymentId;
+    
+    console.log('PaymentIntent created:', {
+      clientSecret: this.clientSecret,
+      paymentId: this.paymentId
+    });
+    
+  } catch (error: any) {
+    console.error('Payment intent creation failed:', error);
+    let errorMsg = 'Failed to initialize payment';
+    
+    if (error.error?.message) {
+      errorMsg += `: ${error.error.message}`;
+    } else if (error.message) {
+      errorMsg += `: ${error.message}`;
+    }
+    
+    this.showError(errorMsg);
   }
+
+    
+  // Validate minimum TND amount
+  if (tndAmount < minTndAmount) {
+    this.showError(`Amount too small. Minimum charge is ${minTndAmount} TND (≈$0.50 USD)`);
+    return;
+  }
+}
 
   private validateForm(): boolean {
     if (this.selectedMethod === PaymentMethod.CREDIT_CARD) {
@@ -756,14 +763,20 @@ private async handleRequiresAction(paymentIntent: any): Promise<void> {
     this.toastService.showSuccess(message);
   }
 
-  private async processNonCardPayment(): Promise<void> {
-    console.log('Processing non-card payment');
-    if (!this.paymentId && this.delivery) {
+private async processNonCardPayment(): Promise<void> {
+  console.log('Processing non-card payment');
+  
+  if (!this.delivery) {
+    throw new Error('Delivery information not available');
+  }
+
+  try {
+    if (!this.paymentId) {
       const paymentData = {
         deliveryId: this.delivery.id,
         clientId: this.clientId,
-        amount: this.delivery.finalAmountAfterDiscount,
-        currency: 'usd',
+    amount: this.delivery.finalAmountAfterDiscount, // Remove multiplication
+        currency: 'TND', // Always TND
         paymentMethod: this.selectedMethod!
       };
 
@@ -778,20 +791,21 @@ private async handleRequiresAction(paymentIntent: any): Promise<void> {
       this.paymentId = response.paymentId;
     }
 
-    if (this.paymentId) {
-      const payment = await firstValueFrom(
-        this.paymentService.processNonCardPayment(this.paymentId)
-      );
-      
-      if (payment && payment.data) {
-        this.showPaymentSuccess(payment.data);
-      } else {
-        throw new Error('Payment processing failed - no payment data received');
-      }
+    const payment = await firstValueFrom(
+      this.paymentService.processNonCardPayment(this.paymentId)
+    );
+    
+    if (payment && payment.data) {
+      this.showPaymentSuccess(payment.data);
     } else {
-      throw new Error('No payment ID available for processing');
+      throw new Error('Payment processing failed - no payment data received');
     }
+  } catch (error: any) {
+    console.error('Non-card payment processing error:', error);
+    this.showError('Non-card payment failed: ' + (error.message || 'Unknown error'));
+    throw error;
   }
+}
 
   async initializeStripeElements(clientSecret: string): Promise<void> {
     console.log('Initializing Stripe elements');
