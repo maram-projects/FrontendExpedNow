@@ -6,16 +6,88 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+     
+  <!-- Load polyfills FIRST before any other script -->
+  <script>
+    // Browser polyfills for Node.js globals - loaded immediately
+    (function() {
+      'use strict';
+      
+      console.log('Loading polyfills...');
+      
+      // Global polyfill
+      if (typeof window !== 'undefined' && !window.global) {
+        window.global = window;
+      }
+      
+      // Process polyfill
+      if (typeof window !== 'undefined' && !window.process) {
+        window.process = {
+          env: { 
+            DEBUG: undefined,
+            NODE_ENV: 'development'
+          },
+          version: '18.0.0',
+          versions: {
+            http_parser: '4.9.4',
+            node: '18.0.0',
+            v8: '10.2.154',
+            ares: '1.18.1',
+            uv: '1.44.2',
+            zlib: '2.0.6',
+            brotli: '1.0.9',
+            modules: '108',
+            nghttp2: '1.45.1',
+            napi: '9',
+            llhtml: '6.0.7',
+            openssl: '3.0.7',
+            cldr: '40.0',
+            icu: '71.1',
+            tz: '2022a',
+            unicode: '14.0'
+          },
+          platform: 'browser',
+          arch: 'x64',
+          title: 'browser',
+          pid: 1,
+          browser: true
+        };
+      }
+      
+      // Buffer polyfill (if needed)
+      if (typeof window !== 'undefined' && !window.Buffer) {
+        window.Buffer = {
+          isBuffer: function() { return false; }
+        };
+      }
+      
+      console.log('✅ Browser polyfills loaded successfully:', {
+        global: !!window.global,
+        process: !!window.process,
+        Buffer: !!window.Buffer
+      });
+    })();
+  </script>
+
+  <!-- استخدم إصدار واحد فقط من FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDsywwThSj5QgW0PiooUwr_QCKW15Fm2PE&libraries=places,geometry"></script>  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+     
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-<!-- In index.html, add only this ONE script tag -->
-<script async defer 
-  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA_qfiZexg37bw2Zosfq4sgWnxWsWt0cJM&libraries=geometry&loading=async">
-</script>
+   
+  <!-- سكريبت خرائط جوجل واحد فقط -->
+  <script async defer
+     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA_qfiZexg37bw2Zosfq4sgWnxWsWt0cJM&libraries=places,geometry&loading=async&callback=initMap">
+  </script>
 </head>
 <body class="mat-typography">
   <app-root></app-root>
+  <script>
+    // أضف هذا إذا كنت تحتاج لمعرفة متى يتم تحميل الخرائط
+    function initMap() {
+      console.log('Google Maps API loaded');
+      window.mapsLoaded = true;
+    }
+  </script>
 </body>
 </html>

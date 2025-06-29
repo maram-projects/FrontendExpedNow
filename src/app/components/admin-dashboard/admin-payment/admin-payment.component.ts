@@ -124,7 +124,9 @@ export class AdminPaymentComponent implements OnInit {
       discountAmount: this.safeParseNumber(payment.discountAmount),
       paymentDate: this.parseDate(payment.paymentDate),
       createdAt: this.parseDate(payment.createdAt),
-      updatedAt: this.parseDate(payment.updatedAt)
+      updatedAt: this.parseDate(payment.updatedAt),
+          currency: payment.currency || 'TND', // Add default if missing
+
     };
   }
 
@@ -170,40 +172,42 @@ export class AdminPaymentComponent implements OnInit {
     });
   }
 
-  async refundPayment(paymentId: string): Promise<void> {
+  async refundPayment(payment: Payment): Promise<void> {
     if (!confirm('Are you sure you want to refund this payment?')) {
-      return;
+        return;
     }
 
     this.isLoading = true;
     
     try {
-      const payment = this.payments.find(p => p.id === paymentId);
-      if (!payment) {
-        throw new Error('Payment not found');
-      }
-
-      const response = await firstValueFrom(
-        this.paymentService.refundPayment(paymentId, payment.finalAmountAfterDiscount)
-      );
-      
-      if (response.success && response.data) {
-        const index = this.payments.findIndex(p => p.id === paymentId);
-        if (index !== -1) {
-          this.payments[index] = this.processPaymentData(response.data);
-          this.filterPayments();
+        // Use payment.currency with fallback to 'TND'
+        const currency = payment.currency || 'TND';
+        
+        const response = await firstValueFrom(
+            this.paymentService.refundPayment(
+                payment.id, 
+                payment.finalAmountAfterDiscount,
+                currency  // Pass currency
+            )
+        );
+        
+        if (response.success && response.data) {
+            const index = this.payments.findIndex(p => p.id === payment.id);
+            if (index !== -1) {
+                this.payments[index] = this.processPaymentData(response.data);
+                this.filterPayments();
+            }
+            this.showSuccess('Payment refunded successfully');
+        } else {
+            throw new Error(response.message || 'Refund failed');
         }
-        this.showSuccess('Payment refunded successfully');
-      } else {
-        throw new Error(response.message || 'Refund failed');
-      }
     } catch (error: any) {
-      console.error('Error refunding payment:', error);
-      this.showError('Failed to refund payment: ' + error.message);
+        console.error('Error refunding payment:', error);
+        this.showError('Failed to refund payment: ' + error.message);
     } finally {
-      this.isLoading = false;
+        this.isLoading = false;
     }
-  }
+}
 
   async cancelPayment(paymentId: string): Promise<void> {
     if (!confirm('Are you sure you want to cancel this payment?')) {
@@ -232,6 +236,8 @@ export class AdminPaymentComponent implements OnInit {
       this.isLoading = false;
     }
   }
+
+  
 
   async updatePaymentStatus(paymentId: string, newStatus: PaymentStatus): Promise<void> {
     this.isLoading = true;
@@ -434,14 +440,14 @@ export class AdminPaymentComponent implements OnInit {
            !!payment.deliveryPersonId;
   }
 
-  formatCurrency(amount: number | undefined | null): string {
-    if (amount === undefined || amount === null) return 'TND 0.00';
-    return new Intl.NumberFormat('en-TN', {
-      style: 'currency',
-      currency: 'TND'
-    }).format(amount);
-  }
-
+ formatCurrency(amount: number | undefined | null, currency: string = 'TND'): string {
+  if (amount === undefined || amount === null) return `${currency} 0.00`;
+  
+  return new Intl.NumberFormat('en-TN', {
+    style: 'currency',
+    currency: currency
+  }).format(amount);
+}
   formatDate(date: Date | string | null | undefined): string {
     if (!date) return 'N/A';
     
@@ -513,4 +519,15 @@ export class AdminPaymentComponent implements OnInit {
     sum + (payment.finalAmountAfterDiscount || 0), 0
   );
 }
+
+ formatConvertedAmount(payment: Payment): string {
+    if (payment.convertedAmount && payment.convertedCurrency) {
+      return this.paymentService.formatCurrency(
+        payment.convertedAmount, 
+        payment.convertedCurrency
+      );
+    }
+    return 'N/A';
+  }
+
 }

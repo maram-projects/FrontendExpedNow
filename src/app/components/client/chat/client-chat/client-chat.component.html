@@ -1,0 +1,277 @@
+<div class="chat-container">
+  <!-- Chat Rooms Sidebar -->
+  <aside class="chat-sidebar" aria-label="Delivery chats">
+    <header class="sidebar-header">
+      <h2 class="sidebar-title">Delivery Chats</h2>
+    </header>
+
+    <div class="rooms-list">
+      <!-- Room Items -->
+      <article 
+        *ngFor="let room of rooms; trackBy: trackByRoomId" 
+        class="room-item"
+        [class.active]="selectedRoom?.deliveryId === room.deliveryId"
+        (click)="selectRoom(room)"
+        role="button"
+        tabindex="0"
+        [attr.aria-label]="'Chat with ' + room.deliveryPersonName + ' for delivery #' + room.deliveryId.slice(-6)"
+        (keydown.enter)="selectRoom(room)">
+        
+        <figure class="room-avatar">
+          <img 
+            [src]="'/assets/default-avatar.png'" 
+            [alt]="room.deliveryPersonName"
+            class="avatar-img"
+            width="40"
+            height="40"
+            loading="lazy">
+          
+          <div class="status-indicator" 
+               [class.online]="(isOnline$ | async)"
+               [class.offline]="!(isOnline$ | async)"
+               [attr.aria-label]="(isOnline$ | async) ? 'Online' : 'Offline'">
+          </div>
+        </figure>
+        
+        <div class="room-info">
+          <header class="room-header">
+            <h3 class="delivery-person-name">{{ room.deliveryPersonName }}</h3>
+            <span class="delivery-id">#{{ room.deliveryId.slice(-6) }}</span>
+          </header>
+          
+          <p class="last-message" *ngIf="room.lastMessage" aria-label="Last message">
+            {{ room.lastMessage | slice:0:50 }}{{ room.lastMessage.length > 50 ? '...' : '' }}
+          </p>
+          
+          <footer class="room-meta">
+            <time class="last-message-time" *ngIf="room.lastMessageAt" [attr.datetime]="room.lastMessageAt | date:'yyyy-MM-ddTHH:mm'">
+              {{ room.lastMessageAt | date:'shortTime' }}
+            </time>
+            
+            <span class="unread-badge" 
+                  *ngIf="room.unreadCount && room.unreadCount > 0"
+                  [attr.aria-label]="room.unreadCount + ' unread messages'">
+              {{ room.unreadCount > 99 ? '99+' : room.unreadCount }}
+            </span>
+          </footer>
+        </div>
+      </article>
+      
+      <!-- Empty State -->
+      <div class="empty-rooms" *ngIf="rooms.length === 0">
+        <div class="empty-icon" aria-hidden="true">💬</div>
+        <p>No active delivery chats</p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Chat Main Area -->
+  <main class="chat-main" [class.no-room-selected]="!selectedRoom">
+    <!-- No Room Selected State -->
+    <div class="no-selection" *ngIf="!selectedRoom">
+      <div class="no-selection-content">
+        <div class="no-selection-icon" aria-hidden="true">💬</div>
+        <h2>Select a delivery chat</h2>
+        <p>Choose a delivery from the sidebar to start chatting with your delivery person</p>
+      </div>
+    </div>
+
+    <!-- Chat Content -->
+    <div class="chat-content" *ngIf="selectedRoom">
+      <!-- Chat Header -->
+      <header class="chat-header">
+        <div class="header-user-info">
+          <figure class="header-avatar">
+            <img 
+              [src]="'/assets/default-avatar.png'" 
+              [alt]="getOtherUserFirstName()"
+              class="avatar-img"
+              width="40"
+              height="40"
+              loading="lazy">
+          </figure>
+          
+          <div class="header-details">
+            <h2 class="header-name">
+              {{ getOtherUserDisplayName() }}
+            </h2>
+            <div class="header-status">
+              <span class="delivery-info">Delivery #{{ selectedRoom.deliveryId.slice(-6) }}</span>
+              
+              <!-- Typing Indicator -->
+              <span class="typing-indicator-header" 
+                    *ngIf="selectedRoom.deliveryPersonId && isUserTypingInCurrentRoom(selectedRoom.deliveryPersonId)"
+                    aria-label="Delivery person is typing">
+                <span class="typing-dots" aria-hidden="true">
+                  <span></span><span></span><span></span>
+                </span>
+                typing...
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Chat Actions -->
+        <div class="chat-actions">
+          <button class="action-btn" title="Delivery Details" aria-label="Delivery details">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Messages Container -->
+      <div class="messages-container" #messagesContainer tabindex="0">
+        <div class="messages-list">
+          <!-- Date Separator -->
+          <div class="date-separator" *ngIf="messages.length > 0">
+            <time [attr.datetime]="messages[0].timestamp | date:'yyyy-MM-dd'">
+              Today
+            </time>
+          </div>
+          
+          <!-- Messages -->
+          <div 
+            *ngFor="let message of messages; trackBy: trackByMessageId" 
+            class="message-wrapper"
+            [class.own-message]="isOwnMessage(message)"
+            [class.other-message]="!isOwnMessage(message)"
+            [attr.aria-label]="isOwnMessage(message) ? 'Your message' : 'Message from delivery person'">
+            
+            <!-- Message Avatar -->
+            <figure class="message-avatar" *ngIf="!isOwnMessage(message)">
+              <img 
+                [src]="'/assets/default-avatar.png'" 
+                [alt]="getOtherUserFirstName()"
+                class="avatar-img"
+                width="32"
+                height="32"
+                loading="lazy">
+            </figure>
+            
+            <!-- Message Content -->
+            <div class="message-content">
+              <div class="message-bubble" [class.message-type]="message.messageType?.toLowerCase()">
+                <!-- Text Message -->
+                <div class="message-text" *ngIf="message.messageType === 'TEXT'">
+                  {{ message.content }}
+                </div>
+                
+                <!-- Image Message -->
+                <figure class="message-image" *ngIf="message.messageType === 'IMAGE'">
+                  <img [src]="message.attachmentUrl" 
+                       [alt]="'Shared image'"
+                       class="shared-image"
+                       loading="lazy">
+                </figure>
+                
+                <!-- File Message -->
+                <a class="message-file" 
+                   *ngIf="message.messageType === 'FILE'"
+                   [href]="message.attachmentUrl"
+                   download
+                   target="_blank"
+                   rel="noopener">
+                  <div class="file-icon" aria-hidden="true">📎</div>
+                  <span class="file-name">{{ message.attachmentName || 'File' }}</span>
+                  <span class="sr-only">(opens in new tab)</span>
+                </a>
+                
+                <!-- Message Meta -->
+                <footer class="message-meta">
+                  <time class="message-time" *ngIf="message.timestamp" 
+      [attr.datetime]="message.timestamp | date:'yyyy-MM-ddTHH:mm:ss'">
+  {{ formatMessageTime(message.timestamp) }}
+</time>
+                  <!-- Message Status -->
+                  <div class="message-status" *ngIf="isOwnMessage(message)" [attr.aria-label]="'Message status: ' + message.status">
+                    <svg *ngIf="message.status === 'SENT'" class="status-icon sent" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                    </svg>
+                    <svg *ngIf="message.status === 'DELIVERED'" class="status-icon delivered" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41z"/>
+                    </svg>
+                    <svg *ngIf="message.status === 'READ'" class="status-icon read" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41z"/>
+                    </svg>
+                  </div>
+                </footer>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Typing Indicators -->
+          <div class="typing-indicator-message" 
+               *ngIf="getTypingUsersForCurrentRoom().length > 0"
+               aria-label="Delivery person is typing">
+            <div class="message-avatar">
+              <img 
+                [src]="'/assets/default-avatar.png'" 
+                [alt]="getOtherUserFirstName()"
+                class="avatar-img"
+                width="32"
+                height="32"
+                loading="lazy">
+            </div>
+            <div class="typing-bubble">
+              <div class="typing-dots" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Message Input Area -->
+      <form class="message-input-area" (submit)="sendMessage(); $event.preventDefault()">
+        <div class="input-container">
+          <!-- Attachment Button -->
+          <button class="attachment-btn" type="button" title="Attach file" aria-label="Attach file">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
+            </svg>
+          </button>
+          
+          <!-- Text Input -->
+          <div class="text-input-wrapper">
+            <label for="messageInput" class="sr-only">Type your message</label>
+            <textarea
+              id="messageInput"
+              [(ngModel)]="newMessage"
+              name="messageInput"
+              (keydown)="onEnterKey($event)"
+              (input)="onTyping()"
+              (blur)="stopTyping()"
+              placeholder="Type your message..."
+              class="message-input"
+              rows="1"
+              maxlength="1000"
+              aria-label="Type your message"></textarea>
+          </div>
+          
+          <!-- Send Button -->
+          <button 
+            class="send-btn" 
+            type="submit"
+            [disabled]="!newMessage.trim()"
+            title="Send message"
+            aria-label="Send message">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+          </button>
+        </div>
+        
+        <!-- Character Counter -->
+        <div class="input-meta" *ngIf="newMessage.length > 800">
+          <span class="char-counter" 
+                [class.warning]="newMessage.length > 950"
+                aria-live="polite">
+            {{ newMessage.length }}/1000
+          </span>
+        </div>
+      </form>
+    </div>
+  </main>
+</div>

@@ -70,7 +70,7 @@ export const routes: Routes = [
     path: 'delivery',
     canActivate: [authGuard, roleGuard],
     data: { role: 'delivery' },
-    loadChildren: () => import('./components/delivery/delivery-dashboard/delivery.routes').then(m => m.DELIVERY_ROUTES)
+    loadChildren: () => import('./components/delivery/delivery.routes').then(m => m.DELIVERY_ROUTES)
   },
    { 
         path: 'schedule', 

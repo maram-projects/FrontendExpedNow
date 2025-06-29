@@ -287,18 +287,24 @@ private refreshDashboardData(): void {
   /**
    * Refund a payment
    */
-  refundPayment(paymentId: string, amount?: number): Observable<PaymentResponse> {
-    const params = amount ? new HttpParams().set('amount', amount.toString()) : new HttpParams();
-
-    return this.http.post<PaymentResponse>(`${this.apiUrl}/${paymentId}/refund`, {}, {
-      params,
-      headers: this.createHeaders(),
-      withCredentials: true
-    }).pipe(
-      tap(response => console.log('Refund payment response:', response)),
+  refundPayment(paymentId: string, amount?: number, currency: string = 'TND'): Observable<PaymentResponse> {
+    const params = new HttpParams()
+      .set('amount', amount ? amount.toString() : '')
+      .set('currency', currency);
+      
+    return this.http.post<PaymentResponse>(
+      `${this.apiUrl}/${paymentId}/refund`, 
+      {}, 
+      { 
+        params,
+        headers: this.createHeaders(),
+        withCredentials: true
+      }
+    ).pipe(
       catchError(this.handleError)
     );
   }
+
 
   /**
    * Get payments by client ID
@@ -312,6 +318,9 @@ private refreshDashboardData(): void {
       catchError(this.handleError)
     );
   }
+
+
+  
 
   /**
    * Get payments by delivery ID
@@ -584,4 +593,14 @@ releaseToDeliveryPerson(paymentId: string): Observable<any> {
       `${this.apiUrl}/delivery-person/${deliveryPersonId}`
     );
   }
+
+   formatCurrency(amount: number | undefined, currencyCode: string = 'TND'): string {
+    if (amount === undefined || amount === null) return 'N/A';
+    
+    return new Intl.NumberFormat('en-TN', {
+      style: 'currency',
+      currency: currencyCode
+    }).format(amount);
+  }
+
 }

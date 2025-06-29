@@ -23,6 +23,12 @@ export interface Payment {
   invoiceUrl?: string;
    deliveryPersonId?: string;
   deliveryPersonPaid?: boolean;
+
+   convertedAmount?: number;
+  exchangeRate?: number;
+  convertedCurrency?: string;
+  currency?: string; // Add this
+
 }
 
 export enum PaymentStatus {

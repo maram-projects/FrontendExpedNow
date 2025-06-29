@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { PaymentConfirmationComponent } from './payment-confirmation/payment-confirmation.component';
 import { DeliveryDetailsComponent } from './delivery-details/delivery-details.component';
+import { ClientChatComponent } from './chat/client-chat/client-chat.component';
 
 export const CLIENT_ROUTES: Routes = [
   {
@@ -28,18 +29,23 @@ export const CLIENT_ROUTES: Routes = [
     loadComponent: () => import('./payment-confirmation/payment-confirmation.component')
       .then(m => m.PaymentConfirmationComponent)
   },
-  { 
-    path: 'orders/:id', 
-    component: DeliveryDetailsComponent,
-    data: { title: 'تفاصيل الطلب' }
+{
+  path: 'deliveries/:id/chat',
+  loadComponent: () => import('./chat/client-chat/client-chat.component').then(m => m.ClientChatComponent)
+},
+  {
+     path: 'orders/:id',
+     component: DeliveryDetailsComponent,
+     data: { title: 'تفاصيل الطلب' }
+     // No resolver - handle data loading in component
   },
-  { 
-    path: '', 
-    redirectTo: 'dashboard', 
-    pathMatch: 'full' 
-  },
-  { 
-    path: '**', 
-    redirectTo: 'dashboard' 
-  }
+  {
+     path: '',
+     redirectTo: 'dashboard',
+     pathMatch: 'full'
+   },
+  {
+     path: '**',
+     redirectTo: 'dashboard'
+   }
 ];

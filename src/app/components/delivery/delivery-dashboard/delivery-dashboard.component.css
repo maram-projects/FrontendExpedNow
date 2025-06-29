@@ -1347,3 +1347,734 @@ tr.mat-row:hover {
   background-size: 200% 200%;
   animation: gradientShift 3s ease infinite;
 }
+/* ========================================= */
+/* OVERVIEW SECTION STYLES */
+/* ========================================= */
+
+.overview-section {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 24px;
+}
+
+.metric-card {
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-speed);
+  overflow: hidden;
+  height: 100%;
+}
+
+.metric-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-md);
+}
+
+.metric-card mat-card-header {
+  padding-bottom: 0;
+}
+
+.metric-card mat-card-title {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.metric-card mat-card-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.metric-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  color: white;
+}
+
+.metric-avatar.deliveries {
+  background-color: var(--primary-color);
+}
+
+.metric-avatar.availability {
+  background-color: var(--accent-color);
+}
+
+.metric-avatar.bonus {
+  background-color: #4caf50;
+}
+
+.metric-avatar.assignments {
+  background-color: #ff9800;
+}
+
+.metric-card mat-card-content {
+  padding: 16px !important;
+}
+
+.metric-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+  margin: 8px 0;
+  color: var(--primary-dark);
+}
+
+.metric-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.metric-trend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.875rem;
+  color: var(--success-color);
+}
+
+.metric-trend.negative {
+  color: var(--error-color);
+}
+
+.trend-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.trend-icon.positive {
+  color: var(--success-color);
+}
+
+.trend-icon.negative {
+  color: var(--error-color);
+}
+
+.availability-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 500;
+  margin: 8px 0;
+}
+
+.availability-status-badge.available {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: #2e7d32;
+}
+
+.availability-status-badge.off-hours {
+  background-color: rgba(255, 152, 0, 0.1);
+  color: #e65100;
+}
+
+.availability-status-badge.unavailable {
+  background-color: rgba(244, 67, 54, 0.1);
+  color: #c62828;
+}
+
+.metric-info {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.metric-breakdown {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.breakdown-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.breakdown-item.paid {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: #2e7d32;
+}
+
+.breakdown-item.pending {
+  background-color: rgba(255, 152, 0, 0.1);
+  color: #e65100;
+}
+
+.metric-urgency {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.875rem;
+  color: var(--error-color);
+  margin-top: 8px;
+}
+
+.urgent-icon {
+  color: var(--error-color);
+}
+
+/* Quick Actions */
+.quick-actions {
+  background-color: var(--card-background);
+  border-radius: var(--border-radius);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.quick-actions h3 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-size: 1.25rem;
+  color: var(--primary-dark);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  transition: all var(--transition-speed);
+}
+
+.action-button.primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.action-button.primary:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.action-count {
+  font-weight: 500;
+}
+
+/* Recent Activity */
+.recent-activity {
+  background-color: var(--card-background);
+  border-radius: var(--border-radius);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.recent-activity h3 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-size: 1.25rem;
+  color: var(--primary-dark);
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.activity-item {
+  display: flex;
+  gap: 16px;
+  padding: 12px;
+  border-radius: 8px;
+  transition: all var(--transition-speed);
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.activity-item:hover {
+  background-color: rgba(63, 81, 181, 0.05);
+  transform: translateX(4px);
+}
+
+.activity-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: rgba(63, 81, 181, 0.1);
+  color: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.activity-icon mat-icon {
+  font-size: 20px;
+}
+
+.status-completed .activity-icon {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: #2e7d32;
+}
+
+.status-rejected .activity-icon {
+  background-color: rgba(244, 67, 54, 0.1);
+  color: #c62828;
+}
+
+.status-pending .activity-icon {
+  background-color: rgba(255, 152, 0, 0.1);
+  color: #e65100;
+}
+
+.activity-content {
+  flex-grow: 1;
+}
+
+.activity-title {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.activity-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.activity-time {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* ========================================= */
+/* PENDING ASSIGNMENTS SECTION */
+/* ========================================= */
+
+.pending-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.assignment-summary {
+  margin-bottom: 16px;
+}
+
+.summary-card {
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.summary-stats {
+  display: flex;
+  gap: 24px;
+  padding: 16px;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background-color: rgba(63, 81, 181, 0.05);
+}
+
+.stat-item.urgent {
+  background-color: rgba(244, 67, 54, 0.05);
+}
+
+.stat-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* Table Styles */
+.deliveries-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.deliveries-table th {
+  background-color: var(--primary-color);
+  color: white;
+  font-weight: 500;
+  padding: 12px 16px;
+  text-align: left;
+}
+
+.deliveries-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.deliveries-table tr:last-child td {
+  border-bottom: none;
+}
+
+.deliveries-table tr:hover td {
+  background-color: rgba(63, 81, 181, 0.03);
+}
+
+.urgent-row {
+  background-color: rgba(244, 67, 54, 0.03) !important;
+}
+
+.today-row {
+  background-color: rgba(255, 193, 7, 0.05) !important;
+}
+
+.table-cell-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.urgent-indicator {
+  color: var(--error-color);
+}
+
+.address-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.address-main {
+  font-weight: 500;
+}
+
+.recipient-info {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.date-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.date-main {
+  font-weight: 500;
+}
+
+.time-main {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.today-indicator {
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.package-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.package-description {
+  font-weight: 500;
+}
+
+.package-weight {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.priority-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.priority-badge.priority-high {
+  background-color: rgba(244, 67, 54, 0.1);
+  color: #c62828;
+}
+
+.priority-badge.priority-medium {
+  background-color: rgba(255, 152, 0, 0.1);
+  color: #e65100;
+}
+
+.priority-badge.priority-low {
+  background-color: rgba(63, 81, 181, 0.1);
+  color: var(--primary-dark);
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.table-action-btn {
+  min-width: 0;
+  padding: 0 8px;
+}
+
+.table-more-btn {
+  width: 36px;
+  height: 36px;
+  line-height: 36px;
+}
+
+/* ========================================= */
+/* DELIVERY HISTORY SECTION */
+/* ========================================= */
+
+.history-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.history-stats {
+  margin-bottom: 16px;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.history-table th {
+  background-color: var(--primary-color);
+  color: white;
+  font-weight: 500;
+  padding: 12px 16px;
+  text-align: left;
+}
+
+.history-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.history-table tr:last-child td {
+  border-bottom: none;
+}
+
+.history-table tr:hover td {
+  background-color: rgba(63, 81, 181, 0.03);
+}
+
+.status-row-completed {
+  background-color: rgba(76, 175, 80, 0.03);
+}
+
+.status-row-accepted {
+  background-color: rgba(63, 81, 181, 0.03);
+}
+
+.status-row-rejected {
+  background-color: rgba(244, 67, 54, 0.03);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-badge.status-completed {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: #2e7d32;
+}
+
+.status-badge.status-accepted {
+  background-color: rgba(63, 81, 181, 0.1);
+  color: var(--primary-dark);
+}
+
+.status-badge.status-rejected {
+  background-color: rgba(244, 67, 54, 0.1);
+  color: #c62828;
+}
+
+.status-badge.status-pending {
+  background-color: rgba(255, 152, 0, 0.1);
+  color: #e65100;
+}
+
+.history-action-btn {
+  width: 36px;
+  height: 36px;
+  line-height: 36px;
+}
+
+/* Table Header */
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.results-count {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* ========================================= */
+/* UTILITY CLASSES */
+/* ========================================= */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: var(--accent-color);
+  color: white;
+  margin-left: 8px;
+}
+
+.bonus-badge {
+  background-color: #4caf50;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+/* Responsive Design */
+@media (max-width: 960px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+  }
+  
+  .action-button {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .cards-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .section-controls {
+    width: 100%;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-container {
+    padding: 16px;
+  }
+  
+  .title-text {
+    font-size: 1.75rem;
+  }
+  
+  .section-toggles {
+    flex-wrap: wrap;
+  }
+  
+  .section-toggles button {
+    flex: 1 0 auto;
+  }
+  
+  .stat-item {
+    flex: 1 0 100%;
+  }
+  
+  .table-actions {
+    flex-direction: column;
+  }
+  
+  .table-action-btn {
+    width: 100%;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .dashboard-container {
+    --text-primary: #e0e0e0;
+    --text-secondary: #9e9e9e;
+    --background-color: #121212;
+    --card-background: #1e1e1e;
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+  }
+  
+  .metric-card {
+    background-color: #2d2d2d;
+  }
+  
+  .activity-item {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  .delivery-card {
+    background-color: #2d2d2d;
+  }
+  
+  .empty-state {
+    background-color: #2d2d2d;
+  }
+  
+  .loading-overlay {
+    background-color: rgba(30, 30, 30, 0.8);
+  }
+}

@@ -90,7 +90,8 @@ export class ScheduleComponent implements OnInit, OnDestroy {
   @Input() mode: 'admin' | 'delivery' = 'admin'; // أضف هذه السطر
   private destroy$ = new Subject<void>();
   autoDismissTime = 5000;
-
+@Input() isEditable: boolean = true;
+@Input() showValidation: boolean = false;
   // Schedule data
   @Input() schedule: AvailabilitySchedule | undefined;
   @Output() scheduleChange = new EventEmitter<AvailabilitySchedule>();

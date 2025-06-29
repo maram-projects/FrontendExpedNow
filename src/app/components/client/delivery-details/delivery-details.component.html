@@ -453,10 +453,9 @@
         <i class="fas fa-phone"></i>
         Call
       </a>
-      <a href="sms:{{assignedPerson.phone}}" class="btn-contact sms">
-        <i class="fas fa-sms"></i>
-        SMS
-      </a>
+      <button (click)="openChat()" class="chat-button">
+  <i class="fas fa-comment"></i> Chat with Delivery Person
+</button>
       <a href="https://wa.me/{{assignedPerson.phone}}" class="btn-contact whatsapp" target="_blank">
         <i class="fab fa-whatsapp"></i>
         WhatsApp

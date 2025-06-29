@@ -2645,3 +2645,20 @@ body {
   white-space: pre-wrap;
   word-wrap: break-word;
 }
+
+/* Add to delivery-details.component.css */
+.chat-button {
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-button:hover {
+  background-color: #1565c0;
+}

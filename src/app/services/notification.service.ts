@@ -1,31 +1,27 @@
+// src/app/services/notification.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
-import { WebSocketService, AppNotification } from './web-socket.service';
+import { AppNotification } from '../models/notification.model';
+import { WebSocketService } from './web-socket.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class NotificationService {
-  private apiUrl = `${environment.apiUrl}/notifications`;
-
   constructor(
     private http: HttpClient,
     private webSocketService: WebSocketService
   ) {}
 
-  // Get unread notifications from the API
   getUnreadNotifications(): Observable<AppNotification[]> {
-    return this.http.get<AppNotification[]>(this.apiUrl);
+    return this.http.get<AppNotification[]>('/api/notifications/unread');
   }
 
-  // Mark a notification as read
-  markAsRead(notificationId: string): Observable<AppNotification> {
-    return this.http.put<AppNotification>(`${this.apiUrl}/${notificationId}/read`, {});
+  markAsRead(id: number): Observable<any> {
+    return this.http.post(`/api/notifications/${id}/read`, {});
   }
 
-  // Get real-time notifications
   getRealTimeNotifications(): Observable<AppNotification> {
     return this.webSocketService.getAllNotifications();
   }

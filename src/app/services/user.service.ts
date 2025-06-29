@@ -172,16 +172,13 @@ rejectUser(userId: string): Observable<void> {
    * @param enabled Whether to enable or disable
    * @returns Observable of updated User
    */
-  private setUserStatus(userId: string, enabled: boolean): Observable<User> {
-    const endpoint = enabled ? 'enable' : 'disable';
-    return this.http.patch<User>(
-      `${this.apiUrl}/${userId}/${endpoint}`, 
-      {}
-    ).pipe(
-      catchError(this.handleError)
-    );
-  }
-
+private setUserStatus(userId: string, enabled: boolean): Observable<User> {
+  // Change to:
+  return this.http.patch<User>(
+    `${this.apiUrl}/${userId}/${enabled ? 'enable' : 'disable'}`, 
+    {}
+  )
+}
   // ================ VEHICLE OPERATIONS ================
 
 /**
@@ -333,5 +330,4 @@ private mapUserTypeToRoles(userType: keyof typeof USER_TYPES): string[] {
     return this.updateUserById(userId, userData);
   }
 
-  
 }

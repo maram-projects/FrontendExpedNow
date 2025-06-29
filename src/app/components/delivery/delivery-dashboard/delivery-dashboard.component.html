@@ -12,22 +12,28 @@
         <button mat-stroked-button 
                 (click)="switchSection('overview')" 
                 [class.active]="currentSection === 'overview'">
+          <mat-icon>dashboard</mat-icon>
           Overview
         </button>
         <button mat-stroked-button 
                 (click)="switchSection('pending')" 
                 [class.active]="currentSection === 'pending'">
+          <mat-icon>assignment</mat-icon>
           Pending Assignments
+          <span class="badge" *ngIf="assignedDeliveries.length > 0">{{ assignedDeliveries.length }}</span>
         </button>
         <button mat-stroked-button 
                 (click)="switchSection('history')" 
                 [class.active]="currentSection === 'history'">
+          <mat-icon>history</mat-icon>
           Delivery History
         </button>
         <button mat-stroked-button 
                 (click)="switchSection('bonuses')" 
                 [class.active]="currentSection === 'bonuses'">
+          <mat-icon>card_giftcard</mat-icon>
           My Bonuses
+          <span class="badge bonus-badge" *ngIf="myBonuses.length > 0">{{ myBonuses.length }}</span>
         </button>
       </div>
     </div>
@@ -35,16 +41,20 @@
 
   <!-- Notifications -->
   <div class="notifications">
-    <div *ngIf="errorMessage || bonusError" class="notification error">
+    <div *ngIf="errorMessage || bonusError" class="notification error" [@slideIn]>
       <mat-icon>error</mat-icon>
       <div class="notification-content">{{ errorMessage || bonusError }}</div>
-      <button class="close-btn" (click)="clearErrorMessage()">×</button>
+      <button class="close-btn" (click)="clearErrorMessage()" mat-icon-button>
+        <mat-icon>close</mat-icon>
+      </button>
     </div>
     
-    <div *ngIf="successMessage" class="notification success">
+    <div *ngIf="successMessage" class="notification success" [@slideIn]>
       <mat-icon>check_circle</mat-icon>
       <div class="notification-content">{{ successMessage }}</div>
-      <button class="close-btn" (click)="clearSuccessMessage()">×</button>
+      <button class="close-btn" (click)="clearSuccessMessage()" mat-icon-button>
+        <mat-icon>close</mat-icon>
+      </button>
     </div>
   </div>
 
@@ -55,56 +65,91 @@
   </div>
 
   <!-- Main Content -->
-  <div class="dashboard-content">
+  <div class="dashboard-content" [class.loading]="isLoading">
+    
     <!-- Overview Section -->
-    <div *ngIf="currentSection === 'overview'" class="overview-section">
+    <div *ngIf="currentSection === 'overview'" class="overview-section" [@fadeIn]>
       <div class="metrics-grid">
-        <!-- Delivery Metrics -->
-        <mat-card class="metric-card">
+        <!-- Today's Deliveries Metric -->
+        <mat-card class="metric-card deliveries-card">
           <mat-card-header>
-            <mat-icon mat-card-avatar>local_shipping</mat-icon>
+            <div mat-card-avatar class="metric-avatar deliveries">
+              <mat-icon>local_shipping</mat-icon>
+            </div>
             <mat-card-title>Today's Deliveries</mat-card-title>
+            <mat-card-subtitle>Completed deliveries</mat-card-subtitle>
           </mat-card-header>
           <mat-card-content>
             <div class="metric-value">{{ completedDeliveriesCount }}</div>
             <div class="metric-label">Completed</div>
-          </mat-card-content>
-        </mat-card>
-
-        <!-- Availability Status -->
-        <mat-card class="metric-card">
-          <mat-card-header>
-            <mat-icon mat-card-avatar>schedule</mat-icon>
-            <mat-card-title>Availability</mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <div class="availability-status-badge" [ngClass]="availabilityStatus.toLowerCase().replace(' ', '-')">
-              {{ availabilityStatus }}
+            <div class="metric-trend" *ngIf="completedDeliveriesCount > 0">
+              <mat-icon class="trend-icon positive">trending_up</mat-icon>
+              <span>On track</span>
             </div>
           </mat-card-content>
         </mat-card>
 
-        <!-- Bonus Summary -->
-        <mat-card class="metric-card" *ngIf="bonusSummary">
+        <!-- Availability Status Metric -->
+        <mat-card class="metric-card availability-card">
           <mat-card-header>
-            <mat-icon mat-card-avatar>card_giftcard</mat-icon>
+            <div mat-card-avatar class="metric-avatar availability">
+              <mat-icon>schedule</mat-icon>
+            </div>
+            <mat-card-title>Availability</mat-card-title>
+            <mat-card-subtitle>Current status</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="availability-status-badge" [ngClass]="availabilityStatus.toLowerCase().replace(' ', '-')">
+              <mat-icon>{{ availabilityStatus === 'Available' ? 'check_circle' : availabilityStatus === 'Off Hours' ? 'access_time' : 'cancel' }}</mat-icon>
+              {{ availabilityStatus }}
+            </div>
+            <div class="metric-info" *ngIf="currentSchedule">
+              <small>Next: {{ getNextWorkingTime() }}</small>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Bonus Summary Metric -->
+        <mat-card class="metric-card bonus-card" *ngIf="bonusSummary">
+          <mat-card-header>
+            <div mat-card-avatar class="metric-avatar bonus">
+              <mat-icon>card_giftcard</mat-icon>
+            </div>
             <mat-card-title>This Month</mat-card-title>
+            <mat-card-subtitle>Total bonuses earned</mat-card-subtitle>
           </mat-card-header>
           <mat-card-content>
             <div class="metric-value">{{ bonusSummary.totalAmount | currency:'USD':'symbol':'1.0-0' }}</div>
             <div class="metric-label">Total Bonuses</div>
+            <div class="metric-breakdown">
+              <span class="breakdown-item paid">
+                <mat-icon>payments</mat-icon>
+                {{ bonusSummary.paidAmount | currency:'USD':'symbol':'1.0-0' }} Paid
+              </span>
+              <span class="breakdown-item pending">
+                <mat-icon>hourglass_empty</mat-icon>
+                {{ bonusSummary.pendingAmount | currency:'USD':'symbol':'1.0-0' }} Pending
+              </span>
+            </div>
           </mat-card-content>
         </mat-card>
 
-        <!-- Pending Assignments -->
-        <mat-card class="metric-card">
+        <!-- Pending Assignments Metric -->
+        <mat-card class="metric-card assignments-card">
           <mat-card-header>
-            <mat-icon mat-card-avatar>assignment</mat-icon>
+            <div mat-card-avatar class="metric-avatar assignments">
+              <mat-icon>assignment</mat-icon>
+            </div>
             <mat-card-title>Pending</mat-card-title>
+            <mat-card-subtitle>Awaiting your action</mat-card-subtitle>
           </mat-card-header>
           <mat-card-content>
             <div class="metric-value">{{ assignedDeliveries.length }}</div>
             <div class="metric-label">Assignments</div>
+            <div class="metric-urgency" *ngIf="getUrgentAssignments() > 0">
+              <mat-icon class="urgent-icon">priority_high</mat-icon>
+              <span>{{ getUrgentAssignments() }} urgent</span>
+            </div>
           </mat-card-content>
         </mat-card>
       </div>
@@ -113,40 +158,111 @@
       <div class="quick-actions">
         <h3>Quick Actions</h3>
         <div class="action-buttons">
-          <button mat-raised-button color="primary" (click)="switchSection('pending')" *ngIf="assignedDeliveries.length > 0">
+          <button mat-raised-button 
+                  color="primary" 
+                  (click)="switchSection('pending')" 
+                  *ngIf="assignedDeliveries.length > 0"
+                  class="action-button primary">
             <mat-icon>assignment</mat-icon>
-            View Pending Assignments ({{ assignedDeliveries.length }})
+            <span>View Pending Assignments</span>
+            <span class="action-count">({{ assignedDeliveries.length }})</span>
           </button>
-          <button mat-stroked-button (click)="switchSection('bonuses')">
+          
+          <button mat-stroked-button 
+                  (click)="switchSection('bonuses')"
+                  class="action-button">
             <mat-icon>card_giftcard</mat-icon>
-            View My Bonuses
+            <span>View My Bonuses</span>
+            <span class="action-count" *ngIf="myBonuses.length > 0">({{ myBonuses.length }})</span>
           </button>
-          <button mat-stroked-button (click)="navigateToAvailability()">
+<div *ngFor="let delivery of assignedDeliveries">
+  <button mat-icon-button (click)="openChat(delivery.id)" matTooltip="Open Chat">
+    <mat-icon>chat</mat-icon>
+  </button>
+</div>
+          
+          <button mat-stroked-button 
+                  (click)="navigateToAvailability()"
+                  class="action-button">
             <mat-icon>schedule</mat-icon>
-            Manage Availability
+            <span>Manage Availability</span>
           </button>
+          
+          <button mat-stroked-button 
+                  (click)="switchSection('history')"
+                  class="action-button">
+            <mat-icon>history</mat-icon>
+            <span>View History</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Recent Activity Summary -->
+      <div class="recent-activity" *ngIf="deliveryHistory.length > 0">
+        <h3>Recent Activity</h3>
+        <div class="activity-list">
+          <div *ngFor="let delivery of getRecentDeliveries(); trackBy: trackByDeliveryId" 
+               class="activity-item">
+            <div class="activity-icon">
+              <mat-icon [ngClass]="'status-' + delivery.status.toLowerCase()">
+                {{ getStatusIcon(delivery.status || 'UNKNOWN') }}
+              </mat-icon>
+            </div>
+            <div class="activity-content">
+              <div class="activity-title">
+                Delivery #{{ shortenId(delivery.id) }} - {{ delivery.status | titlecase }}
+              </div>
+              <div class="activity-subtitle">
+                {{ getDeliveryAddress(delivery) }}
+              </div>
+              <div class="activity-time">
+                {{ delivery.actionTime | date:'short' }}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Bonuses Section -->
-    <div *ngIf="currentSection === 'bonuses'" class="bonuses-section">
+    <div *ngIf="currentSection === 'bonuses'" class="bonuses-section" [@fadeIn]>
       <div class="section-header">
-        <h2>My Bonuses</h2>
+        <div class="section-title">
+          <h2>My Bonuses</h2>
+          <p class="section-subtitle">Track your bonus earnings and rewards</p>
+        </div>
         <div class="section-controls">
-          <button mat-stroked-button (click)="refreshBonuses()" [disabled]="isBonusLoading">
-            <mat-icon>refresh</mat-icon>
+          <button mat-stroked-button 
+                  (click)="refreshBonuses()" 
+                  [disabled]="isBonusLoading"
+                  class="refresh-btn">
+            <mat-icon [class.spinning]="isBonusLoading">refresh</mat-icon>
             Refresh
           </button>
           
           <mat-form-field appearance="outline" class="filter-select">
             <mat-label>Filter by Status</mat-label>
             <mat-select [(ngModel)]="bonusFilter" (selectionChange)="onBonusFilterChange()">
-              <mat-option value="ALL">All Bonuses</mat-option>
-              <mat-option [value]="BonusStatus.PENDING">Pending</mat-option>
-              <mat-option [value]="BonusStatus.APPROVED">Approved</mat-option>
-              <mat-option [value]="BonusStatus.PAID">Paid</mat-option>
-              <mat-option [value]="BonusStatus.REJECTED">Rejected</mat-option>
+              <mat-option value="ALL">
+                <mat-icon>all_inclusive</mat-icon>
+                All Bonuses
+              </mat-option>
+              <mat-option [value]="BonusStatus.PENDING">
+                <mat-icon>hourglass_empty</mat-icon>
+                Pending
+              </mat-option>
+              <mat-option [value]="BonusStatus.APPROVED">
+                <mat-icon>check_circle</mat-icon>
+                Approved
+              </mat-option>
+              <mat-option [value]="BonusStatus.PAID">
+                <mat-icon>payments</mat-icon>
+                Paid
+              </mat-option>
+              <mat-option [value]="BonusStatus.REJECTED">
+                <mat-icon>cancel</mat-icon>
+                Rejected
+              </mat-option>
             </mat-select>
           </mat-form-field>
         </div>
@@ -163,6 +279,7 @@
               <div class="stat-info">
                 <div class="stat-value">{{ totalBonusAmount | currency:'USD':'symbol':'1.0-0' }}</div>
                 <div class="stat-label">Total Earned</div>
+                <div class="stat-sublabel">{{ myBonuses.length }} bonuses</div>
               </div>
             </mat-card-content>
           </mat-card>
@@ -175,6 +292,7 @@
               <div class="stat-info">
                 <div class="stat-value">{{ pendingBonusAmount | currency:'USD':'symbol':'1.0-0' }}</div>
                 <div class="stat-label">Pending</div>
+                <div class="stat-sublabel">{{ getPendingBonusCount() }} bonuses</div>
               </div>
             </mat-card-content>
           </mat-card>
@@ -187,6 +305,20 @@
               <div class="stat-info">
                 <div class="stat-value">{{ paidBonusAmount | currency:'USD':'symbol':'1.0-0' }}</div>
                 <div class="stat-label">Paid Out</div>
+                <div class="stat-sublabel">{{ getPaidBonusCount() }} bonuses</div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card class="stat-card target">
+            <mat-card-content>
+              <div class="stat-icon">
+                <mat-icon>flag</mat-icon>
+              </div>
+              <div class="stat-info">
+                <div class="stat-value">{{ getProgressPercentage() | number:'1.0-0' }}%</div>
+                <div class="stat-label">Monthly Goal</div>
+                <div class="stat-sublabel">{{ monthlyBonusTarget | currency:'USD':'symbol':'1.0-0' }} target</div>
               </div>
             </mat-card-content>
           </mat-card>
@@ -195,14 +327,31 @@
         <!-- Monthly Progress -->
         <mat-card class="progress-card">
           <mat-card-header>
-            <mat-card-title>Monthly Bonus Progress</mat-card-title>
+            <mat-card-title>
+              <mat-icon>trending_up</mat-icon>
+              Monthly Bonus Progress
+            </mat-card-title>
+            <mat-card-subtitle>
+              Track your progress towards this month's bonus target
+            </mat-card-subtitle>
           </mat-card-header>
           <mat-card-content>
             <div class="progress-info">
-              <span>{{ paidBonusAmount | currency:'USD':'symbol':'1.0-0' }} of {{ monthlyBonusTarget | currency:'USD':'symbol':'1.0-0' }}</span>
+              <div class="progress-values">
+                <span class="current-amount">{{ paidBonusAmount | currency:'USD':'symbol':'1.0-0' }}</span>
+                <span class="target-amount">of {{ monthlyBonusTarget | currency:'USD':'symbol':'1.0-0' }}</span>
+              </div>
               <span class="progress-percentage">{{ getProgressPercentage() | number:'1.0-0' }}%</span>
             </div>
-            <mat-progress-bar mode="determinate" [value]="getProgressPercentage()"></mat-progress-bar>
+            <mat-progress-bar 
+              mode="determinate" 
+              [value]="getProgressPercentage()"
+              [color]="getProgressPercentage() >= 100 ? 'accent' : 'primary'">
+            </mat-progress-bar>
+            <div class="progress-message" *ngIf="getProgressPercentage() >= 100">
+              <mat-icon>celebration</mat-icon>
+              <span>Congratulations! You've reached your monthly target!</span>
+            </div>
           </mat-card-content>
         </mat-card>
       </div>
@@ -215,197 +364,416 @@
 
       <!-- Empty State -->
       <div *ngIf="!isBonusLoading && filteredBonuses.length === 0" class="empty-state">
-        <mat-icon class="empty-icon">card_giftcard</mat-icon>
+        <div class="empty-icon">
+          <mat-icon>card_giftcard</mat-icon>
+        </div>
         <h3>No Bonuses Found</h3>
-        <p *ngIf="bonusFilter === 'ALL'">You don't have any bonuses yet. Complete deliveries to earn bonuses!</p>
-        <p *ngIf="bonusFilter !== 'ALL'">No bonuses found with status: {{ bonusFilter }}</p>
-        <button mat-stroked-button (click)="bonusFilter = 'ALL'; onBonusFilterChange()" *ngIf="bonusFilter !== 'ALL'">
-          <mat-icon>clear</mat-icon> Clear Filter
-        </button>
+        <p *ngIf="bonusFilter === 'ALL'">
+          You don't have any bonuses yet. Complete deliveries to start earning bonuses!
+        </p>
+        <p *ngIf="bonusFilter !== 'ALL'">
+          No bonuses found with status: <strong>{{ bonusFilter | titlecase }}</strong>
+        </p>
+        <div class="empty-actions">
+          <button mat-stroked-button 
+                  (click)="bonusFilter = 'ALL'; onBonusFilterChange()" 
+                  *ngIf="bonusFilter !== 'ALL'">
+            <mat-icon>clear</mat-icon> 
+            Clear Filter
+          </button>
+          <button mat-raised-button 
+                  color="primary" 
+                  (click)="switchSection('pending')" 
+                  *ngIf="assignedDeliveries.length > 0">
+            <mat-icon>assignment</mat-icon>
+            View Pending Assignments
+          </button>
+        </div>
       </div>
 
       <!-- Bonuses List -->
       <div *ngIf="!isBonusLoading && filteredBonuses.length > 0" class="bonuses-container">
-        <mat-card *ngFor="let bonus of filteredBonuses; trackBy: trackByBonusId" class="bonus-card">
-          <div class="bonus-header">
-           <div class="bonus-type">
-  <mat-icon>{{ getBonusTypeIcon(bonus.type || '') }}</mat-icon>
-  <span>{{ (bonus.type || 'GENERAL') | titlecase }}</span>
-</div>
-            <div class="bonus-status" [ngClass]="getBonusStatusClass(bonus.status)">
-              <mat-icon>{{ getBonusStatusIcon(bonus.status) }}</mat-icon>
-              <span>{{ bonus.status | titlecase }}</span>
-            </div>
+        <div class="bonuses-header">
+          <span class="results-count">
+            Showing {{ filteredBonuses.length }} of {{ myBonuses.length }} bonuses
+          </span>
+          <div class="sort-options">
+            <mat-form-field appearance="outline" class="sort-select">
+              <mat-label>Sort by</mat-label>
+              <mat-select [(ngModel)]="bonusSortBy" (selectionChange)="sortBonuses()">
+                <mat-option value="date-desc">Newest First</mat-option>
+                <mat-option value="date-asc">Oldest First</mat-option>
+                <mat-option value="amount-desc">Highest Amount</mat-option>
+                <mat-option value="amount-asc">Lowest Amount</mat-option>
+                <mat-option value="status">Status</mat-option>
+              </mat-select>
+            </mat-form-field>
           </div>
+        </div>
+
+        <div class="bonus-cards">
+          <mat-card *ngFor="let bonus of filteredBonuses; trackBy: trackByBonusId" 
+                    class="bonus-card"
+                    [ngClass]="'bonus-' + bonus.status.toLowerCase()">
+            <div class="bonus-header">
+              <div class="bonus-type">
+                <div class="type-icon">
+                  <mat-icon>{{ getBonusTypeIcon(bonus.type || '') }}</mat-icon>
+                </div>
+                <div class="type-info">
+                  <span class="type-name">{{ (bonus.type || 'GENERAL') | titlecase }}</span>
+                  <span class="bonus-id">#{{ shortenId(bonus.id) }}</span>
+                </div>
+              </div>
+              <div class="bonus-status" [ngClass]="getBonusStatusClass(bonus.status)">
+                <mat-icon>{{ getBonusStatusIcon(bonus.status) }}</mat-icon>
+                <span>{{ bonus.status | titlecase }}</span>
+              </div>
+            </div>
+            
+            <mat-card-content>
+              <div class="bonus-amount-section">
+                <div class="bonus-amount">
+                  {{ bonus.amount | currency:'USD':'symbol':'1.0-0' }}
+                </div>
+                <div class="bonus-date">
+                  Earned {{ bonus.createdAt | date:'mediumDate' }}
+                </div>
+              </div>
+              
+              <div class="bonus-description" *ngIf="bonus.description">
+                <mat-icon>description</mat-icon>
+                <span>{{ bonus.description }}</span>
+              </div>
+              
+              <div class="bonus-details">
+                <div class="detail-row" *ngIf="bonus.deliveryId">
+                  <mat-icon>local_shipping</mat-icon>
+                  <span class="detail-label">Delivery:</span>
+                  <span class="detail-value">#{{ shortenId(bonus.deliveryId) }}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <mat-icon>calendar_today</mat-icon>
+                  <span class="detail-label">Created:</span>
+                  <span class="detail-value">{{ bonus.createdAt | date:'medium' }}</span>
+                </div>
+                
+                <div class="detail-row" *ngIf="bonus.paidAt">
+                  <mat-icon>payment</mat-icon>
+                  <span class="detail-label">Paid:</span>
+                  <span class="detail-value">{{ bonus.paidAt | date:'medium' }}</span>
+                </div>
+                
+                <div class="detail-row" *ngIf="bonus.notes">
+                  <mat-icon>note</mat-icon>
+                  <span class="detail-label">Notes:</span>
+                  <span class="detail-value">{{ bonus.notes }}</span>
+                </div>
+              </div>
+            </mat-card-content>
+
+            <mat-card-actions *ngIf="bonus.status === BonusStatus.PENDING">
+              <div class="pending-actions">
+                <mat-icon>info</mat-icon>
+                <span>Awaiting approval from management</span>
+              </div>
+            </mat-card-actions>
+          </mat-card>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending Assignments Section -->
+    <div *ngIf="currentSection === 'pending'" class="pending-section" [@fadeIn]>
+      <div class="section-header">
+        <div class="section-title">
+          <h2>Pending Delivery Assignments</h2>
+          <p class="section-subtitle">Review and respond to your assigned deliveries</p>
+        </div>
+        <div class="section-controls">
+          <button mat-stroked-button 
+                  (click)="refreshAssignments()" 
+                  [disabled]="isLoading"
+                  class="refresh-btn">
+            <mat-icon [class.spinning]="isLoading">refresh</mat-icon>
+            Refresh
+          </button>
           
+          <div class="view-toggle">
+            <mat-button-toggle-group [(value)]="viewMode" class="view-toggle-group">
+              <mat-button-toggle value="cards">
+                <mat-icon>view_module</mat-icon>
+                Cards
+              </mat-button-toggle>
+              <mat-button-toggle value="table">
+                <mat-icon>view_list</mat-icon>
+                Table
+              </mat-button-toggle>
+            </mat-button-toggle-group>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assignment Summary -->
+      <div *ngIf="assignedDeliveries.length > 0" class="assignment-summary">
+        <mat-card class="summary-card">
           <mat-card-content>
-            <div class="bonus-amount">
-              {{ bonus.amount | currency:'USD':'symbol':'1.0-0' }}
-            </div>
-            
-            <div class="bonus-description" *ngIf="bonus.description">
-              {{ bonus.description }}
-            </div>
-            
-            <div class="bonus-details">
-              <div class="detail-row" *ngIf="bonus.deliveryId">
-                <mat-icon>local_shipping</mat-icon>
-                <span>Delivery: #{{ shortenId(bonus.deliveryId) }}</span>
+            <div class="summary-stats">
+              <div class="stat-item">
+                <mat-icon>assignment</mat-icon>
+                <span class="stat-number">{{ assignedDeliveries.length }}</span>
+                <span class="stat-label">Total Assignments</span>
               </div>
-              
-              <div class="detail-row">
-                <mat-icon>calendar_today</mat-icon>
-                <span>Earned: {{ bonus.createdAt | date:'medium' }}</span>
+              <div class="stat-item urgent" *ngIf="getUrgentAssignments() > 0">
+                <mat-icon>priority_high</mat-icon>
+                <span class="stat-number">{{ getUrgentAssignments() }}</span>
+                <span class="stat-label">Urgent</span>
               </div>
-              
-              <div class="detail-row" *ngIf="bonus.paidAt">
-                <mat-icon>payment</mat-icon>
-                <span>Paid: {{ bonus.paidAt | date:'medium' }}</span>
-              </div>
-              
-              <div class="detail-row" *ngIf="bonus.notes">
-                <mat-icon>note</mat-icon>
-                <span>{{ bonus.notes }}</span>
+              <div class="stat-item">
+                <mat-icon>schedule</mat-icon>
+                <span class="stat-number">{{ getTodayAssignments() }}</span>
+                <span class="stat-label">Today</span>
               </div>
             </div>
           </mat-card-content>
         </mat-card>
       </div>
-    </div>
-
-    <!-- Pending Assignments Section -->
-    <div *ngIf="currentSection === 'pending'" class="pending-section">
-      <div class="section-header">
-        <h2>Pending Delivery Assignments</h2>
-        <div class="section-controls">
-          <button mat-stroked-button (click)="refreshAssignments()" [disabled]="isLoading">
-            <mat-icon>refresh</mat-icon>
-            Refresh
-          </button>
-          
-          <div class="view-toggle">
-            <button mat-stroked-button 
-                    (click)="viewMode = 'cards'" 
-                    [class.active]="viewMode === 'cards'">
-              <mat-icon>view_module</mat-icon> Cards
-            </button>
-            <button mat-stroked-button 
-                    (click)="viewMode = 'table'" 
-                    [class.active]="viewMode === 'table'">
-              <mat-icon>view_list</mat-icon> Table
-            </button>
-          </div>
-        </div>
-      </div>
 
       <!-- Empty State -->
       <div *ngIf="!isLoading && assignedDeliveries.length === 0" class="empty-state">
-        <mat-icon class="empty-icon">assignment</mat-icon>
+        <div class="empty-icon">
+          <mat-icon>assignment</mat-icon>
+        </div>
         <h3>No Pending Assignments</h3>
         <p>You currently have no pending delivery assignments.</p>
-        <button mat-stroked-button (click)="refreshAssignments()">
-          <mat-icon>refresh</mat-icon> Check Again
-        </button>
+        <div class="empty-actions">
+          <button mat-stroked-button (click)="refreshAssignments()">
+            <mat-icon>refresh</mat-icon> 
+            Check Again
+          </button>
+          <button mat-raised-button 
+                  color="primary" 
+                  (click)="navigateToAvailability()">
+            <mat-icon>schedule</mat-icon>
+            Update Availability
+          </button>
+        </div>
       </div>
 
       <!-- Cards View -->
-      <div *ngIf="!isLoading && assignedDeliveries.length > 0 && viewMode === 'cards'" class="cards-container">
-        <mat-card *ngFor="let delivery of assignedDeliveries" class="delivery-card">
+      <div *ngIf="!isLoading && assignedDeliveries.length > 0 && viewMode === 'cards'" 
+           class="cards-container">
+        <mat-card *ngFor="let delivery of assignedDeliveries; trackBy: trackByDeliveryId" 
+                  class="delivery-card"
+                  [ngClass]="{ 'urgent': isUrgentDelivery(delivery), 'today': isTodayDelivery(delivery) }">
+          
           <div class="card-header">
-            <span class="delivery-id">#{{shortenId(delivery.id)}}</span>
-            <span class="delivery-status">{{delivery.status || 'PENDING'}}</span>
+            <div class="delivery-info-header">
+              <span class="delivery-id">#{{ shortenId(delivery.id) }}</span>
+              <div class="delivery-badges">
+                <span class="delivery-status" [ngClass]="'status-' + (delivery.status || 'pending').toLowerCase()">
+                  {{ delivery.status || 'PENDING' }}
+                </span>
+                <span class="priority-badge" 
+                      [ngClass]="'priority-' + getDeliveryPriority(delivery).toLowerCase()"
+                      *ngIf="getDeliveryPriority(delivery) !== 'NORMAL'">
+                  {{ getDeliveryPriority(delivery) }}
+                </span>
+                <span class="urgent-badge" *ngIf="isUrgentDelivery(delivery)">
+                  <mat-icon>priority_high</mat-icon>
+                  URGENT
+                </span>
+              </div>
+            </div>
           </div>
           
           <div class="card-content">
             <div class="delivery-info">
               <div class="info-row">
-                <mat-icon>location_on</mat-icon>
-                <div>
-                  <span class="info-label">Pickup:</span>
-                  <span class="info-value">{{delivery.pickupAddress}}</span>
+                <div class="info-icon">
+                  <mat-icon>location_on</mat-icon>
+                </div>
+                <div class="info-content">
+                  <span class="info-label">Pickup Location:</span>
+                  <span class="info-value">{{ delivery.pickupAddress }}</span>
                 </div>
               </div>
+              
               <div class="info-row">
-                <mat-icon>local_shipping</mat-icon>
-                <div>
-                  <span class="info-label">Delivery:</span>
-                  <span class="info-value">{{delivery.deliveryAddress}}</span>
+                <div class="info-icon">
+                  <mat-icon>local_shipping</mat-icon>
+                </div>
+                <div class="info-content">
+                  <span class="info-label">Delivery Address:</span>
+                  <span class="info-value">{{ getDeliveryAddress(delivery) }}</span>
                 </div>
               </div>
+              
               <div class="info-row">
-                <mat-icon>access_time</mat-icon>
-                <div>
-                  <span class="info-label">When:</span>
+                <div class="info-icon">
+                  <mat-icon>access_time</mat-icon>
+                </div>
+                <div class="info-content">
+                  <span class="info-label">Scheduled Time:</span>
                   <span class="info-value">
-                    {{delivery.scheduledDate | date:'mediumDate'}} 
-                    at {{delivery.scheduledDate | date:'shortTime'}}
+                    {{ delivery.scheduledDate | date:'EEEE, MMM d, y' }} 
+                    at {{ delivery.scheduledDate | date:'shortTime' }}
                   </span>
                 </div>
               </div>
-              <div class="info-row" *ngIf="delivery.packageDescription">
-                <mat-icon>inventory</mat-icon>
-                <div>
-                  <span class="info-label">Package:</span>
-                  <span class="info-value">{{delivery.packageDescription}}</span>
+              
+              <div class="info-row" *ngIf="getRecipientName(delivery) !== 'Unknown Recipient'">
+                <div class="info-icon">
+                  <mat-icon>person</mat-icon>
+                </div>
+                <div class="info-content">
+                  <span class="info-label">Recipient:</span>
+                  <span class="info-value">{{ getRecipientName(delivery) }}</span>
                 </div>
               </div>
+              
+              <div class="info-row" *ngIf="getRecipientPhone(delivery) !== 'Phone not available'">
+                <div class="info-icon">
+                  <mat-icon>phone</mat-icon>
+                </div>
+                <div class="info-content">
+                  <span class="info-label">Phone:</span>
+                  <span class="info-value">{{ getRecipientPhone(delivery) }}</span>
+                </div>
+              </div>
+              
+              <div class="info-row" *ngIf="delivery.packageDescription">
+                <div class="info-icon">
+                  <mat-icon>inventory</mat-icon>
+                </div>
+                <div class="info-content">
+                  <span class="info-label">Package:</span>
+                  <span class="info-value">{{ delivery.packageDescription }}</span>
+                </div>
+              </div>
+              
               <div class="info-row" *ngIf="delivery.packageWeight">
-                <mat-icon>fitness_center</mat-icon>
-                <div>
+                <div class="info-icon">
+                  <mat-icon>fitness_center</mat-icon>
+                </div>
+                <div class="info-content">
                   <span class="info-label">Weight:</span>
-                  <span class="info-value">{{delivery.packageWeight}} kg</span>
+                  <span class="info-value">{{ delivery.packageWeight }} kg</span>
+                </div>
+              </div>
+
+              <div class="info-row" *ngIf="delivery.specialInstructions">
+                <div class="info-icon">
+                  <mat-icon>info</mat-icon>
+                </div>
+                <div class="info-content">
+                  <span class="info-label">Special Instructions:</span>
+                  <span class="info-value">{{ delivery.specialInstructions }}</span>
                 </div>
               </div>
             </div>
           </div>
           
-          <mat-card-actions>
-            <button mat-raised-button 
-                    color="primary" 
-                    (click)="acceptDelivery(delivery.id)"
-                    [disabled]="isProcessing(delivery.id)">
-              <mat-icon>check</mat-icon>
-              {{isProcessing(delivery.id) ? 'Processing...' : 'Accept'}}
+         <!-- Inside the card-actions section for each delivery card -->
+<mat-card-actions class="card-actions">
+    <div class="action-buttons">
+        <button mat-raised-button 
+                color="primary" 
+                (click)="acceptDelivery(delivery.id)"
+                [disabled]="isProcessing(delivery.id)"
+                class="accept-btn">
+            <mat-icon>{{ isProcessing(delivery.id) ? 'hourglass_empty' : 'check' }}</mat-icon>
+            {{ isProcessing(delivery.id) ? 'Processing...' : 'Accept' }}
+        </button>
+        
+        <button mat-stroked-button 
+                color="warn" 
+                (click)="rejectDelivery(delivery.id)"
+                [disabled]="isProcessing(delivery.id)"
+                class="reject-btn">
+            <mat-icon>{{ isProcessing(delivery.id) ? 'hourglass_empty' : 'close' }}</mat-icon>
+            {{ isProcessing(delivery.id) ? 'Processing...' : 'Reject' }}
+        </button>
+        
+        <!-- Chat button added here on the right -->
+        <button mat-icon-button 
+                (click)="openChat(delivery.id)"
+                matTooltip="Open Chat"
+                class="chat-btn">
+            <mat-icon>chat</mat-icon>
+        </button>
+        
+        <button mat-icon-button 
+                [matMenuTriggerFor]="actionMenu"
+                class="more-actions-btn">
+            <mat-icon>more_vert</mat-icon>
+        </button>
+        
+        <mat-menu #actionMenu="matMenu">
+            <button mat-menu-item (click)="viewDeliveryDetails(delivery.id)">
+                <mat-icon>visibility</mat-icon>
+                <span>View Details</span>
             </button>
-            
-            <button mat-stroked-button 
-                    color="warn" 
-                    (click)="rejectDelivery(delivery.id)"
-                    [disabled]="isProcessing(delivery.id)">
-              <mat-icon>close</mat-icon>
-              {{isProcessing(delivery.id) ? 'Processing...' : 'Reject'}}
+            <button mat-menu-item (click)="getDirections(delivery)">
+                <mat-icon>directions</mat-icon>
+                <span>Get Directions</span>
             </button>
-          </mat-card-actions>
+        </mat-menu>
+    </div>
+</mat-card-actions>
         </mat-card>
       </div>
 
       <!-- Table View -->
-      <div *ngIf="!isLoading && assignedDeliveries.length > 0 && viewMode === 'table'" class="table-container">
+      <div *ngIf="!isLoading && assignedDeliveries.length > 0 && viewMode === 'table'" 
+           class="table-container">
         <table mat-table [dataSource]="assignedDeliveries" class="deliveries-table">
           <!-- ID Column -->
           <ng-container matColumnDef="id">
             <th mat-header-cell *matHeaderCellDef>ID</th>
-            <td mat-cell *matCellDef="let delivery">#{{shortenId(delivery.id)}}</td>
+            <td mat-cell *matCellDef="let delivery">
+              <div class="table-cell-content">
+                #{{ shortenId(delivery.id) }}
+                <span class="urgent-indicator" *ngIf="isUrgentDelivery(delivery)">
+                  <mat-icon>priority_high</mat-icon>
+                </span>
+              </div>
+            </td>
           </ng-container>
 
           <!-- Pickup Column -->
           <ng-container matColumnDef="pickup">
             <th mat-header-cell *matHeaderCellDef>Pickup</th>
-            <td mat-cell *matCellDef="let delivery">{{delivery.pickupAddress}}</td>
+            <td mat-cell *matCellDef="let delivery">
+              <div class="address-cell">
+                <span class="address-main">{{ delivery.pickupAddress }}</span>
+              </div>
+            </td>
           </ng-container>
 
           <!-- Delivery Column -->
           <ng-container matColumnDef="delivery">
             <th mat-header-cell *matHeaderCellDef>Delivery</th>
-            <td mat-cell *matCellDef="let delivery">{{delivery.deliveryAddress}}</td>
+            <td mat-cell *matCellDef="let delivery">
+              <div class="address-cell">
+                <span class="address-main">{{ getDeliveryAddress(delivery) }}</span>
+                <span class="recipient-info" *ngIf="getRecipientName(delivery) !== 'Unknown Recipient'">
+                  {{ getRecipientName(delivery) }}
+                </span>
+              </div>
+            </td>
           </ng-container>
 
           <!-- Date Column -->
           <ng-container matColumnDef="date">
             <th mat-header-cell *matHeaderCellDef>Date/Time</th>
             <td mat-cell *matCellDef="let delivery">
-              {{delivery.scheduledDate | date:'mediumDate'}}<br>
-              {{delivery.scheduledDate | date:'shortTime'}}
+              <div class="date-cell">
+                <span class="date-main">{{ delivery.scheduledDate | date:'MMM d, y' }}</span>
+                <span class="time-main">{{ delivery.scheduledDate | date:'shortTime' }}</span>
+                <span class="today-indicator" *ngIf="isTodayDelivery(delivery)">TODAY</span>
+              </div>
             </td>
           </ng-container>
 
@@ -413,8 +781,23 @@
           <ng-container matColumnDef="package">
             <th mat-header-cell *matHeaderCellDef>Package</th>
             <td mat-cell *matCellDef="let delivery">
-              {{delivery.packageDescription || 'N/A'}}<br>
-              <span *ngIf="delivery.packageWeight">{{delivery.packageWeight}} kg</span>
+              <div class="package-cell">
+                <span class="package-description">{{ delivery.packageDescription || 'N/A' }}</span>
+                <span class="package-weight" *ngIf="delivery.packageWeight">
+                  {{ delivery.packageWeight }} kg
+                </span>
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Priority Column -->
+          <ng-container matColumnDef="priority">
+            <th mat-header-cell *matHeaderCellDef>Priority</th>
+            <td mat-cell *matCellDef="let delivery">
+              <span class="priority-badge" 
+                    [ngClass]="'priority-' + getDeliveryPriority(delivery).toLowerCase()">
+                {{ getDeliveryPriority(delivery) }}
+              </span>
             </td>
           </ng-container>
 
@@ -422,90 +805,251 @@
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef>Actions</th>
             <td mat-cell *matCellDef="let delivery" class="actions-cell">
-              <button mat-stroked-button 
-                      color="primary" 
-                      (click)="acceptDelivery(delivery.id)"
-                      [disabled]="isProcessing(delivery.id)">
-                <mat-icon>check</mat-icon> Accept
-              </button>
-              <button mat-stroked-button 
-                      color="warn" 
-                      (click)="rejectDelivery(delivery.id)"
-                      [disabled]="isProcessing(delivery.id)">
-                <mat-icon>close</mat-icon> Reject
-              </button>
+              <div class="table-actions">
+                <button mat-stroked-button 
+                        color="primary" 
+                        (click)="acceptDelivery(delivery.id)"
+                        [disabled]="isProcessing(delivery.id)"
+                        class="table-action-btn">
+                  <mat-icon>check</mat-icon> 
+                  {{ isProcessing(delivery.id) ? 'Processing...' : 'Accept' }}
+                </button>
+                <button mat-stroked-button 
+                        color="warn" 
+                        (click)="rejectDelivery(delivery.id)"
+                        [disabled]="isProcessing(delivery.id)"
+                        class="table-action-btn">
+                  <mat-icon>close</mat-icon> 
+                  {{ isProcessing(delivery.id) ? 'Processing...' : 'Reject' }}
+                </button>
+                
+                <button mat-icon-button 
+                        [matMenuTriggerFor]="tableActionMenu"
+                        class="table-more-btn">
+                  <mat-icon>more_vert</mat-icon>
+                </button>
+                
+                <mat-menu #tableActionMenu="matMenu">
+                  <button mat-menu-item (click)="viewDeliveryDetails(delivery.id)">
+                    <mat-icon>visibility</mat-icon>
+                    <span>View Details</span>
+                  </button>
+                  <button mat-menu-item (click)="getDirections(delivery)">
+                    <mat-icon>directions</mat-icon>
+                    <span>Get Directions</span>
+                  </button>
+                </mat-menu>
+              </div>
             </td>
           </ng-container>
 
-          <tr mat-header-row *matHeaderRowDef="['id', 'pickup', 'delivery', 'date', 'package', 'actions']"></tr>
-          <tr mat-row *matRowDef="let row; columns: ['id', 'pickup', 'delivery', 'date', 'package', 'actions'];"></tr>
+          <tr mat-header-row *matHeaderRowDef="['id', 'pickup', 'delivery', 'date', 'package', 'priority', 'actions']"></tr>
+          <tr mat-row *matRowDef="let row; columns: ['id', 'pickup', 'delivery', 'date', 'package', 'priority', 'actions'];" 
+              [ngClass]="{ 'urgent-row': isUrgentDelivery(row), 'today-row': isTodayDelivery(row) }"></tr>
         </table>
       </div>
     </div>
 
     <!-- History Section -->
-    <div *ngIf="currentSection === 'history'" class="history-section">
+    <div *ngIf="currentSection === 'history'" class="history-section" [@fadeIn]>
       <div class="section-header">
-        <h2>Delivery History</h2>
+        <div class="section-title">
+          <h2>Delivery History</h2>
+          <p class="section-subtitle">View your completed delivery assignments</p>
+        </div>
         <div class="section-controls">
-          <button mat-stroked-button (click)="refreshHistory()" [disabled]="isHistoryLoading">
-            <mat-icon>refresh</mat-icon> Refresh
+          <button mat-stroked-button 
+                  (click)="refreshHistory()" 
+                  [disabled]="isHistoryLoading"
+                  class="refresh-btn">
+            <mat-icon [class.spinning]="isHistoryLoading">refresh</mat-icon> 
+            Refresh
           </button>
           
           <mat-form-field appearance="outline" class="filter-select">
-            <mat-label>Filter</mat-label>
+            <mat-label>Filter by Status</mat-label>
             <mat-select [(ngModel)]="historyFilter" (selectionChange)="applyHistoryFilter()">
-              <mat-option value="all">All Deliveries</mat-option>
-              <mat-option value="ACCEPTED">Accepted</mat-option>
-              <mat-option value="REJECTED">Rejected</mat-option>
-              <mat-option value="COMPLETED">Completed</mat-option>
+              <mat-option value="all">
+                <mat-icon>all_inclusive</mat-icon>
+                All Deliveries
+              </mat-option>
+              <mat-option value="ACCEPTED">
+                <mat-icon>check_circle</mat-icon>
+                Accepted
+              </mat-option>
+              <mat-option value="REJECTED">
+                <mat-icon>cancel</mat-icon>
+                Rejected
+              </mat-option>
+              <mat-option value="COMPLETED">
+                <mat-icon>task_alt</mat-icon>
+                Completed
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+          
+          <mat-form-field appearance="outline" class="date-filter">
+            <mat-label>Date Range</mat-label>
+            <mat-select [(ngModel)]="dateFilter" (selectionChange)="applyDateFilter()">
+              <mat-option value="all">All Time</mat-option>
+              <mat-option value="today">Today</mat-option>
+              <mat-option value="week">This Week</mat-option>
+              <mat-option value="month">This Month</mat-option>
+              <mat-option value="custom">Custom Range</mat-option>
             </mat-select>
           </mat-form-field>
         </div>
       </div>
 
+      <!-- History Stats -->
+      <div *ngIf="deliveryHistory.length > 0" class="history-stats">
+        <div class="stats-grid">
+          <mat-card class="stat-card completed">
+            <mat-card-content>
+              <div class="stat-icon">
+                <mat-icon>task_alt</mat-icon>
+              </div>
+              <div class="stat-info">
+                <div class="stat-value">{{ getCompletedDeliveriesCount() }}</div>
+                <div class="stat-label">Completed</div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card class="stat-card accepted">
+            <mat-card-content>
+              <div class="stat-icon">
+                <mat-icon>check_circle</mat-icon>
+              </div>
+              <div class="stat-info">
+                <div class="stat-value">{{ getAcceptedDeliveriesCount() }}</div>
+                <div class="stat-label">Accepted</div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card class="stat-card rejected">
+            <mat-card-content>
+              <div class="stat-icon">
+                <mat-icon>cancel</mat-icon>
+              </div>
+              <div class="stat-info">
+                <div class="stat-value">{{ getRejectedDeliveriesCount() }}</div>
+                <div class="stat-label">Rejected</div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card class="stat-card success-rate">
+            <mat-card-content>
+              <div class="stat-icon">
+                <mat-icon>trending_up</mat-icon>
+              </div>
+              <div class="stat-info">
+                <div class="stat-value">{{ getSuccessRate() | number:'1.0-0' }}%</div>
+                <div class="stat-label">Success Rate</div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="isHistoryLoading" class="loading-state">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Loading delivery history...</p>
+      </div>
+
       <!-- Empty State -->
       <div *ngIf="!isHistoryLoading && filteredHistory.length === 0" class="empty-state">
-        <mat-icon class="empty-icon">history</mat-icon>
+        <div class="empty-icon">
+          <mat-icon>history</mat-icon>
+        </div>
         <h3>No Delivery History</h3>
-        <p>Your delivery history will appear here once you accept or reject assignments.</p>
+        <p *ngIf="historyFilter === 'all' && dateFilter === 'all'">
+          Your delivery history will appear here once you accept or reject assignments.
+        </p>
+        <p *ngIf="historyFilter !== 'all' || dateFilter !== 'all'">
+          No deliveries found matching your current filters.
+        </p>
+        <div class="empty-actions">
+          <button mat-stroked-button 
+                  (click)="clearHistoryFilters()" 
+                  *ngIf="historyFilter !== 'all' || dateFilter !== 'all'">
+            <mat-icon>clear</mat-icon> 
+            Clear Filters
+          </button>
+          <button mat-raised-button 
+                  color="primary" 
+                  (click)="switchSection('pending')" 
+                  *ngIf="assignedDeliveries.length > 0">
+            <mat-icon>assignment</mat-icon>
+            View Pending Assignments
+          </button>
+        </div>
       </div>
 
       <!-- History Table -->
       <div *ngIf="!isHistoryLoading && filteredHistory.length > 0" class="history-table-container">
+        <div class="table-header">
+          <span class="results-count">
+            Showing {{ filteredHistory.length }} of {{ deliveryHistory.length }} deliveries
+          </span>
+          <div class="table-actions">
+            <button mat-stroked-button (click)="exportHistory()">
+              <mat-icon>download</mat-icon>
+              Export
+            </button>
+          </div>
+        </div>
+
         <table mat-table [dataSource]="filteredHistory" class="history-table">
           <!-- ID Column -->
           <ng-container matColumnDef="id">
             <th mat-header-cell *matHeaderCellDef>ID</th>
-            <td mat-cell *matCellDef="let delivery">#{{shortenId(delivery.id)}}</td>
+            <td mat-cell *matCellDef="let delivery">#{{ shortenId(delivery.id) }}</td>
           </ng-container>
 
           <!-- Pickup Column -->
           <ng-container matColumnDef="pickup">
             <th mat-header-cell *matHeaderCellDef>Pickup</th>
-            <td mat-cell *matCellDef="let delivery">{{delivery.pickupAddress}}</td>
+            <td mat-cell *matCellDef="let delivery">
+              <div class="address-cell">
+                {{ delivery.pickupAddress }}
+              </div>
+            </td>
           </ng-container>
 
           <!-- Delivery Column -->
           <ng-container matColumnDef="delivery">
             <th mat-header-cell *matHeaderCellDef>Delivery</th>
-            <td mat-cell *matCellDef="let delivery">{{delivery.deliveryAddress}}</td>
+            <td mat-cell *matCellDef="let delivery">
+              <div class="address-cell">
+                {{ getDeliveryAddress(delivery) }}
+              </div>
+            </td>
           </ng-container>
 
-          <!-- Date Column -->
-          <ng-container matColumnDef="date">
-            <th mat-header-cell *matHeaderCellDef>Date/Time</th>
+          <!-- Scheduled Date Column -->
+          <ng-container matColumnDef="scheduledDate">
+            <th mat-header-cell *matHeaderCellDef>Scheduled</th>
             <td mat-cell *matCellDef="let delivery">
-              {{delivery.scheduledDate | date:'mediumDate'}}<br>
-              {{delivery.scheduledDate | date:'shortTime'}}
+              <div class="date-cell">
+                <span>{{ delivery.scheduledDate | date:'MMM d, y' }}</span>
+                <small>{{ delivery.scheduledDate | date:'shortTime' }}</small>
+              </div>
             </td>
           </ng-container>
 
           <!-- Status Column -->
           <ng-container matColumnDef="status">
             <th mat-header-cell *matHeaderCellDef>Status</th>
-            <td mat-cell *matCellDef="let delivery" [ngClass]="'status-' + delivery.status.toLowerCase()">
-              {{delivery.status}}
+            <td mat-cell *matCellDef="let delivery">
+            <span class="status-badge" [ngClass]="'status-' + delivery.status.toLowerCase()">
+  <mat-icon>{{ getStatusIcon(delivery.status || 'UNKNOWN') }}</mat-icon>
+  {{ delivery.status }}
+</span>
+
             </td>
           </ng-container>
 
@@ -513,53 +1057,120 @@
           <ng-container matColumnDef="actionDate">
             <th mat-header-cell *matHeaderCellDef>Action Date</th>
             <td mat-cell *matCellDef="let delivery">
-              {{delivery.actionTime | date:'short'}}
+              <div class="date-cell">
+                <span>{{ delivery.actionTime | date:'MMM d, y' }}</span>
+                <small>{{ delivery.actionTime | date:'shortTime' }}</small>
+              </div>
             </td>
           </ng-container>
 
-          <tr mat-header-row *matHeaderRowDef="['id', 'pickup', 'delivery', 'date', 'status', 'actionDate']"></tr>
-          <tr mat-row *matRowDef="let row; columns: ['id', 'pickup', 'delivery', 'date', 'status', 'actionDate'];"></tr>
+          <!-- Actions Column -->
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let delivery" class="actions-cell">
+              <button mat-icon-button 
+                      [matMenuTriggerFor]="historyActionMenu"
+                      class="history-action-btn">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              
+              <mat-menu #historyActionMenu="matMenu">
+                <button mat-menu-item (click)="viewDeliveryDetails(delivery.id)">
+                  <mat-icon>visibility</mat-icon>
+                  <span>View Details</span>
+                </button>
+                <button mat-menu-item 
+                        (click)="viewOnMap(delivery)" 
+                        *ngIf="delivery.status === 'COMPLETED'">
+                  <mat-icon>map</mat-icon>
+                  <span>View on Map</span>
+                </button>
+              </mat-menu>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="['id', 'pickup', 'delivery', 'scheduledDate', 'status', 'actionDate', 'actions']"></tr>
+          <tr mat-row *matRowDef="let row; columns: ['id', 'pickup', 'delivery', 'scheduledDate', 'status', 'actionDate', 'actions'];" 
+              [ngClass]="'status-row-' + row.status?.toLowerCase()"></tr>
         </table>
       </div>
     </div>
   </div>
 
-  <!-- Availability Schedule Section - New Modern Design at Bottom -->
+  <!-- Availability Schedule Section - Enhanced Modern Design -->
   <div class="availability-section">
     <div class="availability-header">
       <div class="availability-title-group">
-        <h3>Availability Schedule</h3>
-        <div class="availability-status-badge" [ngClass]="availabilityStatus.toLowerCase().replace(' ', '-')">
+        <h3>
           <mat-icon>schedule</mat-icon>
+          Availability Schedule
+        </h3>
+        <div class="availability-status-badge" [ngClass]="availabilityStatus.toLowerCase().replace(' ', '-')">
+          <mat-icon>{{ availabilityStatus === 'Available' ? 'check_circle' : availabilityStatus === 'Off Hours' ? 'access_time' : 'cancel' }}</mat-icon>
           {{ availabilityStatus }}
         </div>
       </div>
-      <button mat-stroked-button 
-              (click)="toggleAvailabilityPanel()" 
-              class="expand-btn">
-        <mat-icon>{{ showAvailabilityPanel ? 'expand_less' : 'expand_more' }}</mat-icon>
-        {{ showAvailabilityPanel ? 'Hide' : 'Show' }} Details
-      </button>
+      <div class="availability-controls">
+        <button mat-icon-button 
+                (click)="refreshSchedule()" 
+                [disabled]="isScheduleLoading"
+                matTooltip="Refresh schedule">
+          <mat-icon [class.spinning]="isScheduleLoading">refresh</mat-icon>
+        </button>
+        <button mat-stroked-button 
+                (click)="toggleAvailabilityPanel()" 
+                class="expand-btn">
+          <mat-icon>{{ showAvailabilityPanel ? 'expand_less' : 'expand_more' }}</mat-icon>
+          {{ showAvailabilityPanel ? 'Hide' : 'Show' }} Details
+        </button>
+      </div>
     </div>
 
     <!-- Quick Schedule Overview -->
     <div class="schedule-overview">
       <div class="overview-grid">
-        <div *ngFor="let day of getDaysOfWeek()" 
+        <div *ngFor="let day of getDaysOfWeek(); trackBy: trackByDay" 
              class="day-overview" 
              [class.working]="isWorkingDay(day)"
-             [class.today]="isToday(day)">
-          <div class="day-name">{{ day.substring(0, 3) }}</div>
-          <div class="day-time" *ngIf="isWorkingDay(day)">
-            {{ getDayStartTime(day) }} - {{ getDayEndTime(day) }}
+             [class.today]="isToday(day)"
+             [class.tomorrow]="isTomorrow(day)">
+          <div class="day-header">
+            <div class="day-name">{{ day.substring(0, 3) }}</div>
+            <div class="day-date">{{ getDayDate(day) }}</div>
           </div>
-          <div class="day-time off" *ngIf="!isWorkingDay(day)">Off</div>
+          <div class="day-content">
+            <div class="day-time" *ngIf="isWorkingDay(day)">
+              <mat-icon>access_time</mat-icon>
+              <span>{{ getDayStartTime(day) }} - {{ getDayEndTime(day) }}</span>
+            </div>
+            <div class="day-time off" *ngIf="!isWorkingDay(day)">
+              <mat-icon>cancel</mat-icon>
+              <span>Off</span>
+            </div>
+          </div>
+          <div class="day-indicator" *ngIf="isToday(day)">TODAY</div>
+          <div class="day-indicator tomorrow" *ngIf="isTomorrow(day)">TOMORROW</div>
+        </div>
+      </div>
+      
+      <div class="schedule-summary" *ngIf="currentSchedule">
+        <div class="summary-item">
+          <mat-icon>work</mat-icon>
+          <span>{{ getWorkingDaysCount() }} working days this week</span>
+        </div>
+        <div class="summary-item">
+          <mat-icon>schedule</mat-icon>
+          <span>{{ getTotalWorkingHours() }} total hours</span>
+        </div>
+        <div class="summary-item" *ngIf="getNextWorkingTime()">
+          <mat-icon>notifications</mat-icon>
+          <span>Next: {{ getNextWorkingTime() }}</span>
         </div>
       </div>
     </div>
 
     <!-- Detailed Schedule Panel -->
-    <div *ngIf="showAvailabilityPanel" class="schedule-details">
+    <div *ngIf="showAvailabilityPanel" class="schedule-details" [@expandCollapse]>
       <div *ngIf="isScheduleLoading" class="loading-spinner">
         <mat-spinner diameter="32"></mat-spinner>
         <span>Loading schedule...</span>
@@ -567,23 +1178,43 @@
       
       <div *ngIf="scheduleError" class="error-message">
         <mat-icon>warning</mat-icon>
-        {{ scheduleError }}
-        <button mat-button (click)="loadSchedule()">Retry</button>
+        <div class="error-content">
+          <h4>Failed to load schedule</h4>
+          <p>{{ scheduleError }}</p>
+          <button mat-raised-button color="primary" (click)="loadSchedule()">
+            <mat-icon>refresh</mat-icon>
+            Retry
+          </button>
+        </div>
       </div>
       
       <!-- Schedule Component -->
-      <app-schedule
-        *ngIf="currentSchedule && !isScheduleLoading"
-        [schedule]="currentSchedule"
-        (scheduleChange)="onScheduleUpdated($event)">
-      </app-schedule>
+      <div *ngIf="currentSchedule && !isScheduleLoading" class="schedule-component-container">
+   <app-schedule
+  [schedule]="currentSchedule"
+  [isEditable]="true"
+  [showValidation]="true"
+  (scheduleChange)="onScheduleUpdated($event)"
+  (scheduleValidation)="onScheduleValidation($event)">
+</app-schedule>
+      </div>
       
       <div *ngIf="!currentSchedule && !isScheduleLoading && !scheduleError" class="no-schedule">
-        <mat-icon>schedule</mat-icon>
-        <p>No schedule set</p>
-        <button mat-raised-button color="primary" (click)="initializeNewSchedule()">
-          Create Schedule
-        </button>
+        <div class="no-schedule-icon">
+          <mat-icon>schedule</mat-icon>
+        </div>
+        <h4>No Schedule Set</h4>
+        <p>Set up your availability schedule to start receiving delivery assignments.</p>
+        <div class="no-schedule-actions">
+          <button mat-raised-button color="primary" (click)="initializeNewSchedule()">
+            <mat-icon>add</mat-icon>
+            Create Schedule
+          </button>
+          <button mat-stroked-button (click)="loadDefaultSchedule()">
+            <mat-icon>schedule</mat-icon>
+            Use Default Hours
+          </button>
+        </div>
       </div>
     </div>
   </div>

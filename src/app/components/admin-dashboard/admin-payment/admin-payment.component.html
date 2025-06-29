@@ -190,13 +190,20 @@
             <td class="col-amount">
               <div class="amount-cell">
                 <div class="amount-info">
-                  <span class="final-amount">
-                    {{ formatCurrency(payment.finalAmountAfterDiscount) }}
-                  </span>
-                  <span *ngIf="payment.discountAmount && payment.discountAmount > 0" 
-                        class="original-amount">
-                    <del>{{ formatCurrency(payment.amount) }}</del>
-                  </span>
+                
+    <!-- Show converted amount for Stripe payments -->
+    <div *ngIf="payment.convertedAmount" class="converted-amount">
+      ≈ {{ formatConvertedAmount(payment) }}
+    </div>
+               <span class="final-amount">
+  {{ formatCurrency(payment.finalAmountAfterDiscount, payment.currency) }}
+</span>
+
+<!-- For original amount -->
+<span *ngIf="payment.discountAmount && payment.discountAmount > 0" 
+      class="original-amount">
+  <del>{{ formatCurrency(payment.amount, payment.currency) }}</del>
+</span>
                 </div>
                 <div *ngIf="payment.discountCode" class="discount-info">
                   <small class="discount-code">
@@ -253,18 +260,17 @@
                 <div class="action-buttons">
                   
                   <!-- Refund Button -->
-                  <button 
-                    *ngIf="canRefund(payment)"
-                    class="action-btn refund-btn"
-                    (click)="refundPayment(payment.id)"
-                    [disabled]="isLoading"
-                    [title]="'Refund payment ' + payment.id"
-                    [@buttonHover]="buttonStates['refund-' + payment.id] || 'normal'"
-                    (mouseenter)="onButtonHover('refund-' + payment.id, true)"
-                    (mouseleave)="onButtonHover('refund-' + payment.id, false)">
-                    <span class="btn-icon">↩️</span>
-                    <span class="btn-text">Refund</span>
-                  </button>
+                 <button 
+    *ngIf="canRefund(payment)"
+    class="action-btn refund-btn"
+    (click)="refundPayment(payment)" 
+    [title]="'Refund payment ' + payment.id"
+    [@buttonHover]="buttonStates['refund-' + payment.id] || 'normal'"
+    (mouseenter)="onButtonHover('refund-' + payment.id, true)"
+    (mouseleave)="onButtonHover('refund-' + payment.id, false)">
+    <span class="btn-icon">↩️</span>
+    <span class="btn-text">Refund</span>
+</button>
 
                   <!-- Cancel Button -->
                   <button 

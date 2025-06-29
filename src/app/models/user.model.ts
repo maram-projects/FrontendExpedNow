@@ -20,6 +20,7 @@ export interface User {
   businessAddress?: string;
   deliveryRadius?: number;
   
+  
   // Vehicle fields
   vehicleType?: string;
   vehicleBrand?: string;

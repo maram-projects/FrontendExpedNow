@@ -71,7 +71,9 @@ interface PaymentStatusUpdateBody {
   processingPayment?: boolean; // Specifically for payment processing
   rating?: number | null;
   rated?: boolean | null;
+  specialInstructions?: string;
 
+  actionTime?: Date; // Add this property
 
   
   // Add these missing properties

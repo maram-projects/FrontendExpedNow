@@ -783,4 +783,11 @@ showMoreContactOptions() {
   // مثلا نفتح modal أو نعرض خيارات إضافية
 }
 
+
+
+
+openChat(): void {
+  if (!this.delivery?.id) return;
+  this.router.navigate(['/client/deliveries', this.delivery.id, 'chat']);
+}
 }

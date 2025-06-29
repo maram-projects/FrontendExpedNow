@@ -62,6 +62,9 @@ export class DeliveryDashboardComponent implements OnInit {
   successMessage: string = '';
   processingItems: Set<string> = new Set<string>();
 
+  bonusSortBy: string = 'date-desc';
+dateFilter: string = 'all';
+
   // Metrics
   completedDeliveriesCount: number = 0;
   availabilityStatus: string = 'Available';
@@ -203,16 +206,18 @@ loadBonusSummary(): void {
   onBonusFilterChange(): void {
     this.applyBonusFilter();
   }
+calculateBonusStats(): void {
+  this.totalBonusAmount = this.myBonuses.reduce((sum, bonus) => sum + (bonus.amount || 0), 0);
+  
+  this.pendingBonusAmount = this.myBonuses
+    .filter(b => b.status === BonusStatus.PENDING || b.status === BonusStatus.APPROVED)
+    .reduce((sum, bonus) => sum + (bonus.amount || 0), 0);
+    
+  this.paidBonusAmount = this.myBonuses
+    .filter(b => b.status === BonusStatus.PAID)
+    .reduce((sum, bonus) => sum + (bonus.amount || 0), 0);
+}
 
-  calculateBonusStats(): void {
-    this.totalBonusAmount = this.myBonuses.reduce((sum, bonus) => sum + bonus.amount, 0);
-    this.pendingBonusAmount = this.myBonuses
-      .filter(b => b.status === BonusStatus.PENDING || b.status === BonusStatus.APPROVED)
-      .reduce((sum, bonus) => sum + bonus.amount, 0);
-    this.paidBonusAmount = this.myBonuses
-      .filter(b => b.status === BonusStatus.PAID)
-      .reduce((sum, bonus) => sum + bonus.amount, 0);
-  }
 
   getBonusStatusClass(status: BonusStatus): string {
     switch (status) {
@@ -245,11 +250,10 @@ loadBonusSummary(): void {
     }
   }
 
-  getProgressPercentage(): number {
-    if (this.monthlyBonusTarget === 0) return 0;
-    return Math.min((this.paidBonusAmount / this.monthlyBonusTarget) * 100, 100);
-  }
-
+ getProgressPercentage(): number {
+  if (this.monthlyBonusTarget <= 0) return 0;
+  return Math.min((this.paidBonusAmount / this.monthlyBonusTarget) * 100, 100);
+}
   refreshBonuses(): void {
     this.loadMyBonuses();
     this.loadBonusSummary();
@@ -360,9 +364,10 @@ loadBonusSummary(): void {
     }
   }
 
-  shortenId(id: string): string {
-    return id ? id.substring(0, 8) : '';
-  }
+shortenId(id: string): string {
+  return id ? id.substring(0, 8) : '';
+}
+
 
   toggleAvailabilityPanel(): void {
     this.showAvailabilityPanel = !this.showAvailabilityPanel;
@@ -587,9 +592,9 @@ loadBonusSummary(): void {
     return icons[status] || 'help';
   }
 
-  viewDeliveryDetails(delivery: DeliveryRequest): void {
-    this.router.navigate(['/delivery/details', delivery.id]);
-  }
+ viewDeliveryDetails(deliveryId: string): void {
+  this.router.navigate(['/delivery/details', deliveryId]);
+}
 
   getSelectedDeliveryPerson(): User | null {
     return this.selectedDeliveryPerson;
@@ -621,10 +626,30 @@ loadBonusSummary(): void {
     return delivery.priority || 'NORMAL';
   }
 
-  getEstimatedDeliveryTime(delivery: DeliveryRequest): Date | null {
-    return delivery.estimatedDeliveryTime || delivery.scheduledDeliveryTime || null;
+getEstimatedDeliveryTime(delivery: DeliveryRequest): Date | null {
+  // Handle all possible cases safely
+  const time = delivery.estimatedDeliveryTime || delivery.scheduledDeliveryTime;
+  
+  if (!time) return null;
+  
+  if (time instanceof Date) {
+    return time;
+  } else if (typeof time === 'string') {
+    return new Date(time);
+  } else if (Array.isArray(time)) {
+    // Handle array format [year, month, day, ...]
+    return new Date(
+      time[0], 
+      time[1] - 1, 
+      time[2], 
+      time[3] || 0, 
+      time[4] || 0, 
+      time[5] || 0
+    );
   }
-
+  
+  return null;
+}
   getDaysOfWeek(): string[] {
     return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   }
@@ -653,4 +678,349 @@ loadBonusSummary(): void {
     const todayName = dayNames[today.getDay()];
     return day === todayName;
   }
+
+
+
+  getPendingBonusCount(): number {
+  return this.myBonuses.filter(b => b.status === BonusStatus.PENDING || b.status === BonusStatus.APPROVED).length;
+}
+getPaidBonusCount(): number {
+  return this.myBonuses.filter(b => b.status === BonusStatus.PAID).length;
+}
+
+
+sortBonuses(): void {
+  if (!this.bonusSortBy) return;
+  
+  const [field, direction] = this.bonusSortBy.split('-');
+  
+  this.filteredBonuses.sort((a, b) => {
+    // Handle different field types safely
+    let valueA: any, valueB: any;
+    
+    if (field === 'date') {
+      valueA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      valueB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    } else if (field === 'amount') {
+      valueA = a.amount || 0;
+      valueB = b.amount || 0;
+    } else if (field === 'status') {
+      // String comparison for status
+      valueA = a.status || '';
+      valueB = b.status || '';
+      return direction === 'desc' 
+        ? valueB.localeCompare(valueA) 
+        : valueA.localeCompare(valueB);
+    } else {
+      return 0;
+    }
+    
+    // Numeric comparison for date and amount
+    if (direction === 'desc') {
+      return valueB - valueA;
+    } else {
+      return valueA - valueB;
+    }
+  });
+}
+
+
+
+
+getUrgentAssignments(): number {
+  return this.assignedDeliveries.filter(d => this.isUrgentDelivery(d)).length;
+}
+ 
+
+getTodayAssignments(): number {
+  const today = new Date().toDateString();
+  return this.assignedDeliveries.filter(d => {
+    if (!d.scheduledDate) return false;
+    return new Date(d.scheduledDate).toDateString() === today;
+  }).length;
+}
+isUrgentDelivery(delivery: DeliveryRequest): boolean {
+  return delivery.priority === 'HIGH' || delivery.priority === 'URGENT';
+}
+ 
+
+
+isTodayDelivery(delivery: DeliveryRequest): boolean {
+  if (!delivery.scheduledDate) return false;
+  return new Date(delivery.scheduledDate).toDateString() === new Date().toDateString();
+}
+
+
+getRecentDeliveries(): DeliveryRequest[] {
+  // Sort by actionTime descending
+  return [...this.deliveryHistory]
+    .sort((a, b) => {
+      const aTime = a.actionTime ? new Date(a.actionTime).getTime() : 0;
+      const bTime = b.actionTime ? new Date(b.actionTime).getTime() : 0;
+      return bTime - aTime;
+    })
+    .slice(0, 5);
+}
+getDirections(delivery: DeliveryRequest): void {
+  // Implement directions logic here
+  console.log('Getting directions for delivery:', delivery);
+}
+ 
+
+getCompletedDeliveriesCount(): number {
+  return this.deliveryHistory.filter(d => d.status === 'COMPLETED').length;
+} 
+
+getAcceptedDeliveriesCount(): number {
+  return this.deliveryHistory.filter(d => d.status === 'ACCEPTED').length;
+}
+
+getRejectedDeliveriesCount(): number {
+  return this.deliveryHistory.filter(d => d.status === 'REJECTED').length;
+}
+
+
+
+getSuccessRate(): number {
+  const completed = this.getCompletedDeliveriesCount();
+  const total = this.deliveryHistory.length;
+  return total > 0 ? Math.round((completed / total) * 100) : 0;
+}
+
+
+
+applyDateFilter(): void {
+  const now = new Date();
+  let startDate: Date;
+  
+  switch (this.dateFilter) {
+    case 'today':
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      break;
+    case 'week':
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+      break;
+    case 'month':
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      break;
+    default:
+      this.applyHistoryFilter();
+      return;
+  }
+  
+  this.filteredHistory = this.deliveryHistory.filter(d => {
+    if (!d.actionTime) return false;
+    return new Date(d.actionTime) >= startDate;
+  });
+}
+
+clearHistoryFilters(): void {
+  this.historyFilter = 'all';
+  this.dateFilter = 'all';
+  this.applyHistoryFilter();
+}
+
+exportHistory(): void {
+  // Implement export logic here
+  console.log('Exporting history');
+}
+
+viewOnMap(delivery: DeliveryRequest): void {
+  // Implement map view logic here
+  console.log('Viewing delivery on map:', delivery);
+}
+
+
+// Schedule related methods
+refreshSchedule(): void {
+  this.loadSchedule();
+}
+
+
+trackByDay(index: number, day: string): string {
+  return day;
+}
+
+isTomorrow(day: string): boolean {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return day === dayNames[tomorrow.getDay()];
+}
+
+ getDayDate(day: string): string {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const today = new Date();
+    const dayIndex = days.indexOf(day);
+    
+    if (dayIndex === -1) return '';
+    
+    // Calculate date safely
+    const targetDate = new Date(today);
+    const diff = (dayIndex - today.getDay() + 7) % 7;
+    targetDate.setDate(today.getDate() + diff);
+    
+    return targetDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+
+
+getWorkingDaysCount(): number {
+  if (!this.currentSchedule) return 0;
+  
+  return Object.values(this.currentSchedule.weeklySchedule)
+    .filter(day => day.working)
+    .length;
+}
+
+getTotalWorkingHours(): number {
+  if (!this.currentSchedule) return 0;
+  
+  return Object.values(this.currentSchedule.weeklySchedule)
+    .filter(day => day.working)
+    .reduce((total, day) => {
+      const start = this.timeStringToMinutes(day.startTime || '');
+      const end = this.timeStringToMinutes(day.endTime || '');
+      return total + (end - start) / 60;
+    }, 0);
+}
+
+getNextWorkingTime(): string {
+  if (!this.currentSchedule) return 'Not scheduled';
+  
+  const now = new Date();
+  const todayName = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'][now.getDay()] as DayOfWeek;
+  const todaySchedule = this.currentSchedule.weeklySchedule[todayName];
+  
+  // If today is a working day and current time is before end time
+  if (todaySchedule?.working) {
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    const endTime = this.timeStringToMinutes(todaySchedule.endTime || '');
+    
+    if (currentTime < endTime) {
+      return 'Today until ' + todaySchedule.endTime;
+    }
+  }
+  
+  // Find next working day
+  const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+  let nextDayIndex = (now.getDay() + 1) % 7;
+  let daysChecked = 0;
+  
+  while (daysChecked < 7) {
+    const dayName = days[nextDayIndex] as DayOfWeek;
+    const daySchedule = this.currentSchedule.weeklySchedule[dayName];
+    
+    if (daySchedule?.working) {
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      return `${dayNames[nextDayIndex]} at ${daySchedule.startTime}`;
+    }
+    
+    nextDayIndex = (nextDayIndex + 1) % 7;
+    daysChecked++;
+  }
+  
+  return 'No upcoming shifts';
+}
+onScheduleValidation(event: any): void {
+  // Handle schedule validation if needed
+  console.log('Schedule validation event:', event);
+}
+
+loadDefaultSchedule(): void {
+  const currentUser = this.authService.getCurrentUser();
+  if (!currentUser?.userId) return;
+  
+  this.currentSchedule = {
+    userId: currentUser.userId,
+    weeklySchedule: {
+      [DayOfWeek.MONDAY]: { working: true, startTime: '08:00', endTime: '17:00' },
+      [DayOfWeek.TUESDAY]: { working: true, startTime: '08:00', endTime: '17:00' },
+      [DayOfWeek.WEDNESDAY]: { working: true, startTime: '08:00', endTime: '17:00' },
+      [DayOfWeek.THURSDAY]: { working: true, startTime: '08:00', endTime: '17:00' },
+      [DayOfWeek.FRIDAY]: { working: true, startTime: '08:00', endTime: '17:00' },
+      [DayOfWeek.SATURDAY]: { working: false, startTime: null, endTime: null },
+      [DayOfWeek.SUNDAY]: { working: false, startTime: null, endTime: null }
+    },
+    monthlySchedule: {}
+  };
+  
+  this.updateAvailabilityStatus();
+}
+
+
+// Add this method to your DeliveryDashboardComponent
+calculateDuration(start: any, end: any): string {
+  // Helper function to parse date from various formats
+  const parseDate = (dateValue: any): Date | null => {
+    if (!dateValue) return null;
+    
+    // If it's already a Date object
+    if (dateValue instanceof Date) return dateValue;
+    
+    // If it's a string in array format (backend format)
+    if (typeof dateValue === 'string' && dateValue.includes(',')) {
+      const parts = dateValue.split(',').map(Number);
+      return new Date(parts[0], parts[1] - 1, parts[2], parts[3], parts[4], parts[5], parts[6]);
+    }
+    
+    // If it's an array (backend format)
+    if (Array.isArray(dateValue)) {
+      return new Date(
+        dateValue[0],         // year
+        dateValue[1] - 1,     // month (0-indexed)
+        dateValue[2],         // day
+        dateValue[3] || 0,    // hours
+        dateValue[4] || 0,    // minutes
+        dateValue[5] || 0,    // seconds
+        dateValue[6] || 0     // milliseconds
+      );
+    }
+    
+    // Try to parse as ISO string
+    try {
+      const parsedDate = new Date(dateValue);
+      return isNaN(parsedDate.getTime()) ? null : parsedDate;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  // Parse both dates
+  const startDate = parseDate(start);
+  const endDate = parseDate(end);
+
+  // Validate dates
+  if (!startDate || !endDate) return 'N/A';
+  if (startDate > endDate) return 'Invalid duration';
+
+  // Calculate duration in milliseconds
+  const durationMs = endDate.getTime() - startDate.getTime();
+  
+  // Calculate time components
+  const seconds = Math.floor(durationMs / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  // Format the duration
+  if (days > 0) {
+    return `${days} day${days !== 1 ? 's' : ''} ${hours % 24} hour${hours % 24 !== 1 ? 's' : ''}`;
+  }
+  
+  if (hours > 0) {
+    const remainingMinutes = minutes % 60;
+    return `${hours} hour${hours !== 1 ? 's' : ''} ${remainingMinutes} minute${remainingMinutes !== 1 ? 's' : ''}`;
+  }
+  
+  if (minutes > 0) {
+    return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+  }
+  
+  return `${seconds} second${seconds !== 1 ? 's' : ''}`;
+}
+
+openChat(deliveryId: string): void {
+  this.router.navigate(['/delivery/deliveries', deliveryId, 'chat']);
+}
 }
