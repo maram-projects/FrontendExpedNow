@@ -11,6 +11,9 @@ import { UserService } from '../../../services/user.service';
 import { FormsModule } from '@angular/forms';
 import { DayOfWeek } from '../../../models/day-of-week.enum';
 import { HttpErrorResponse } from '@angular/common/http';
+import { PaymentStatus } from '../../../models/Payment.model';
+import { BonusStatus } from '../../../models/bonus.model';
+import { DiscountType } from '../../../models/discount.model';
 
 @Component({
   selector: 'app-admin-dashboard-component',
@@ -21,6 +24,10 @@ import { HttpErrorResponse } from '@angular/common/http';
   schemas: [CUSTOM_ELEMENTS_SCHEMA]
 })
 export class AdminDashboardComponentComponent implements OnInit {
+  paymentStatusData: any[] = [];
+  discountTypeData: any[] = [];
+  bonusStatusData: any[] = [];
+  revenueData: any[] = [];
   stats: DashboardStats | null = null;
   loading = true;
   error = '';
@@ -30,17 +37,20 @@ export class AdminDashboardComponentComponent implements OnInit {
   isLoading = false;
   checkDateTime: Date = new Date();
 
-  scheduleDebugInfo: string = '';
-  selectedDeliveryPersonId: string | null = null;
-
-  
   // Day of Week enum for template access
   DayOfWeek = DayOfWeek;
   
   // Chart data
   view: [number, number] = [700, 400];
-  colorScheme = { domain: ['#5AA454', '#A10A28', '#C7B42C', '#AAAAAA'] };
+  colorScheme = { 
+    domain: ['#5AA454', '#A10A28', '#C7B42C', '#AAAAAA', '#E44D25', '#7aa3e5', '#a8385d', '#aae3f5'] 
+  };
   userRoleData: any[] = [];
+  
+  // Enums for template
+  PaymentStatus = PaymentStatus;
+  BonusStatus = BonusStatus;
+  DiscountType = DiscountType;
   
   constructor(
     private adminService: AdminService,
@@ -67,15 +77,9 @@ export class AdminDashboardComponentComponent implements OnInit {
     
     this.adminService.getDashboardStats().subscribe({
       next: (data: DashboardStats) => {
+        console.log('Dashboard stats received:', data);
         this.stats = data;
-        
-        if (data?.usersByRole) {
-          this.userRoleData = Object.entries(data.usersByRole).map(([name, value]) => ({
-            name,
-            value
-          }));
-        }
-        
+        this.processChartData(data);
         this.loading = false;
         this.cdr.detectChanges();
       },
@@ -95,6 +99,68 @@ export class AdminDashboardComponentComponent implements OnInit {
       }
     });
   }
+
+  private processChartData(data: DashboardStats): void {
+    // Process user roles data
+    if (data?.usersByRole) {
+      this.userRoleData = Object.entries(data.usersByRole).map(([name, value]) => ({
+        name: this.formatRoleName(name),
+        value
+      }));
+      console.log('User role data:', this.userRoleData);
+    }
+    
+    // Process payment status data
+    if (data?.paymentStatusBreakdown) {
+      this.paymentStatusData = Object.entries(data.paymentStatusBreakdown)
+        .map(([name, value]) => ({ 
+          name: this.formatStatusName(name), 
+          value 
+        }));
+      console.log('Payment status data:', this.paymentStatusData);
+    }
+    
+    // Process discount type data
+    if (data?.discountTypeBreakdown) {
+      this.discountTypeData = Object.entries(data.discountTypeBreakdown)
+        .map(([name, value]) => ({ 
+          name: this.formatDiscountType(name), 
+          value 
+        }));
+      console.log('Discount type data:', this.discountTypeData);
+    }
+    
+    // Process bonus status data
+    if (data?.bonusStatusBreakdown) {
+      this.bonusStatusData = Object.entries(data.bonusStatusBreakdown)
+        .map(([name, value]) => ({ 
+          name: this.formatStatusName(name), 
+          value 
+        }));
+      console.log('Bonus status data:', this.bonusStatusData);
+    }
+    
+    // Create revenue data
+    this.revenueData = [
+      { name: 'Total Revenue', value: data.totalRevenue || 0 },
+      { name: 'Bonuses Paid', value: data.bonusAmountPaid || 0 }
+    ];
+    console.log('Revenue data:', this.revenueData);
+  }
+
+  private formatRoleName(role: string): string {
+    return role.replace('ROLE_', '').replace('_', ' ').toLowerCase()
+      .replace(/\b\w/g, l => l.toUpperCase());
+  }
+
+  private formatStatusName(status: string): string {
+    return status.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+  }
+
+  private formatDiscountType(type: string): string {
+    return type.replace('_', ' ').toLowerCase()
+      .replace(/\b\w/g, l => l.toUpperCase());
+  }
   
   loadDeliveryPersons(): void {
     this.isLoading = true;
@@ -113,11 +179,13 @@ export class AdminDashboardComponentComponent implements OnInit {
     });
   }
 
-  
-
-  
-
-  
+  formatCurrency(amount: number | undefined): string {
+    if (amount === undefined || amount === null) return 'TND 0.00';
+    return new Intl.NumberFormat('en-TN', {
+      style: 'currency',
+      currency: 'TND'
+    }).format(amount);
+  }
 
   formatDate(date: Date): string {
     if (!date) return '';
@@ -147,5 +215,28 @@ export class AdminDashboardComponentComponent implements OnInit {
       [DayOfWeek.SUNDAY]: 'Sunday'
     };
     return dayNames[day] || day.toString();
+  }
+
+  // Helper method to format role names for display
+  formatRoleForDisplay(roles: string[] | undefined): string {
+    if (!roles || roles.length === 0) return 'No roles';
+    
+    return roles.map(role => {
+      if (role.includes('ADMIN')) return 'Admin';
+      if (role.includes('DELIVERY')) return 'Delivery';
+      if (role.includes('CLIENT')) return 'Client';
+      return role.replace('ROLE_', '');
+    }).join(', ');
+  }
+
+  // Helper method to get badge class for roles
+  getRoleBadgeClass(roles: string[] | undefined): string {
+    if (!roles || roles.length === 0) return 'bg-secondary';
+    
+    if (roles.some(role => role.includes('ADMIN'))) return 'bg-danger';
+    if (roles.some(role => role.includes('DELIVERY'))) return 'bg-info';
+    if (roles.some(role => role.includes('CLIENT'))) return 'bg-primary';
+    
+    return 'bg-secondary';
   }
 }

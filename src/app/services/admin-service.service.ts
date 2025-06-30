@@ -17,27 +17,25 @@ export class AdminService {
     private http: HttpClient,
     private router: Router ,  private authService: AuthService
   ) {}
-  
-  getDashboardStats(): Observable<any> {
-    const token = this.authService.getToken(); // جيب التوكن من AuthService
-    if (!token) {
-      console.error('ما فماش توكن متاح!');
-      return throwError(() => new Error('المستخدم موش متصل'));
+  private handleError(error: HttpErrorResponse): Observable<never> {
+  let errorMessage = 'An unknown error occurred';
+  if (error.error instanceof ErrorEvent) {
+    errorMessage = `Error: ${error.error.message}`;
+  } else {
+    errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
+    if (error.error?.message) {
+      errorMessage += `\nDetails: ${error.error.message}`;
     }
-
-    const headers = new HttpHeaders({
-      Authorization: `Bearer ${token}`, // ضيف التوكن في الـ Headers
-      'Content-Type': 'application/json',
-    });
-
-    return this.http.get<any>(`${this.apiUrl}/dashboard-stats`, { headers }).pipe(
-      catchError((error) => {
-        console.error('غلط في جلب البيانات:', error);
-        return throwError(() => new Error(error.message));
-      })
-    );
   }
-
+  console.error(errorMessage);
+  return throwError(() => new Error(errorMessage));
+}
+ getDashboardStats(): Observable<DashboardStats> {
+  return this.http.get<DashboardStats>(`${this.apiUrl}/dashboard-stats`).pipe(
+    catchError(this.handleError)
+  );
+}
+  
   getPendingApprovals(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/pending-approvals`);
   }

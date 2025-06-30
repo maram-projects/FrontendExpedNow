@@ -118,71 +118,158 @@
         </div>
       }
 
-      @if (stats.totalOrders !== undefined) {
-        <div class="col-xl-3 col-md-6 mb-4">
-          <div class="card border-left-secondary shadow h-100 py-2">
-            <div class="card-body">
-              <div class="row no-gutters align-items-center">
-                <div class="col mr-2">
-                  <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
-                    Total Orders
-                  </div>
-                  <div class="h5 mb-0 font-weight-bold text-gray-800">
-                    {{stats.totalOrders}}
-                  </div>
+      <!-- Payment Metrics -->
+      <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+          <div class="card-body">
+            <div class="row no-gutters align-items-center">
+              <div class="col mr-2">
+                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                  Total Payments
                 </div>
-                <div class="col-auto">
-                  <i class="fas fa-shopping-cart fa-2x text-gray-300"></i>
+                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  {{stats.totalPayments || 0}}
                 </div>
+              </div>
+              <div class="col-auto">
+                <i class="fas fa-credit-card fa-2x text-gray-300"></i>
               </div>
             </div>
           </div>
         </div>
-      }
+      </div>
 
-      @if (stats.pendingOrders !== undefined) {
-        <div class="col-xl-3 col-md-6 mb-4">
-          <div class="card border-left-danger shadow h-100 py-2">
-            <div class="card-body">
-              <div class="row no-gutters align-items-center">
-                <div class="col mr-2">
-                  <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
-                    Pending Orders
-                  </div>
-                  <div class="h5 mb-0 font-weight-bold text-gray-800">
-                    {{stats.pendingOrders}}
-                  </div>
+      <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+          <div class="card-body">
+            <div class="row no-gutters align-items-center">
+              <div class="col mr-2">
+                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                  Total Revenue
                 </div>
-                <div class="col-auto">
-                  <i class="fas fa-hourglass-half fa-2x text-gray-300"></i>
+                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  {{formatCurrency(stats.totalRevenue)}}
                 </div>
+              </div>
+              <div class="col-auto">
+                <i class="fas fa-money-bill-wave fa-2x text-gray-300"></i>
               </div>
             </div>
           </div>
         </div>
-      }
+      </div>
 
-      @if (stats.completedOrders !== undefined) {
-        <div class="col-xl-3 col-md-6 mb-4">
-          <div class="card border-left-success shadow h-100 py-2">
-            <div class="card-body">
-              <div class="row no-gutters align-items-center">
-                <div class="col mr-2">
-                  <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                    Completed Orders
-                  </div>
-                  <div class="h5 mb-0 font-weight-bold text-gray-800">
-                    {{stats.completedOrders}}
-                  </div>
+      <!-- Discount Metrics -->
+      <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+          <div class="card-body">
+            <div class="row no-gutters align-items-center">
+              <div class="col mr-2">
+                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                  Active Discounts
                 </div>
-                <div class="col-auto">
-                  <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  {{stats.activeDiscounts || 0}}
                 </div>
+              </div>
+              <div class="col-auto">
+                <i class="fas fa-percent fa-2x text-gray-300"></i>
               </div>
             </div>
           </div>
         </div>
-      }
+      </div>
+
+      <!-- Bonus Metrics -->
+      <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+          <div class="card-body">
+            <div class="row no-gutters align-items-center">
+              <div class="col mr-2">
+                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                  Bonuses Paid
+                </div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  {{formatCurrency(stats.bonusAmountPaid)}}
+                </div>
+              </div>
+              <div class="col-auto">
+                <i class="fas fa-gift fa-2x text-gray-300"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Section -->
+      <div class="col-md-6">
+        <div class="card shadow mb-4">
+          <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Payment Status Breakdown</h6>
+          </div>
+          <div class="card-body">
+            <ngx-charts-pie-chart
+              [view]="[500, 300]"
+              [results]="paymentStatusData"
+              [colorScheme]="colorScheme" 
+              [labels]="true">
+            </ngx-charts-pie-chart>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="card shadow mb-4">
+          <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Discount Types</h6>
+          </div>
+          <div class="card-body">
+            <ngx-charts-pie-chart
+              [view]="[500, 300]"
+              [results]="discountTypeData"
+              [colorScheme]="colorScheme" 
+              [labels]="true">
+            </ngx-charts-pie-chart>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="card shadow mb-4">
+          <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Bonus Status</h6>
+          </div>
+          <div class="card-body">
+            <ngx-charts-pie-chart
+              [view]="[500, 300]"
+              [results]="bonusStatusData"
+              [colorScheme]="colorScheme" 
+              [labels]="true">
+            </ngx-charts-pie-chart>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="card shadow mb-4">
+          <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Revenue vs Bonuses</h6>
+          </div>
+          <div class="card-body">
+            <ngx-charts-bar-vertical
+              [view]="[500, 300]"
+              [results]="revenueData"
+              [xAxis]="true"
+              [yAxis]="true"
+              [showXAxisLabel]="true"
+              [showYAxisLabel]="true"
+              xAxisLabel="Category"
+              yAxisLabel="Amount (TND)"
+              [colorScheme]="colorScheme">
+            </ngx-charts-bar-vertical>
+          </div>
+        </div>
+      </div>
 
       <!-- Users by Role Chart -->
       <div class="col-12">
@@ -247,8 +334,6 @@
           </div>
         </div>
       </div>
-
-    
     </div>
   }
 </div>

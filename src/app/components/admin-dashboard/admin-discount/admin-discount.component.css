@@ -92,6 +92,19 @@
   }
 }
 
+
+.list-group {
+  max-height: 200px;
+  overflow-y: auto;
+  position: absolute;
+  z-index: 1000;
+  width: 100%;
+}
+
+.list-group-item {
+  cursor: pointer;
+}
+
 /* Container Fluid */
 .container-fluid {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

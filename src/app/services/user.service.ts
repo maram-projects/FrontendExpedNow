@@ -330,4 +330,9 @@ private mapUserTypeToRoles(userType: keyof typeof USER_TYPES): string[] {
     return this.updateUserById(userId, userData);
   }
 
+  // In user.service.ts
+searchClients(query: string): Observable<User[]> {
+  return this.http.get<User[]>(`${this.apiUrl}/search/clients?query=${query}`);
+}
+
 }

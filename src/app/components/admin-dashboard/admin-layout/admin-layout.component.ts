@@ -33,18 +33,8 @@ import { RouterModule } from '@angular/router';
                 <span>Delivery Personnel Management</span>
               </a>
             </li>
-            <li class="nav-item">
-              <a class="nav-link" routerLink="/admin/roles" routerLinkActive="active">
-                <i class="fas fa-user-tag"></i>
-                <span>Role Management</span>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" routerLink="/admin/settings" routerLinkActive="active">
-                <i class="fas fa-cog"></i>
-                <span>System Settings</span>
-              </a>
-            </li>
+           
+      
             <li class="nav-item">
               <a class="nav-link" routerLink="/admin/vehicles" routerLinkActive="active">
                 <i class="fas fa-car"></i>
@@ -74,6 +64,18 @@ import { RouterModule } from '@angular/router';
               <a class="nav-link" routerLink="/admin/bonuses" routerLinkActive="active">
                 <i class="fas fa-gift"></i>
                 <span>Bonus Management</span>
+              </a>
+            </li>
+             <li class="nav-item">
+              <a class="nav-link" routerLink="/admin/roles" routerLinkActive="active">
+                <i class="fas fa-user-tag"></i>
+                <span>Role Management</span>
+              </a>
+            </li>
+             <li class="nav-item">
+              <a class="nav-link" routerLink="/admin/settings" routerLinkActive="active">
+                <i class="fas fa-cog"></i>
+                <span>System Settings</span>
               </a>
             </li>
           </ul>

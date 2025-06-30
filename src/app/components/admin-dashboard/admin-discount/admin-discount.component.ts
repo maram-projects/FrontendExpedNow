@@ -1,4 +1,3 @@
-// admin-discount.component.ts
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { DiscountService } from '../../../services/discount.service';
 import { Discount, DiscountType, CreateDiscountRequest } from '../../../models/discount.model';
@@ -7,6 +6,8 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ShortenPipe } from '../../../pipes/shorten.pipe';
 import { Subscription } from 'rxjs';
+import { User } from '../../../models/user.model';
+import { UserService } from '../../../services/user.service';
 
 @Component({
   selector: 'app-admin-discount',
@@ -16,6 +17,10 @@ import { Subscription } from 'rxjs';
   styleUrls: ['./admin-discount.component.css']
 })
 export class AdminDiscountComponent implements OnInit, OnDestroy {
+  clients: User[] = [];
+  loadingClients = false;
+  selectedClientId: string | undefined;
+
   discounts: Discount[] = [];
   loading = false;
   errorMessage: string = '';
@@ -31,14 +36,23 @@ export class AdminDiscountComponent implements OnInit, OnDestroy {
     description: ''
   };
 
-  // Enum reference for template
-  protected discountTypeEnum = DiscountType;
+  // Enum reference for template - remove FIXED_AMOUNT
+  protected discountTypeEnum = Object.keys(DiscountType)
+    .filter(key => key !== 'FIXED_AMOUNT')
+    .reduce((obj, key) => {
+      obj[key] = DiscountType[key as keyof typeof DiscountType];
+      return obj;
+    }, {} as Record<string, DiscountType>);
 
-  constructor(private discountService: DiscountService) {}
+  constructor(
+    private discountService: DiscountService,
+    private userService: UserService
+  ) {}
 
   ngOnInit(): void {
     this.loadDiscounts();
     this.subscribeToDiscounts();
+    this.loadClients();
   }
 
   ngOnDestroy(): void {
@@ -58,6 +72,26 @@ export class AdminDiscountComponent implements OnInit, OnDestroy {
       }
     });
     this.subscriptions.push(subscription);
+  }
+
+  loadClients(): void {
+    this.loadingClients = true;
+    this.userService.getAllUsers().subscribe({
+      next: (users) => {
+        // Filter to get only clients
+        this.clients = users.filter(user => 
+          user.roles?.includes('ROLE_CLIENT') || 
+          user.roles?.includes('ROLE_INDIVIDUAL') || 
+          user.roles?.includes('ROLE_ENTERPRISE')
+        );
+        this.loadingClients = false;
+      },
+      error: (err) => {
+        console.error('Error loading clients:', err);
+        this.errorMessage = 'Failed to load clients';
+        this.loadingClients = false;
+      }
+    });
   }
 
   getEnumValues(enumObj: any): string[] {
@@ -90,11 +124,17 @@ export class AdminDiscountComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Set client ID from selection
+    this.newDiscount.clientId = this.selectedClientId === 'general' ? 
+      undefined : this.selectedClientId;
+
     this.loading = true;
 
     // Prepare the request
     const discountRequest: CreateDiscountRequest = {
       ...this.newDiscount,
+      // Remove fixedAmount field since we only use percentage
+      fixedAmount: undefined,
       // Ensure validUntil is a Date object
       validUntil: typeof this.newDiscount.validUntil === 'string' 
         ? new Date(this.newDiscount.validUntil) 
@@ -110,7 +150,6 @@ export class AdminDiscountComponent implements OnInit, OnDestroy {
         this.showCreateForm = false;
         this.resetForm();
         this.loading = false;
-        // The discounts list will be updated automatically via the subscription
       },
       error: (err) => {
         console.error('Error creating discount:', err);
@@ -136,7 +175,6 @@ export class AdminDiscountComponent implements OnInit, OnDestroy {
           console.log('Discount deleted successfully');
           this.successMessage = 'Discount deleted successfully!';
           this.loading = false;
-          // The discounts list will be updated automatically via the subscription
         },
         error: (err) => {
           console.error('Error deleting discount:', err);
@@ -148,23 +186,24 @@ export class AdminDiscountComponent implements OnInit, OnDestroy {
     }
   }
 
-  getTypeClass(type: DiscountType | undefined): string {
-    switch (type) {
-      case DiscountType.LOYALTY: 
-        return 'badge bg-primary';
-      case DiscountType.PROMOTIONAL: 
-        return 'badge bg-success';
-      case DiscountType.PERCENTAGE: 
-        return 'badge bg-info';
-      case DiscountType.FIXED_AMOUNT: 
-        return 'badge bg-warning';
-      default: 
-        return 'badge bg-dark';
-    }
+getTypeClass(type: DiscountType | undefined): string {
+  if (!type) return 'badge bg-dark';
+  
+  // Map types to specific badge classes
+  switch (type) {
+    case DiscountType.LOYALTY: 
+      return 'badge-loyalty';
+    case DiscountType.PROMOTIONAL: 
+      return 'badge-promotional';
+    case DiscountType.PERCENTAGE: 
+      return 'badge-percentage';
+    default: 
+      return 'badge bg-dark';
   }
-
+}
   getDiscountValue(discount: Discount): string {
-    return this.discountService.formatDiscountValue(discount);
+    // Always show percentage since we only have percentage discounts
+    return `${discount.percentage}%`;
   }
 
   isDiscountExpired(discount: Discount): boolean {
@@ -191,21 +230,10 @@ export class AdminDiscountComponent implements OnInit, OnDestroy {
       return false;
     }
 
-    // Validate percentage or fixed amount based on type
-    if (this.newDiscount.type === DiscountType.PERCENTAGE || 
-        this.newDiscount.type === DiscountType.LOYALTY || 
-        this.newDiscount.type === DiscountType.PROMOTIONAL) {
-      if (!this.newDiscount.percentage || this.newDiscount.percentage <= 0 || this.newDiscount.percentage > 100) {
-        this.errorMessage = 'Percentage must be between 1 and 100';
-        return false;
-      }
-    }
-
-    if (this.newDiscount.type === DiscountType.FIXED_AMOUNT) {
-      if (!this.newDiscount.fixedAmount || this.newDiscount.fixedAmount <= 0) {
-        this.errorMessage = 'Fixed amount must be greater than 0';
-        return false;
-      }
+    // Validate percentage
+    if (!this.newDiscount.percentage || this.newDiscount.percentage <= 0 || this.newDiscount.percentage > 100) {
+      this.errorMessage = 'Percentage must be between 1 and 100';
+      return false;
     }
 
     // Validate dates
@@ -230,6 +258,7 @@ export class AdminDiscountComponent implements OnInit, OnDestroy {
       validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
       description: ''
     };
+    this.selectedClientId = undefined;
   }
 
   private clearMessages(): void {
@@ -247,30 +276,6 @@ export class AdminDiscountComponent implements OnInit, OnDestroy {
     if (!date) return '';
     const d = new Date(date);
     return d.toISOString().slice(0, 16);
-  }
-
-  // Handle discount type change to show/hide relevant fields
-  onDiscountTypeChange(): void {
-    // Reset values when type changes
-    if (this.newDiscount.type === DiscountType.FIXED_AMOUNT) {
-      this.newDiscount.percentage = undefined;
-      this.newDiscount.fixedAmount = 0;
-    } else {
-      this.newDiscount.fixedAmount = undefined;
-      this.newDiscount.percentage = 10;
-    }
-  }
-
-  // Check if percentage field should be shown
-  shouldShowPercentage(): boolean {
-    return this.newDiscount.type === DiscountType.PERCENTAGE ||
-           this.newDiscount.type === DiscountType.LOYALTY ||
-           this.newDiscount.type === DiscountType.PROMOTIONAL;
-  }
-
-  // Check if fixed amount field should be shown
-  shouldShowFixedAmount(): boolean {
-    return this.newDiscount.type === DiscountType.FIXED_AMOUNT;
   }
 
   // Statistics methods

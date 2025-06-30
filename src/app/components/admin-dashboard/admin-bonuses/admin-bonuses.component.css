@@ -1,5 +1,22 @@
 /* Admin Bonuses Component Styles */
+.list-group {
+  max-height: 200px;
+  overflow-y: auto;
+  position: absolute;
+  z-index: 1000;
+  width: calc(100% - 30px); /* Account for padding */
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
 
+.list-group-item {
+  cursor: pointer;
+  border-left: none;
+  border-right: none;
+}
+
+.list-group-item:hover {
+  background-color: #f8f9fa;
+}
 .admin-bonuses-container {
   padding: 1rem;
   max-width: 100%;

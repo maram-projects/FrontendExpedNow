@@ -11,7 +11,8 @@ export interface Discount {
   
   // For fixed amount discounts
   fixedAmount?: number;
-  
+    clientName?: string;
+  clientEmail?: string;
   // Validity period
   validFrom?: Date;
   validUntil?: Date;

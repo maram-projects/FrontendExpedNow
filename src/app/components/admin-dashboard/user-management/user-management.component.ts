@@ -59,10 +59,10 @@ export class UserManagementComponent implements OnInit {
 
   constructor(
     private userService: UserService,
-    public authService: AuthService, // Changed from private to public
+    public authService: AuthService,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
-     private router: Router
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -78,8 +78,7 @@ export class UserManagementComponent implements OnInit {
     this.loading = true;
     this.userService.getAllUsers().subscribe({
       next: (users) => {
-        console.log('Loaded users:', users); // Debug log
-        // Check if userType exists in the data
+        console.log('Loaded users:', users);
         users.forEach(user => {
           console.log(`User ${user.email} has type:`, user.userType);
         });
@@ -90,9 +89,10 @@ export class UserManagementComponent implements OnInit {
         this.loading = false;
       },
       error: (err) => {
-        this.error = 'Failed to load users. Please try again.';
+        console.error('Error loading users:', err);
+        this.error = 'Unable to load users. Please check your connection and try again.';
         this.loading = false;
-        this.showSnackbar(this.error);
+        this.showErrorSnackbar('Failed to load users', err);
       }
     });
   }
@@ -106,17 +106,15 @@ export class UserManagementComponent implements OnInit {
         return statusMatch && typeMatch;
     });
     
-    // Update pagination
     this.totalUsers = this.filteredUsers.length;
-    // Reset to first page when filters change
     this.pageIndex = 0; 
-}
+  }
 
-  // Added missing resetFilters method
   resetFilters(): void {
     this.filterStatus = '';
     this.filterType = '';
     this.applyFilters();
+    this.showSuccessSnackbar('Filters have been reset successfully');
   }
 
   onPageChange(event: PageEvent): void {
@@ -130,11 +128,17 @@ export class UserManagementComponent implements OnInit {
   }
 
   approveUser(userId: string): void {
+    const user = this.users.find(u => u.id === userId);
+    if (!user) {
+      this.showErrorSnackbar('User not found');
+      return;
+    }
+
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
         data: {
-            title: 'Approve User',
-            message: 'Are you sure you want to approve this user?',
-            confirmText: 'Approve',
+            title: 'Approve User Registration',
+            message: `Are you sure you want to approve ${user.firstName} ${user.lastName}'s registration? This will allow them to access the system.`,
+            confirmText: 'Yes, Approve',
             cancelText: 'Cancel'
         }
     });
@@ -143,16 +147,27 @@ export class UserManagementComponent implements OnInit {
         if (result) {
             this.userService.approveUser(userId).subscribe({
                 next: (updatedUser) => {
-                    // تحديث المستخدم في القائمة بدلاً من استدعاء loadUsers()
+                    // Preserve the original user type and merge with updated data
                     const index = this.users.findIndex(u => u.id === userId);
                     if (index !== -1) {
-                        this.users[index] = updatedUser;
+                        this.users[index] = {
+                            ...this.users[index], // Keep original data
+                            ...updatedUser,       // Apply updates
+                            userType: this.users[index].userType // Explicitly preserve userType
+                        };
                         this.applyFilters();
                     }
-                    this.showSnackbar('User approved successfully');
+                    this.showSuccessSnackbar(
+                        `✅ User Approved Successfully`,
+                        `${user.firstName} ${user.lastName} has been approved and can now access the system`
+                    );
                 },
                 error: (err) => {
-                    this.showSnackbar('Failed to approve user. Please try again.');
+                    console.error('Error approving user:', err);
+                    this.showErrorSnackbar(
+                        'Failed to Approve User',
+                        err?.error?.message || 'An unexpected error occurred. Please try again.'
+                    );
                 }
             });
         }
@@ -160,11 +175,17 @@ export class UserManagementComponent implements OnInit {
   }
 
   rejectUser(userId: string): void {
+    const user = this.users.find(u => u.id === userId);
+    if (!user) {
+      this.showErrorSnackbar('User not found');
+      return;
+    }
+
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Reject User',
-        message: 'Are you sure you want to reject this user? This action cannot be undone.',
-        confirmText: 'Reject',
+        title: 'Reject User Registration',
+        message: `Are you sure you want to reject ${user.firstName} ${user.lastName}'s registration? This action cannot be undone and the user will be permanently removed from the system.`,
+        confirmText: 'Yes, Reject',
         cancelText: 'Cancel'
       }
     });
@@ -175,10 +196,17 @@ export class UserManagementComponent implements OnInit {
           next: () => {
             this.users = this.users.filter(user => user.id !== userId);
             this.applyFilters();
-            this.showSnackbar('User rejected successfully');
+            this.showSuccessSnackbar(
+              `❌ User Rejected`,
+              `${user.firstName} ${user.lastName}'s registration has been rejected and removed from the system`
+            );
           },
           error: (err) => {
-            this.showSnackbar('Failed to reject user. Please try again.');
+            console.error('Error rejecting user:', err);
+            this.showErrorSnackbar(
+              'Failed to Reject User',
+              err?.error?.message || 'An unexpected error occurred. Please try again.'
+            );
           }
         });
       }
@@ -187,11 +215,16 @@ export class UserManagementComponent implements OnInit {
 
   toggleUserStatus(user: User): void {
     const action = user.enabled ? 'disable' : 'enable';
+    const actionPast = user.enabled ? 'disabled' : 'enabled';
+    const actionDescription = user.enabled 
+      ? 'This will prevent the user from accessing the system'
+      : 'This will allow the user to access the system again';
+
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
         data: {
-            title: `${action.charAt(0).toUpperCase() + action.slice(1)} User`,
-            message: `Are you sure you want to ${action} this user?`,
-            confirmText: action.charAt(0).toUpperCase() + action.slice(1),
+            title: `${action.charAt(0).toUpperCase() + action.slice(1)} User Account`,
+            message: `Are you sure you want to ${action} ${user.firstName} ${user.lastName}'s account? ${actionDescription}.`,
+            confirmText: `Yes, ${action.charAt(0).toUpperCase() + action.slice(1)}`,
             cancelText: 'Cancel'
         }
     });
@@ -204,52 +237,64 @@ export class UserManagementComponent implements OnInit {
 
             serviceCall.subscribe({
                 next: (updatedUser) => {
-                    // Find and update the user in the array
                     const index = this.users.findIndex(u => u.id === user.id);
                     if (index !== -1) {
-                        // Create a new object with updated properties
+                        // Preserve the original user type and other data
                         this.users[index] = {
-                            ...this.users[index],
-                            enabled: updatedUser.enabled,
-                            approved: updatedUser.approved
+                            ...this.users[index],   // Keep original data
+                            ...updatedUser,         // Apply updates
+                            userType: this.users[index].userType // Explicitly preserve userType
                         };
                         this.applyFilters();
                     }
-                    this.showSnackbar(`User ${action}d successfully`);
+                    
+                    const statusIcon = user.enabled ? '🔒' : '🔓';
+                    this.showSuccessSnackbar(
+                        `${statusIcon} User Account ${actionPast.charAt(0).toUpperCase() + actionPast.slice(1)}`,
+                        `${user.firstName} ${user.lastName}'s account has been ${actionPast} successfully`
+                    );
                 },
                 error: (err) => {
-                    this.showSnackbar(`Failed to ${action} user. Please try again.`);
                     console.error('Error toggling user status:', err);
+                    this.showErrorSnackbar(
+                        `Failed to ${action.charAt(0).toUpperCase() + action.slice(1)} User`,
+                        err?.error?.message || 'An unexpected error occurred. Please try again.'
+                    );
                 }
             });
         }
     });
-}
-
-
-  private updateUserStatus(userId: string, enabled: boolean): void {
-    const user = this.users.find(u => u.id === userId);
-    if (user) {
-      user.enabled = enabled;
-      user.approved = enabled; // Assuming approval when enabling
-      this.applyFilters();
-    }
   }
 
   getUserTypeDisplay(userType: string | undefined): string {
-    console.log('User type received:', userType); // Debug log
+    console.log('User type received:', userType);
     
-    if (!userType) return 'Unknown';
+    if (!userType) {
+      console.warn('User type is undefined or null');
+      return 'Unknown';
+    }
     
-    // Remove .toLowerCase() since USER_TYPES are already lowercase
-    switch(userType) {
-      case USER_TYPES.INDIVIDUAL: return 'Individual';
-      case USER_TYPES.ENTERPRISE: return 'Enterprise';
-      case USER_TYPES.TEMPORARY: return 'Temporary Driver';
-      case USER_TYPES.PROFESSIONAL: return 'Professional Driver';
-      case USER_TYPES.ADMIN: return 'Admin';
+    // Ensure we're working with lowercase for comparison
+    const normalizedType = userType.toLowerCase();
+    
+    switch(normalizedType) {
+      case USER_TYPES.INDIVIDUAL:
+      case 'individual':
+        return 'Individual';
+      case USER_TYPES.ENTERPRISE:
+      case 'enterprise':
+        return 'Enterprise';
+      case USER_TYPES.TEMPORARY:
+      case 'temporary':
+        return 'Temporary Driver';
+      case USER_TYPES.PROFESSIONAL:
+      case 'professional':
+        return 'Professional Driver';
+      case USER_TYPES.ADMIN:
+      case 'admin':
+        return 'Admin';
       default: 
-        console.log('Unknown user type:', userType); // Debug log
+        console.warn('Unknown user type:', userType);
         return userType; // Return the raw value if not recognized
     }
   }
@@ -260,39 +305,43 @@ export class UserManagementComponent implements OnInit {
     if (user.approved && !user.enabled) return 'disabled';
     if (user.approved && user.enabled) return 'active';
     return 'unknown';
-}
-  // Added missing getStatusTooltip method
+  }
+
   getStatusTooltip(user: User): string {
     const status = this.getUserStatus(user);
     switch(status) {
       case 'pending':
-        return 'User registration is pending approval';
+        return 'User registration is pending admin approval';
       case 'active':
         return 'User is active and can access the system';
       case 'disabled':
-        return 'User account has been disabled';
+        return 'User account has been disabled by an admin';
       case 'rejected':
-        return 'User registration has been rejected';
+        return 'User registration has been rejected and removed';
       default:
-        return 'Status unknown';
+        return 'User status is unknown';
     }
   }
 
-  // Add to your UserManagementComponent
-navigateToDetails(id: string) {
-  if (!id) {
-    console.error('No user ID provided for navigation');
-    return;
-  }
-  console.log('Navigating to user details with ID:', id);
-  this.router.navigate(['/admin/users/view', id]).then(success => {
-    if (!success) {
-      console.error('Navigation failed');
+  navigateToDetails(id: string) {
+    if (!id) {
+      console.error('No user ID provided for navigation');
+      this.showErrorSnackbar('Cannot view user details', 'User ID is missing');
+      return;
     }
-  }).catch(err => {
-    console.error('Navigation error:', err);
-  });
-}
+    
+    console.log('Navigating to user details with ID:', id);
+    this.router.navigate(['/admin/users/view', id]).then(success => {
+      if (!success) {
+        console.error('Navigation failed');
+        this.showErrorSnackbar('Navigation Failed', 'Unable to navigate to user details page');
+      }
+    }).catch(err => {
+      console.error('Navigation error:', err);
+      this.showErrorSnackbar('Navigation Error', 'An error occurred while navigating to user details');
+    });
+  }
+
   getStatusColor(status: string): string {
     switch(status) {
       case USER_STATUS.ACTIVE: return 'primary';
@@ -302,6 +351,28 @@ navigateToDetails(id: string) {
     }
   }
 
+  // Enhanced notification methods
+  private showSuccessSnackbar(title: string, message?: string): void {
+    const displayMessage = message ? `${title}\n${message}` : title;
+    this.snackBar.open(displayMessage, '✓ Close', {
+      duration: 6000,
+      horizontalPosition: 'right',
+      verticalPosition: 'top',
+      panelClass: ['success-snackbar']
+    });
+  }
+
+  private showErrorSnackbar(title: string, message?: string): void {
+    const displayMessage = message ? `${title}\n${message}` : title;
+    this.snackBar.open(displayMessage, '✗ Close', {
+      duration: 8000,
+      horizontalPosition: 'right',
+      verticalPosition: 'top',
+      panelClass: ['error-snackbar']
+    });
+  }
+
+  // Legacy method for backward compatibility
   private showSnackbar(message: string): void {
     this.snackBar.open(message, 'Close', {
       duration: 5000,
