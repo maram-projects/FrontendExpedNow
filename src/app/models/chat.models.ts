@@ -4,7 +4,9 @@ export enum MessageStatus {
   SENT = 'SENT',
   DELIVERED = 'DELIVERED',
   READ = 'READ',
-  FAILED = 'FAILED'
+  FAILED = 'FAILED',
+    SENDING = 'SENDING' // Add this new status
+
 }
 
 export enum WebSocketMessageType {
@@ -33,7 +35,7 @@ export interface Message {
   editedAt?: Date;
   isEdited?: boolean;
   replyToMessageId?: string;
-  
+
 }
 
 export interface ChatRoom {

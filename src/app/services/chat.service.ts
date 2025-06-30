@@ -1,17 +1,15 @@
-
-import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { BehaviorSubject, Observable, Subject, map, catchError, of, throwError, Subscription } from 'rxjs';
+import { Injectable, NgZone } from '@angular/core';
+import { HttpClient, HttpHeaders, HttpParams, HttpErrorResponse } from '@angular/common/http';
+import { BehaviorSubject, Observable, Subject, map, catchError, of, throwError, Subscription, retry, tap } from 'rxjs';
 import { ChatConfig, DEFAULT_CHAT_CONFIG, ChatRoom, TypingIndicator, WebSocketMessage, WebSocketMessageType, MessageStatus, ChatMessageRequest, PageResponse, Message } from '../models/chat.models';
 import { WebSocketService } from './web-socket.service';
 import { AuthService } from './auth.service';
-
 
 @Injectable({
   providedIn: 'root'
 })
 export class ChatService {
-   private readonly API_URL = 'http://localhost:8080/api/chat';
+  private readonly API_URL = 'http://localhost:8080/api/chat';
   private readonly config: ChatConfig = DEFAULT_CHAT_CONFIG;
   private connectionState = new BehaviorSubject<boolean>(false);
   public connectionState$ = this.connectionState.asObservable();
@@ -26,27 +24,33 @@ export class ChatService {
   private typingTimeouts = new Map<string, any>();
   private subscriptions = new Subscription();
 
-constructor(
+  constructor(
     private http: HttpClient,
     private webSocketService: WebSocketService,
-    private authService: AuthService
+    private authService: AuthService,
+    private ngZone: NgZone
   ) {
     this.initializeWebSocketListeners();
     this.initializeUserStatusTracking();
   }
 
-  private getRequestOptions(params?: HttpParams): { 
-  headers: HttpHeaders; 
-  params?: HttpParams 
+private getRequestOptions(params?: HttpParams): { 
+    headers: HttpHeaders; 
+    params?: HttpParams;
+    withCredentials?: boolean
 } {
-  return {
-    headers: this.authService.getAuthHeaders(),
-    params
-  };
+    const headers = new HttpHeaders({
+        'Authorization': `Bearer ${this.authService.getToken()}`
+    });
+    
+    return {
+        headers,
+        params,
+        withCredentials: true
+    };
 }
 
-
- private initializeWebSocketListeners(): void {
+  private initializeWebSocketListeners(): void {
     this.subscriptions.add(
       this.webSocketService.getMessages().subscribe((wsMessage: WebSocketMessage) => {
         this.handleWebSocketMessage(wsMessage);
@@ -60,12 +64,13 @@ constructor(
     );
   }
 
-   isUserOnline(userId: string): Observable<boolean> {
+  isUserOnline(userId: string): Observable<boolean> {
     return this.userStatusSubject.pipe(
       map(statusMap => statusMap.get(userId) || false)
     );
   }
-    private initializeUserStatusTracking(): void {
+
+  private initializeUserStatusTracking(): void {
     this.subscriptions.add(
       this.webSocketService.getUserStatusUpdates().subscribe(statusUpdate => {
         const currentStatus = this.userStatusSubject.value;
@@ -74,7 +79,6 @@ constructor(
       })
     );
   }
-
 
   private handleWebSocketMessage(wsMessage: WebSocketMessage): void {
     try {
@@ -102,10 +106,12 @@ constructor(
       return;
     }
 
-    const currentMessages = this.messagesSubject.value;
-    const updatedMessages = [message, ...currentMessages];
-    this.messagesSubject.next(updatedMessages);
-    
+    this.ngZone.run(() => {
+      const currentMessages = this.messagesSubject.value;
+      const updatedMessages = [message, ...currentMessages];
+      this.messagesSubject.next(updatedMessages);
+    });
+
     // Update chat rooms list
     this.loadChatRooms();
     
@@ -139,49 +145,35 @@ constructor(
     // You can emit events or update relevant state here
   }
 
-  private handleTypingIndicator(indicator: TypingIndicator): void {
-    if (!indicator?.senderId || !indicator?.deliveryId) {
-      console.error('Invalid typing indicator:', indicator);
-      return;
-    }
+private handleTypingIndicator(indicator: TypingIndicator): void {
+  const typingUsers = new Map(this.typingUsersSubject.value);
+  const key = `${indicator.senderId}-${indicator.deliveryId}`;
 
-    const typingUsers = new Map(this.typingUsersSubject.value);
-    const key = `${indicator.senderId}-${indicator.deliveryId}`;
+  clearTimeout(this.typingTimeouts.get(key));
 
-    if (indicator.isTyping) {
-      typingUsers.set(key, indicator);
-      
-      // Clear existing timeout
-      if (this.typingTimeouts.has(key)) {
-        clearTimeout(this.typingTimeouts.get(key));
-      }
-      
-      // Set new timeout to remove typing indicator
-      const timeout = setTimeout(() => {
-        typingUsers.delete(key);
-        this.typingUsersSubject.next(new Map(typingUsers));
-        this.typingTimeouts.delete(key);
-      }, this.config.typingTimeoutDuration);
-      
-      this.typingTimeouts.set(key, timeout);
-    } else {
+  if (indicator.isTyping) {
+    typingUsers.set(key, indicator);
+    const timeout = setTimeout(() => {
       typingUsers.delete(key);
-      if (this.typingTimeouts.has(key)) {
-        clearTimeout(this.typingTimeouts.get(key));
-        this.typingTimeouts.delete(key);
-      }
-    }
-    
-    this.typingUsersSubject.next(new Map(typingUsers));
+      this.typingUsersSubject.next(new Map(typingUsers));
+    }, 3000);
+    this.typingTimeouts.set(key, timeout);
+  } else {
+    typingUsers.delete(key);
   }
-
+  
+  this.typingUsersSubject.next(new Map(typingUsers));
+}
   // HTTP API Methods
   sendMessage(request: ChatMessageRequest): Observable<Message> {
     if (!request.content?.trim() || !request.receiverId || !request.deliveryId) {
       return throwError(() => new Error('Invalid message request'));
     }
 
-    return this.http.post<Message>(`${this.API_URL}/send`, request).pipe(
+    console.log('Sending message:', request); // Debug log
+
+    return this.http.post<Message>(`${this.API_URL}/send`, request, this.getRequestOptions()).pipe(
+      tap(response => console.log('Send message response:', response)), // Debug log
       map(message => {
         // Ensure message has all required properties
         const completeMessage: Message = {
@@ -198,107 +190,125 @@ constructor(
         this.messagesSubject.next([completeMessage, ...currentMessages]);
         return completeMessage;
       }),
-      catchError(error => {
+      catchError((error: HttpErrorResponse) => {
         console.error('Error sending message:', error);
+        if (error.status === 401) {
+          console.error('Authentication error - user may need to login again');
+          this.handleAuthenticationError();
+        }
         return throwError(() => new Error('Failed to send message'));
       })
     );
   }
 
- getMessages(deliveryId: string, otherUserId: string, page: number = 0, size: number = 20): Observable<PageResponse<Message>> {
+getMessages(deliveryId: string, otherUserId: string, page: number = 0, size: number = 20): Observable<PageResponse<Message>> {
   const params = new HttpParams()
     .set('deliveryId', deliveryId)
     .set('otherUserId', otherUserId)
     .set('page', page.toString())
     .set('size', size.toString());
 
+  console.log('Getting messages with params:', { deliveryId, otherUserId, page, size });
+
   return this.http.get<PageResponse<Message>>(
     `${this.API_URL}/messages`,
     this.getRequestOptions(params)
   ).pipe(
-      map(response => {
-        // Ensure response has the correct structure
-        if (!response || !Array.isArray(response.content)) {
-          throw new Error('Invalid response format');
-        }
+    retry(1),
+    tap(response => console.log('Get messages response:', response)),
+    map(response => {
+      if (!response || !Array.isArray(response.content)) {
+        throw new Error('Invalid response format');
+      }
 
-        // Convert timestamp strings to Date objects and ensure all required properties exist
-        response.content = response.content.map(msg => ({
-          ...msg,
-          timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
-          readAt: msg.readAt ? new Date(msg.readAt) : undefined,
-          status: msg.status || MessageStatus.DELIVERED,
-          senderId: msg.senderId || '',
-          deliveryId: msg.deliveryId || deliveryId
-        }));
-        
-        if (page === 0) {
-          // If it's the first page, replace all messages
-          this.messagesSubject.next(response.content);
-        } else {
-          // If it's a subsequent page, append to existing messages
-          const currentMessages = this.messagesSubject.value;
-          this.messagesSubject.next([...currentMessages, ...response.content]);
-        }
-        
-        return response;
-      }),
-      catchError(error => {
-        console.error('Error loading messages:', error);
-        // Return properly structured empty response
-        const emptyResponse: PageResponse<Message> = {
-          content: [],
-          totalElements: 0,
-          totalPages: 0,
-          size: size,
-          number: page,
-          first: true,
-          last: true,
-          numberOfElements: 0,
-          empty: true,
-          pageable: {
-            sort: { empty: true, sorted: false, unsorted: true },
-            offset: 0,
-            pageSize: size,
-            pageNumber: page,
-            paged: true,
-            unpaged: false
-          },
-          sort: { empty: true, sorted: false, unsorted: true }
-        };
-        return of(emptyResponse);
-      })
-    );
-  }
+      // Convert timestamp strings to Date objects safely
+      response.content = response.content.map(msg => ({
+        ...msg,
+        timestamp: this.safeCreateDate(msg.timestamp) || new Date(),
+        readAt: this.safeCreateDate(msg.readAt), // Keep as undefined if invalid
+        status: msg.status || MessageStatus.DELIVERED,
+        senderId: msg.senderId || '',
+        deliveryId: msg.deliveryId || deliveryId
+      }));
+      
+      if (page === 0) {
+        this.messagesSubject.next(response.content);
+      } else {
+        const currentMessages = this.messagesSubject.value;
+        this.messagesSubject.next([...currentMessages, ...response.content]);
+      }
+      
+      return response;
+    }),
+    catchError((error: HttpErrorResponse) => {
+      console.error('Error loading messages:', error);
+      if (error.status === 401) {
+        console.error('Authentication error while loading messages');
+        this.handleAuthenticationError();
+      }
+      const emptyResponse: PageResponse<Message> = {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        size: size,
+        number: page,
+        first: true,
+        last: true,
+        numberOfElements: 0,
+        empty: true,
+        pageable: {
+          sort: { empty: true, sorted: false, unsorted: true },
+          offset: 0,
+          pageSize: size,
+          pageNumber: page,
+          paged: true,
+          unpaged: false
+        },
+        sort: { empty: true, sorted: false, unsorted: true }
+      };
+      return of(emptyResponse);
+    })
+  );
+}
 
- getChatRooms(): Observable<ChatRoom[]> {
+getChatRooms(): Observable<ChatRoom[]> {
   return this.http.get<ChatRoom[]>(
     `${this.API_URL}/rooms`,
     this.getRequestOptions()
   ).pipe(
-      map(rooms => {
-        if (!Array.isArray(rooms)) {
-          throw new Error('Invalid chat rooms response');
-        }
+    retry(1),
+    tap(response => console.log('Get chat rooms response:', response)),
+    map(rooms => {
+      if (!Array.isArray(rooms)) {
+        console.error('Invalid chat rooms response - not an array:', rooms);
+        throw new Error('Invalid chat rooms response');
+      }
 
-        // Convert date strings to Date objects and ensure required properties
-        const processedRooms = rooms.map(room => ({
-          ...room,
-          createdAt: room.createdAt ? new Date(room.createdAt) : new Date(),
-          lastMessageAt: room.lastMessageAt ? new Date(room.lastMessageAt) : undefined,
-          unreadCount: room.unreadCount || 0,
-          status: room.status || 'ACTIVE'
-        }));
-        
-        this.chatRoomsSubject.next(processedRooms);
-        return processedRooms;
-      }),
-      catchError(error => {
-        console.error('Error loading chat rooms:', error);
-        return of([]);
-      })
-    );
-  }
+      // Convert date strings to Date objects safely
+      const processedRooms = rooms.map(room => ({
+        ...room,
+        createdAt: this.safeCreateDate(room.createdAt) || new Date(),
+        lastMessageAt: this.safeCreateDate(room.lastMessageAt), // Keep as undefined if invalid
+        unreadCount: room.unreadCount || 0,
+        status: room.status || 'ACTIVE'
+      }));
+      
+      this.chatRoomsSubject.next(processedRooms);
+      return processedRooms;
+    }),
+    catchError((error: HttpErrorResponse) => {
+      console.error('Error loading chat rooms:', error);
+      if (error.status === 401) {
+        console.error('Authentication error while loading chat rooms');
+        this.handleAuthenticationError();
+      } else if (error.status === 500) {
+        console.error('Server error while loading chat rooms - check backend logs');
+      }
+      return of([]);
+    })
+  );
+}
+
 
   markMessagesAsRead(deliveryId: string, senderId: string): Observable<void> {
     if (!deliveryId || !senderId) {
@@ -309,7 +319,11 @@ constructor(
       .set('deliveryId', deliveryId)
       .set('senderId', senderId);
 
-    return this.http.post<void>(`${this.API_URL}/mark-read`, null, { params }).pipe(
+    return this.http.post<void>(`${this.API_URL}/mark-read`, null, {
+      ...this.getRequestOptions(),
+      params
+    }).pipe(
+      tap(() => console.log('Messages marked as read')), // Debug log
       map(() => {
         // Update local messages status
         const currentMessages = this.messagesSubject.value;
@@ -324,8 +338,11 @@ constructor(
         // Update chat rooms
         this.loadChatRooms();
       }),
-      catchError(error => {
+      catchError((error: HttpErrorResponse) => {
         console.error('Error marking messages as read:', error);
+        if (error.status === 401) {
+          this.handleAuthenticationError();
+        }
         return throwError(() => new Error('Failed to mark messages as read'));
       })
     );
@@ -338,10 +355,33 @@ constructor(
 
     const params = new HttpParams().set('deliveryId', deliveryId);
     
-    return this.http.get<number>(`${this.API_URL}/unread-count`, { params }).pipe(
-      catchError(error => {
+    return this.http.get<number>(`${this.API_URL}/unread-count`, {
+      ...this.getRequestOptions(),
+      params
+    }).pipe(
+      catchError((error: HttpErrorResponse) => {
         console.error('Error getting unread count:', error);
+        if (error.status === 401) {
+          this.handleAuthenticationError();
+        }
         return of(0);
+      })
+    );
+  }
+
+  // Test method to check authentication
+  testChatHealth(): Observable<string> {
+    return this.http.get<string>(`${this.API_URL}/health`, {
+      ...this.getRequestOptions(),
+      responseType: 'text' as 'json'
+    }).pipe(
+      tap(response => console.log('Chat health response:', response)),
+      catchError((error: HttpErrorResponse) => {
+        console.error('Chat health check failed:', error);
+        if (error.status === 401) {
+          this.handleAuthenticationError();
+        }
+        return throwError(() => error);
       })
     );
   }
@@ -406,23 +446,32 @@ constructor(
 
   // Utility Methods
   private getCurrentUserId(): string {
-    // Implement based on your authentication system
-    const currentUser = localStorage.getItem('currentUser');
-    if (currentUser) {
-      try {
-        const user = JSON.parse(currentUser);
-        return user.userId || '';
-      } catch (error) {
-        console.error('Error parsing current user:', error);
-      }
+    // Use the AuthService to get current user ID
+    const currentUser = this.authService.getCurrentUser();
+    if (currentUser?.userId) {
+      return currentUser.userId;
     }
+    
+    console.error('Unable to get current user ID');
     return '';
   }
 
+  private handleAuthenticationError(): void {
+    console.warn('Authentication error detected, redirecting to login');
+    // Clear any cached user data and redirect to login
+    this.authService.logout();
+  }
+
   private loadChatRooms(): void {
+    // Only load if user is authenticated
+    if (!this.authService.isAuthenticated()) {
+      console.warn('User not authenticated, skipping chat room load');
+      return;
+    }
+
     this.getChatRooms().subscribe({
       next: (rooms) => {
-        // Successfully loaded rooms
+        console.log('Successfully loaded chat rooms:', rooms.length);
       },
       error: (error) => {
         console.error('Failed to load chat rooms:', error);
@@ -458,21 +507,67 @@ constructor(
 
   // Initialize chat service
   initialize(): void {
-    this.loadChatRooms();
-    this.updateUnreadCount();
+    console.log('Initializing chat service...');
+    
+    // Check if user is authenticated first
+    if (!this.authService.isAuthenticated()) {
+      console.warn('User not authenticated, skipping chat service initialization');
+      return;
+    }
+    
+    // Test authentication first
+    this.testChatHealth().subscribe({
+      next: (response) => {
+        console.log('Chat service authenticated successfully');
+        this.loadChatRooms();
+        this.updateUnreadCount();
+      },
+      error: (error) => {
+        console.error('Chat service authentication failed:', error);
+      }
+    });
+  }
+
+  // Method to check if chat service is ready
+  isReady(): boolean {
+    return this.authService.isAuthenticated() && this.connectionState.value;
+  }
+
+  // Method to get current user info for chat
+  getCurrentUserInfo(): { userId: string; userType: string } | null {
+    const currentUser = this.authService.getCurrentUser();
+    if (currentUser?.userId && currentUser?.userType) {
+      return {
+        userId: currentUser.userId,
+        userType: currentUser.userType
+      };
+    }
+    return null;
   }
 
   // Cleanup
   destroy(): void {
+    // Unsubscribe from all subscriptions
+    this.subscriptions.unsubscribe();
+    
     // Complete all subjects
     this.messagesSubject.complete();
     this.chatRoomsSubject.complete();
     this.typingUsersSubject.complete();
     this.unreadCountSubject.complete();
     this.currentChatRoomSubject.complete();
+    this.userStatusSubject.complete();
+    this.connectionState.complete();
     
     // Clear typing timeouts
     this.typingTimeouts.forEach(timeout => clearTimeout(timeout));
     this.typingTimeouts.clear();
+  }
+
+  private safeCreateDate(dateValue: any): Date | undefined {
+    if (!dateValue) return undefined;
+    
+    const date = new Date(dateValue);
+    return isNaN(date.getTime()) ? undefined : date;
   }
 }

@@ -33,6 +33,10 @@ connect(token: string, userId: string): Promise<void> {
         reject(new Error('No token provided'));
         return;
       }
+       const headers = {
+      'Authorization': `Bearer ${token}`
+    };
+
 
       // 2. Vérification de la connexion existante
       if (this.stompClient && this.isConnected()) {
@@ -86,6 +90,20 @@ connect(token: string, userId: string): Promise<void> {
         this.handleReconnection();
       };
 
+      this.stompClient.onWebSocketClose = (event) => {
+        console.log('WebSocket Closed:', event);
+        this.isConnectedSubject.next(false);
+        // Add immediate reconnect attempt
+        setTimeout(() => this.handleReconnection(), 1000);
+    };
+
+    // Add heartbeat monitoring
+    setInterval(() => {
+        if (this.stompClient && !this.stompClient.connected) {
+            this.handleReconnection();
+        }
+    }, 30000);
+
       // 6. Activation de la connexion
       this.stompClient.activate();
     });
@@ -93,6 +111,8 @@ connect(token: string, userId: string): Promise<void> {
 
 
   private subscribeToChannels(userId: string): void {
+
+    
     if (!this.stompClient) return;
 
     // Personal message queue
