@@ -1,17 +1,19 @@
 export interface Payment {
   id: string;
-  deliveryId?: string;
+  deliveryId?: string | null;
   clientId: string;
   amount: number;
-  originalAmount?: number; // Add this property
+  originalAmount?: number;
   finalAmountAfterDiscount: number;
-  method: PaymentMethod | string; // Allow string as well
-  status: PaymentStatus | string; // Allow string as well
+  method: PaymentMethod | string;
+  status: PaymentStatus | string;
   transactionId?: string;
-  paymentDate?: Date | string;  
+  paymentDate?: Date | string;
   receiptUrl?: string;
   cardLast4?: string;
   cardBrand?: string;
+  deliveryDate?: Date | string;
+  customerTip?: number;
   bankName?: string;
   bankReference?: string;
   discountId?: string;
@@ -19,18 +21,27 @@ export interface Payment {
   discountCode?: string;
   clientSecret?: string;
   createdAt?: Date;
+   deliveryPersonPaidAt?: Date | string;
   updatedAt?: Date;
   invoiceUrl?: string;
-   deliveryPersonId?: string;
-  deliveryPersonPaid?: boolean;
-
-   convertedAmount?: number;
+  deliveryPersonId?: string | null;
+  deliveryPersonPaid?: boolean ;
+  deliveryPersonShare?: number;
+  convertedAmount?: number;
   exchangeRate?: number;
   convertedCurrency?: string;
-  currency?: string; // Add this
-
+  currency?: string;
+ deliveryPerson?: {
+    id: string;
+    fullName: string;
+    phone?: string;
+    email?: string;
+    vehicle?: {
+      type: string;
+      licensePlate?: string;
+    };
+  } | null; 
 }
-
 export enum PaymentStatus {
   PENDING = 'PENDING',
   PROCESSING = 'PROCESSING',

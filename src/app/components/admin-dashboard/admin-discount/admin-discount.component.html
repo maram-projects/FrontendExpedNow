@@ -1,534 +1,865 @@
-<div class="container-fluid p-4">
-  <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h5 class="mb-0">
-        <i class="fas fa-tags me-2"></i>
+<!-- admin-discount.component.html -->
+<div class="admin-discount-container">
+  <!-- Header Section -->
+  <div class="header-section">
+    <div class="page-title-section">
+      <h1 class="page-title">
+        <span class="title-icon"><i class="fas fa-tags"></i></span>
         Discount Management
-      </h5>
-      <div class="btn-group">
-        <button class="btn btn-outline-secondary" 
-                (click)="loadDiscounts()" 
-                [disabled]="loading">
-          <i class="fas fa-sync-alt" [class.fa-spin]="loading"></i>
-          Refresh
-        </button>
-        <button class="btn btn-primary" 
-                (click)="showCreateForm = !showCreateForm"
-                [disabled]="loading">
-          <i class="fas" [class.fa-plus]="!showCreateForm" [class.fa-times]="showCreateForm"></i>
-          {{showCreateForm ? 'Cancel' : 'Create Discount'}}
-        </button>
-      </div>
+      </h1>
     </div>
     
-    <div class="card-body">
-      <!-- Loading Indicator -->
-      <div class="text-center py-3" *ngIf="loading">
-        <div class="spinner-border" role="status">
-          <span class="visually-hidden">Loading...</span>
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="showCreateForm = !showCreateForm">
+        <i class="fas fa-plus"></i> 
+        {{ showCreateForm ? 'Cancel' : 'Create Discount' }}
+      </button>
+      <button class="btn btn-outline" (click)="loadDiscounts()" [disabled]="loading">
+        <i class="fas fa-sync-alt" [class.fa-spin]="loading"></i> 
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Success/Error Messages -->
+  <div *ngIf="successMessage" class="alert alert-success">
+    <i class="fas fa-check-circle"></i>
+    {{ successMessage }}
+    <button type="button" class="btn-close" (click)="successMessage = ''">×</button>
+  </div>
+
+  <div *ngIf="errorMessage" class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle"></i>
+    {{ errorMessage }}
+    <button type="button" class="btn-close" (click)="errorMessage = ''">×</button>
+  </div>
+
+  <!-- Create Discount Form -->
+  <div *ngIf="showCreateForm" class="create-form-section">
+    <div class="form-card">
+      <div class="form-header">
+        <h3><i class="fas fa-plus-circle"></i> Create New Discount</h3>
+      </div>
+      
+      <form (ngSubmit)="createDiscount()" #discountForm="ngForm">
+        <div class="form-grid">
+          <!-- Discount Type -->
+          <div class="form-group">
+            <label for="discountType">Discount Type *</label>
+            <select 
+              id="discountType" 
+              class="form-control" 
+              [(ngModel)]="newDiscount.type" 
+              name="type" 
+              required>
+              <option *ngFor="let type of getEnumValues(discountTypeEnum)" [value]="type">
+                {{ type }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Client Selection -->
+          <div class="form-group">
+            <label for="clientSelect">Target Client</label>
+            <select 
+              id="clientSelect" 
+              class="form-control" 
+              [(ngModel)]="selectedClientId" 
+              name="clientId">
+              <option value="general">All Clients (General)</option>
+              <option 
+                *ngFor="let client of clients" 
+                [value]="client.id">
+                {{ client.firstName }} {{ client.lastName }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Percentage -->
+          <div class="form-group">
+            <label for="percentage">Percentage *</label>
+            <input 
+              type="number" 
+              id="percentage" 
+              class="form-control" 
+              [(ngModel)]="newDiscount.percentage" 
+              name="percentage" 
+              min="1" 
+              max="100" 
+              required
+              placeholder="Enter percentage (1-100)">
+          </div>
+
+          <!-- Valid Until -->
+          <div class="form-group">
+            <label for="validUntil">Valid Until *</label>
+            <input 
+              type="datetime-local" 
+              id="validUntil" 
+              class="form-control" 
+              [value]="formatDateForInput(newDiscount.validUntil)" 
+(change)="onDateChange($event)"
+              name="validUntil" 
+              required>
+          </div>
+
+          <!-- Description -->
+          <div class="form-group form-group-full">
+            <label for="description">Description *</label>
+            <textarea 
+              id="description" 
+              class="form-control" 
+              [(ngModel)]="newDiscount.description" 
+              name="description" 
+              required
+              placeholder="Enter discount description"
+              rows="3"></textarea>
+          </div>
         </div>
-        <p class="mt-2 text-muted">Loading discounts...</p>
+
+        <div class="form-actions">
+          <button 
+            type="submit" 
+            class="btn btn-primary" 
+            [disabled]="loading || !discountForm.form.valid">
+            <i class="fas fa-save" [class.fa-spin]="loading"></i>
+            {{ loading ? 'Creating...' : 'Create Discount' }}
+          </button>
+          <button 
+            type="button" 
+            class="btn btn-outline" 
+            (click)="showCreateForm = false; resetForm()">
+            <i class="fas fa-times"></i>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="stats-grid">
+    <div class="stat-card total-discounts">
+      <div class="stat-header">
+        <div class="stat-icon">
+          <i class="fas fa-tags" style="color: var(--primary);"></i>
+        </div>
+        <h3>Total Discounts</h3>
       </div>
+      <div class="stat-value">{{ discounts.length }}</div>
+      <div class="stat-label">All created discounts</div>
+    </div>
 
-      <!-- Success Message -->
-      <div class="alert alert-success alert-dismissible fade show" *ngIf="successMessage">
-        <i class="fas fa-check-circle me-2"></i>
-        {{successMessage}}
-        <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+    <div class="stat-card active-discounts">
+      <div class="stat-header">
+        <div class="stat-icon">
+          <i class="fas fa-bolt" style="color: var(--success);"></i>
+        </div>
+        <h3>Active Discounts</h3>
       </div>
+      <div class="stat-value">{{ getActiveDiscountsCount() }}</div>
+      <div class="stat-label">Currently active</div>
+    </div>
 
-      <!-- Error Message -->
-      <div class="alert alert-danger alert-dismissible fade show" *ngIf="errorMessage">
-        <i class="fas fa-exclamation-circle me-2"></i>
-        {{errorMessage}}
-        <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+    <div class="stat-card used-discounts">
+      <div class="stat-header">
+        <div class="stat-icon">
+          <i class="fas fa-check-circle" style="color: var(--secondary);"></i>
+        </div>
+        <h3>Used Discounts</h3>
       </div>
+      <div class="stat-value">{{ getUsedDiscountsCount() }}</div>
+      <div class="stat-label">Redeemed by clients</div>
+    </div>
 
-      <!-- Create Discount Form -->
-      <div class="card mb-4" *ngIf="showCreateForm">
-        <div class="card-body">
-          <h5 class="card-title">
-            <i class="fas fa-plus-circle me-2"></i>
-            Create New Discount
-          </h5>
-          <form (ngSubmit)="createDiscount()" #discountForm="ngForm">
-            <div class="row">
-              <!-- Client Selection -->
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Select Client</label>
-                <select class="form-select" 
-                        [(ngModel)]="selectedClientId"
-                        name="clientId"
-                        [disabled]="loadingClients">
-                  <option value="general">General (for all clients)</option>
-                  <option *ngFor="let client of clients" 
-                          [value]="client.id">
-                    {{ client.firstName }} {{ client.lastName }} 
-                    <small class="text-muted">({{ client.email }})</small>
-                  </option>
-                </select>
-                <div *ngIf="loadingClients" class="mt-2">
-                  <div class="spinner-border spinner-border-sm" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                  </div>
-                  <span class="ms-2">Loading clients...</span>
-                </div>
-                <small class="form-text text-muted">
-                  Select a specific client or "General" for all clients
-                </small>
-              </div>
-              
-              <!-- Discount Type -->
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Type *</label>
-                <select class="form-select" 
-                        [(ngModel)]="newDiscount.type" 
-                        name="type" 
-                        required>
-                  <option *ngFor="let type of getEnumValues(discountTypeEnum)" 
-                          [value]="type">
-                    {{type | titlecase}}
-                  </option>
-                </select>
-              </div>
-            </div>
+    <div class="stat-card expired-discounts">
+      <div class="stat-header">
+        <div class="stat-icon">
+          <i class="fas fa-clock" style="color: var(--danger);"></i>
+        </div>
+        <h3>Expired Discounts</h3>
+      </div>
+      <div class="stat-value">{{ getExpiredDiscountsCount() }}</div>
+      <div class="stat-label">No longer valid</div>
+    </div>
+  </div>
 
-            <div class="row">
-          
-              <!-- Percentage Field (always shown) -->
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Percentage *</label>
-                <div class="input-group">
-                  <input type="number" 
-                         class="form-control" 
-                         [(ngModel)]="newDiscount.percentage" 
-                         name="percentage" 
-                         min="1" 
-                         max="100" 
-                         step="1"
-                         required>
-                  <span class="input-group-text">%</span>
-                </div>
-                <small class="form-text text-muted">
-                  Discount percentage between 1% and 100%
-                </small>
-              </div>
+  <!-- Discounts Table -->
+  <div class="table-section">
+    <div class="table-header">
+      <h2 class="table-title">
+        <i class="fas fa-list"></i>
+        All Discounts
+      </h2>
+      <span class="status-badge status-active">{{ discounts.length }} Total</span>
+    </div>
 
-              <!-- Valid Until -->
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Valid Until *</label>
-                <input type="datetime-local" 
-                       class="form-control" 
-                       [ngModel]="formatDateForInput(newDiscount.validUntil)"
-                       (ngModelChange)="newDiscount.validUntil = parseDate($event)"
-                       name="validUntil" 
-                       required>
-                <small class="form-text text-muted">
-                  Discount expiration date and time
-                </small>
-              </div>
-            </div>
+    <!-- Loading State -->
+    <div *ngIf="loading && discounts.length === 0" class="loading">
+      <i class="fas fa-spinner fa-spin"></i>
+      Loading discounts...
+    </div>
 
-            <!-- Description -->
-            <div class="mb-3">
-              <label class="form-label">Description *</label>
-              <textarea class="form-control" 
-                        [(ngModel)]="newDiscount.description" 
-                        name="description"
-                        rows="3"
-                        placeholder="Enter discount description (e.g., Summer Sale, Loyalty Reward, etc.)"
-                        required></textarea>
-            </div>
+    <!-- Empty State -->
+    <div *ngIf="!loading && discounts.length === 0" class="empty-state">
+      <i class="fas fa-tags"></i>
+      <h3>No discounts found</h3>
+      <p>Create your first discount to get started</p>
+    </div>
 
-            <!-- Form Actions -->
-            <div class="d-flex justify-content-end gap-2">
-              <button type="button" 
-                      class="btn btn-secondary" 
-                      (click)="showCreateForm = false">
-                <i class="fas fa-times me-2"></i>
-                Cancel
+    <!-- Discounts Table -->
+    <div *ngIf="discounts.length > 0" class="table-container">
+      <table class="discounts-table">
+        <thead>
+          <tr>
+            <th>Discount Code</th>
+            <th>Type</th>
+            <th>Value</th>
+            <th>Client</th>
+            <th>Status</th>
+            <th>Valid Until</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let discount of discounts; trackBy: trackByDiscountId">
+            <td>
+              <span class="discount-code">{{ discount.code }}</span>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="getTypeClass(discount.type)">
+                {{ discount.type }}
+              </span>
+            </td>
+            <td>
+              <span class="discount-percentage">{{ getDiscountValue(discount) }}</span>
+            </td>
+            <td>
+              <span 
+                class="client-info" 
+                [ngClass]="{ 'client-general': !discount.clientId }">
+                {{ discount.clientId ? (getClientName(discount.clientId) || discount.clientId | shorten:10) : 'All Clients' }}
+              </span>
+            </td>
+            <td>
+              <span 
+                class="status-badge" 
+                [ngClass]="{
+                  'status-active': isDiscountValid(discount),
+                  'status-expired': isDiscountExpired(discount) && !discount.used,
+                  'status-used': discount.used
+                }">
+                {{ discount.used ? 'Used' : (isDiscountExpired(discount) ? 'Expired' : 'Active') }}
+              </span>
+            </td>
+            <td>
+              <span 
+                class="date-info" 
+                [ngClass]="{ 'date-expired': isDiscountExpired(discount) }">
+                {{ discount.validUntil | date:'MMM d, y, h:mm a' }}
+              </span>
+            </td>
+            <td>
+              <button 
+                class="btn btn-danger btn-sm" 
+                (click)="deleteDiscount(discount.id)"
+                [disabled]="loading"
+                title="Delete discount">
+                <i class="fas fa-trash"></i>
+                Delete
               </button>
-              <button type="submit" 
-                      class="btn btn-success"
-                      [disabled]="!discountForm.valid || loading">
-                <i class="fas fa-save me-2"></i>
-                Create Discount
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      <!-- Discounts List -->
-      <div class="table-responsive" *ngIf="!loading">
-        <table class="table table-hover">
-          <thead class="table-dark">
-            <tr>
-              <th><i class="fas fa-barcode me-1"></i>Code</th>
-              <th><i class="fas fa-user me-1"></i>Client</th>
-              <th><i class="fas fa-percentage me-1"></i>Value</th>
-              <th><i class="fas fa-tag me-1"></i>Type</th>
-              <th><i class="fas fa-calendar-alt me-1"></i>Valid Until</th>
-              <th><i class="fas fa-info-circle me-1"></i>Status</th>
-              <th><i class="fas fa-cogs me-1"></i>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let discount of discounts; trackBy: trackByDiscountId" 
-                [class.table-warning]="isDiscountExpired(discount)">
-              
-              <!-- Code -->
-              <td>
-                <code>{{discount.code || 'N/A'}}</code>
-              </td>
-              
-              <!-- Client -->
-              <td>
-                <span *ngIf="discount.clientId; else generalDiscount">
-                  <i class="fas fa-user-tag me-1"></i>
-                  {{discount.clientName || (discount.clientId | shorten:8)}}
-                </span>
-                <ng-template #generalDiscount>
-                  <span class="text-muted">
-                    <i class="fas fa-globe me-1"></i>
-                    General
-                  </span>
-                </ng-template>
-              </td>
-              
-              <!-- Value -->
-              <td>
-                <strong>{{getDiscountValue(discount)}}</strong>
-              </td>
-              
-              <!-- Type -->
-              <td>
-                <span [class]="getTypeClass(discount.type)">
-                  {{discount.type | titlecase}}
-                </span>
-              </td>
-              
-              <!-- Valid Until -->
-              <td>
-                <div [class.text-danger]="isDiscountExpired(discount)">
-                  {{discount.validUntil | date:'medium'}}
-                  <i class="fas fa-exclamation-triangle ms-1 text-danger" 
-                     *ngIf="isDiscountExpired(discount)"
-                     title="Expired"></i>
-                </div>
-              </td>
-              
-              <!-- Status -->
-              <td>
-                <span class="badge" 
-                      [ngClass]="{
-                        'bg-success': isDiscountValid(discount),
-                        'bg-secondary': discount.used,
-                        'bg-danger': isDiscountExpired(discount) && !discount.used
-                      }">
-                  <i class="fas" 
-                     [class.fa-check]="isDiscountValid(discount)"
-                     [class.fa-times]="discount.used"
-                     [class.fa-clock]="isDiscountExpired(discount) && !discount.used"
-                     ></i>
-                  {{discount.used ? 'Used' : (isDiscountExpired(discount) ? 'Expired' : 'Active')}}
-                </span>
-              </td>
-              
-              <!-- Actions -->
-              <td>
-                <div class="btn-group btn-group-sm">
-                  <button class="btn btn-outline-danger" 
-                          (click)="deleteDiscount(discount.id)"
-                          [disabled]="loading"
-                          title="Delete discount">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </div>
-              </td>
-            </tr>
-            
-            <!-- Empty State -->
-            <tr *ngIf="discounts.length === 0">
-              <td colspan="7" class="text-center py-4">
-                <div class="text-muted">
-                  <i class="fas fa-tags fa-2x mb-2"></i>
-                  <p>No discounts found</p>
-                  <button class="btn btn-primary" (click)="showCreateForm = true">
-                    Create your first discount
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Statistics -->
-      <div class="row mt-4" *ngIf="discounts.length > 0">
-        <div class="col-md-3">
-          <div class="card text-center">
-            <div class="card-body">
-              <h5 class="card-title text-primary">{{discounts.length}}</h5>
-              <p class="card-text">Total Discounts</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card text-center">
-            <div class="card-body">
-              <h5 class="card-title text-success">{{getActiveDiscountsCount()}}</h5>
-              <p class="card-text">Active Discounts</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card text-center">
-            <div class="card-body">
-              <h5 class="card-title text-secondary">{{getUsedDiscountsCount()}}</h5>
-              <p class="card-text">Used Discounts</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card text-center">
-            <div class="card-body">
-              <h5 class="card-title text-danger">{{getExpiredDiscountsCount()}}</h5>
-              <p class="card-text">Expired Discounts</p>
-            </div>
-          </div>
-        </div>
-      </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
 
 <style>
-/* Enhanced discount badge styles */
-.discount-badge {
-  padding: 0.5em 0.75em;
-  border-radius: 0.5rem;
+:root {
+  --primary: #6a11cb;
+  --primary-dark: #4a00e0;
+  --secondary: #8e2de2;
+  --success: #00c9a7;
+  --warning: #ff9e44;
+  --danger: #ff3860;
+  --light: #f8f9fa;
+  --dark: #212529;
+  --gray-100: #f8f9fa;
+  --gray-200: #e9ecef;
+  --gray-300: #dee2e6;
+  --gray-700: #495057;
+  --transition: all 0.3s ease;
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.15);
+  --radius: 12px;
+  --radius-sm: 6px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.admin-discount-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e7f1 100%);
+  min-height: 100vh;
+  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+}
+
+/* Header Styles */
+.header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+  padding: 20px;
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  animation: fadeIn 0.6s ease-out;
+}
+
+.page-title-section {
+  flex: 1;
+}
+
+.page-title {
+  display: flex;
+  align-items: center;
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.title-icon {
+  font-size: 2rem;
+  margin-right: 15px;
+  animation: float 4s ease-in-out infinite;
+}
+
+.page-subtitle {
+  color: var(--gray-700);
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* Alert Styles */
+.alert {
+  padding: 16px 20px;
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  animation: slideDown 0.3s ease-out;
+}
+
+.alert-success {
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.alert-danger {
+  background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.btn-close {
+  position: absolute;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.3s;
+}
+
+.btn-close:hover {
+  opacity: 1;
+}
+
+/* Form Styles */
+.create-form-section {
+  margin-bottom: 32px;
+  animation: slideDown 0.4s ease-out;
+}
+
+.form-card {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.form-header {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: white;
+  padding: 20px 24px;
+}
+
+.form-header h3 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  padding: 24px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group-full {
+  grid-column: 1 / -1;
+}
+
+.form-group label {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--dark);
+}
+
+.form-control {
+  padding: 12px 16px;
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  transition: var(--transition);
+  background: white;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(106, 17, 203, 0.1);
+}
+
+.form-control:invalid {
+  border-color: var(--danger);
+}
+
+textarea.form-control {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  padding: 0 24px 24px;
+  justify-content: flex-end;
+}
+
+/* Button Styles */
+.btn {
+  border-radius: 50px;
+  padding: 0.8rem 1.8rem;
+  font-weight: 600;
+  transition: var(--transition);
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  text-decoration: none;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(106, 17, 203, 0.4);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 2px solid var(--primary);
+  color: var(--primary);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: white;
+  transform: translateY(-2px);
+}
+
+.btn-sm {
+  padding: 0.4rem 1rem;
+  font-size: 0.85rem;
+  border-radius: 20px;
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, var(--danger) 0%, #e63946 100%);
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(255, 56, 96, 0.4);
+}
+
+/* Statistics Cards */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  background: white;
+  padding: 24px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  transition: transform 0.3s ease;
+  border-left: 4px solid;
+  animation: slideIn 0.6s ease-out;
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+}
+
+.total-discounts { border-left-color: var(--primary); }
+.active-discounts { border-left-color: var(--success); }
+.used-discounts { border-left-color: var(--secondary); }
+.expired-discounts { border-left-color: var(--danger); }
+
+.stat-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.stat-icon {
+  font-size: 1.8rem;
+  margin-right: 12px;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+}
+
+.stat-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.stat-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: var(--gray-700);
+  text-align: center;
+}
+
+/* Table Section */
+.table-section {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: fadeIn 0.8s ease-out;
+}
+
+.table-header {
+  padding: 20px 24px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.table-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.table-container {
+  overflow-x: auto;
+  max-height: 600px;
+}
+
+.discounts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.discounts-table th {
+  background: var(--gray-100);
+  padding: 16px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--dark);
+  border-bottom: 2px solid var(--gray-300);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.discounts-table td {
+  padding: 16px 12px;
+  border-bottom: 1px solid var(--gray-200);
+  vertical-align: middle;
+}
+
+.discounts-table tbody tr {
+  transition: var(--transition);
+}
+
+.discounts-table tbody tr:hover {
+  background: var(--gray-100);
+  transform: scale(1.01);
+}
+
+/* Badge Styles */
+.badge {
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 0.75em;
   display: inline-block;
 }
 
-/* Specific styles for each discount type */
 .badge-loyalty {
-  background: linear-gradient(135deg, #4361ee, #3a0ca3);
+  background: linear-gradient(135deg, #7209b7 0%, #4361ee 100%);
   color: white;
-  box-shadow: 0 2px 5px rgba(58, 12, 163, 0.2);
 }
 
 .badge-promotional {
-  background: linear-gradient(135deg, #4cc9f0, #4895ef);
-  color: white;
-  box-shadow: 0 2px 5px rgba(76, 201, 240, 0.2);
-}
-
-.badge-percentage {
-  background: linear-gradient(135deg, #f72585, #b5179e);
-  color: white;
-  box-shadow: 0 2px 5px rgba(247, 37, 133, 0.2);
-}
-
-/* Apply these classes in the component */
-.badge-PERCENTAGE {
-  background: linear-gradient(135deg, #f72585, #b5179e);
-  color: white;
-}
-
-.badge-LOYALTY {
-  background: linear-gradient(135deg, #4361ee, #3a0ca3);
-  color: white;
-}
-
-.badge-PROMOTIONAL {
-  background: linear-gradient(135deg, #4cc9f0, #4895ef);
+  background: linear-gradient(135deg, #f72585 0%, #7209b7 100%);
   color: white;
 }
 
 .badge-percentage {
-  background: linear-gradient(135deg, #f72585, #b5179e);
+  background: linear-gradient(135deg, #4cc9f0 0%, #4361ee 100%);
   color: white;
-  box-shadow: 0 2px 5px rgba(247, 37, 133, 0.2);
 }
 
-/* Status badges */
-.badge-status {
-  padding: 0.5em 0.75em;
-  border-radius: 0.5rem;
+.status-badge {
+  padding: 0.3rem 0.7rem;
+  border-radius: 15px;
+  font-size: 0.75rem;
   font-weight: 600;
-  font-size: 0.8em;
+  text-transform: uppercase;
 }
 
-.bg-success {
-  background: linear-gradient(135deg, #2ecc71, #27ae60);
+.status-active {
+  background: linear-gradient(135deg, var(--success) 0%, #10b981 100%);
   color: white;
 }
 
-.bg-secondary {
-  background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+.status-expired {
+  background: linear-gradient(135deg, var(--danger) 0%, #e63946 100%);
   color: white;
 }
 
-.bg-danger {
-  background: linear-gradient(135deg, #e74c3c, #c0392b);
+.status-used {
+  background: linear-gradient(135deg, var(--secondary) 0%, #7c3aed 100%);
   color: white;
 }
 
-/* Table styling */
-.table-hover tbody tr:hover {
-  background-color: rgba(67, 97, 238, 0.05);
-  transform: translateY(-2px);
-  transition: all 0.3s ease;
-}
-
-.table-warning {
-  --bs-table-bg: #fff8e6;
-  background-color: #fff8e6;
-}
-
-/* Card styling */
-.card {
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  border: none;
-  transition: transform 0.3s ease;
-}
-
-.card:hover {
-  transform: translateY(-5px);
-}
-
-.card-header {
-  background: linear-gradient(120deg, #4361ee, #3a0ca3);
-  color: white;
-  border-radius: 12px 12px 0 0 !important;
-  padding: 1.2rem 1.5rem;
-  font-weight: 600;
-}
-
-/* Button styling */
-.btn-primary {
-  background: linear-gradient(120deg, #4361ee, #3a0ca3);
-  border: none;
-  transition: all 0.3s ease;
-}
-
-.btn-primary:hover {
-  background: linear-gradient(120deg, #3a0ca3, #4361ee);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(58, 12, 163, 0.3);
-}
-
-.btn-success {
-  background: linear-gradient(120deg, #2ecc71, #27ae60);
-  border: none;
-}
-
-.btn-success:hover {
-  background: linear-gradient(120deg, #27ae60, #2ecc71);
-  transform: translateY(-2px);
-}
-
-.btn-outline-danger {
-  transition: all 0.3s ease;
-}
-
-.btn-outline-danger:hover {
-  background-color: #e74c3c;
-  color: white;
-  transform: scale(1.05);
-}
-
-/* Stats cards */
-.card.text-center {
-  border-radius: 12px;
-  overflow: hidden;
-  transition: transform 0.3s ease;
-}
-
-.card.text-center:hover {
-  transform: translateY(-5px);
-}
-
-.card.text-center .card-body {
-  padding: 1.5rem;
-}
-
-.card.text-center h5 {
-  font-size: 1.8rem;
-  margin-bottom: 0.5rem;
-}
-
-/* Form styling */
-.form-control:focus, .form-select:focus {
-  border-color: #4361ee;
-  box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.25);
-}
-
-.input-group-text {
-  background-color: #f8f9fa;
-  border-color: #dee2e6;
-}
-
-/* General styles */
-.spinner-border {
-  width: 3rem;
-  height: 3rem;
-}
-
-code {
-  background-color: #f8f9fa;
-  padding: 0.2rem 0.4rem;
-  border-radius: 0.25rem;
-  font-size: 0.9em;
+/* Discount Code Styling */
+.discount-code {
   font-family: 'Courier New', monospace;
-}
-
-.btn-group-sm .btn {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
-  border-radius: 0.5rem;
-}
-
-.form-text {
-  margin-top: 0.25rem;
-  font-size: 0.85em;
-}
-
-.alert {
-  border: none;
-  border-radius: 0.75rem;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.text-muted i {
-  opacity: 0.7;
-}
-
-.table th {
   font-weight: 600;
-  font-size: 0.875rem;
-  background-color: #f8f9fa;
+  font-size: 0.9rem;
+  background: var(--gray-100);
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius-sm);
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .btn-group {
+/* Percentage Display */
+.discount-percentage {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* Client Display */
+.client-info {
+  color: var(--gray-700);
+  font-size: 0.9rem;
+}
+
+.client-general {
+  color: var(--success);
+  font-weight: 600;
+}
+
+/* Date Display */
+.date-info {
+  font-size: 0.9rem;
+  color: var(--gray-700);
+}
+
+.date-expired {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* Loading States */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+  color: var(--gray-700);
+}
+
+.loading i {
+  animation: spin 1s linear infinite;
+  margin-right: 10px;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: var(--gray-700);
+}
+
+.empty-state i {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  color: var(--gray-300);
+}
+
+.empty-state h3 {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+  .header-section {
     flex-direction: column;
+    gap: 20px;
+    text-align: center;
   }
   
-  .btn-group .btn {
-    margin-bottom: 0.25rem;
-    width: 100%;
+  .header-actions {
+    justify-content: center;
+  }
+
+  .table-header {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 1.8rem;
   }
   
-  .row > div {
-    margin-bottom: 1rem;
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .discounts-table {
+    font-size: 0.85rem;
+  }
+
+  .discounts-table th,
+  .discounts-table td {
+    padding: 12px 8px;
+  }
+
+  .admin-discount-container {
+    padding: 10px;
   }
 }
 </style>

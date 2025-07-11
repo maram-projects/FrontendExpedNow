@@ -177,20 +177,29 @@ import { ToastService } from '../../../services/toast.service';
     }
 
 
-    ngOnInit() {
-      console.log('Dashboard initializing...');
-      this.initializeData();
-      
-      // Handle query params ONCE on init only
-      this.route.queryParams.pipe(
-        take(1) // Only take the first emission
-      ).subscribe(params => {
-        this.handleQueryParams(params);
-      });
-
-      // Setup polling WITHOUT query param conflicts
-      this.setupDataPolling();
+ ngOnInit() {
+  console.log('Dashboard initializing...');
+  this.initializeData();
+  
+  // Handle query params ONCE on init only
+  this.route.queryParams.pipe(
+    take(1)
+  ).subscribe(params => {
+    if (params['paymentSuccess'] === 'true' && params['deliveryId']) {
+      this.handlePaymentSuccess(params['deliveryId'], params['paymentId']);
     }
+    
+    // Clear query params immediately
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {},
+      replaceUrl: true
+    });
+  });
+
+  // Setup polling
+  this.setupDataPolling();
+}
 
 
   private setupDataPolling(): void {
@@ -622,25 +631,28 @@ status: payment.status as PaymentStatus,
   }
 
   private handlePaymentSuccess(deliveryId: string, paymentId: string): void {
-      console.log('Handling payment success for delivery:', deliveryId, 'payment:', paymentId);
-      
-      // Update UI optimistically
-      const delivery = this.recentDeliveries.find(d => d.id === deliveryId);
-      if (delivery) {
-        delivery.paymentStatus = PaymentStatus.COMPLETED as any;
-        delivery.paymentId = paymentId;
-        delivery.paymentDate = new Date().toISOString();
-        this.calculateStats(this.recentDeliveries);
-      }
+  console.log('Handling payment success for delivery:', deliveryId, 'payment:', paymentId);
+  
+  // Find the delivery in recent deliveries
+  const delivery = this.recentDeliveries.find(d => d.id === deliveryId);
+  
+  if (delivery) {
+    // Update the delivery status optimistically
+    delivery.paymentStatus = PaymentStatus.COMPLETED as any;
+    delivery.paymentId = paymentId;
+    delivery.paymentDate = new Date().toISOString();
+    
+    // Recalculate stats
+    this.calculateStats(this.recentDeliveries);
+    
+    // Show the success modal
+    this.showPaymentSuccessModal(deliveryId, paymentId);
+  } else {
+    // If delivery not found in recent deliveries, refresh the data
+    this.refreshDashboardData();
+  }
+}
 
-      // Show success modal
-      this.showPaymentSuccessModal(deliveryId, paymentId);
-      
-      // Single refresh after a delay
-      setTimeout(() => {
-        this.refreshDashboardData();
-      }, 2000);
-    }
   private verifyPaymentStatus(paymentId: string, deliveryId: string): void {
       // Simplified - just one verification call
       this.paymentService.getPaymentStatus(paymentId).pipe(
@@ -659,25 +671,33 @@ status: payment.status as PaymentStatus,
 
     
 
-  private showPaymentSuccessModal(deliveryId: string, paymentId: string): void {
-      const delivery = this.recentDeliveries.find(d => d.id === deliveryId);
-      
-      if (delivery) {
-        const modalRef = this.dialog.open(PaymentSuccessModalComponent, {
-          data: {
-            deliveryId: delivery.id,
-            amount: delivery.amount,
-            paymentMethod: delivery.paymentMethod
-          },
-          disableClose: true
-        });
+private showPaymentSuccessModal(deliveryId: string, paymentId: string): void {
+  const delivery = this.recentDeliveries.find(d => d.id === deliveryId);
+  
+  if (delivery) {
+    const modalRef = this.dialog.open(PaymentSuccessModalComponent, {
+      data: {
+        deliveryId: delivery.id,
+        amount: delivery.amount,
+        paymentMethod: delivery.paymentMethod,
+        transactionId: paymentId
+      },
+      disableClose: true
+    });
 
-        modalRef.afterClosed().subscribe(() => {
-          console.log('Payment success modal closed');
-          // Don't refresh here - already handled in handlePaymentSuccess
-        });
-      }
-    }
+    modalRef.afterClosed().subscribe(() => {
+      // Refresh data after modal is closed
+      this.refreshDashboardData();
+      
+      // Clear any query params
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: {},
+        replaceUrl: true
+      });
+    });
+  }
+}
 
     private loadDashboardStats(): void {
       this.isLoading = true;

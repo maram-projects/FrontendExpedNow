@@ -41,6 +41,7 @@
     "leaflet": "^1.9.4",
     "leaflet-geosearch": "^4.2.0",
     "leaflet-routing-machine": "^3.2.12",
+    "ngx-toastr": "^19.0.0",
     "rxjs": "~7.8.0",
     "sockjs-client": "^1.6.1",
     "stompjs": "^2.3.3",

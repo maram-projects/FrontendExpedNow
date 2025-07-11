@@ -693,7 +693,7 @@ private async handleSuccessfulPayment(paymentIntent: any): Promise<void> {
       discountCode: this.discountCode
     });
     
-    // CRITICAL UPDATE: Update local delivery object immediately
+    // Update local delivery object immediately
     this.delivery.paymentStatus = PaymentStatus.COMPLETED;
     this.delivery.paymentId = paymentResponse.data.id;
     this.delivery.paymentDate = new Date().toISOString();
@@ -703,37 +703,61 @@ private async handleSuccessfulPayment(paymentIntent: any): Promise<void> {
     this.delivery.discountCode = this.discountCode;
     
     // Update backend
-await firstValueFrom(
-  this.deliveryService.updateDeliveryPaymentStatus(
-    this.delivery.id,
-    paymentResponse.data.id,
-    'COMPLETED',
-    this.selectedMethod || undefined
-  )
-);
+    await firstValueFrom(
+      this.deliveryService.updateDeliveryPaymentStatus(
+        this.delivery.id,
+        paymentResponse.data.id,
+        'COMPLETED',
+        this.selectedMethod || undefined
+      )
+    );
+    
     // Clear cart
     this.cartService.clearCart();
     
-    if (this.dialogData) {
-      console.log('Closing dialog with success');
-      this.dialogRef.close({
-        success: true,
-        paymentId: paymentResponse.data.id,
-        delivery: this.delivery // Send updated delivery back
-      });
-    } else {
-      console.log('Navigating to dashboard');
-      this.router.navigate(['/client/dashboard'], {
-        queryParams: {
-          paymentId: paymentResponse.data.id,
-          success: 'true',
-          deliveryId: this.delivery.id,
-          refresh: Date.now().toString()
-        }
-      });
-    }
+    // Show success modal and then navigate
+    this.showSuccessModalAndNavigate(paymentResponse.data.id);
   }
 }
+private showSuccessModalAndNavigate(paymentId: string): void {
+  if (!this.delivery) return;
+
+  const modalRef = this.dialog.open(PaymentSuccessModalComponent, {
+    data: {
+      deliveryId: this.delivery.id,
+      amount: this.delivery.finalAmountAfterDiscount,
+      paymentMethod: this.getMethodName(this.selectedMethod!),
+      transactionId: paymentId
+    },
+    disableClose: true
+  });
+
+  modalRef.afterClosed().subscribe(() => {
+    // After modal is closed, navigate to dashboard
+    this.navigateToDashboardAfterPayment();
+  });
+}
+
+private navigateToDashboardAfterPayment(): void {
+  if (this.dialogData) {
+    this.dialogRef.close({
+      success: true,
+      paymentId: this.delivery?.paymentId,
+      delivery: this.delivery
+    });
+  } else {
+    this.router.navigate(['/client/dashboard'], {
+      queryParams: {
+        paymentSuccess: 'true',
+        deliveryId: this.delivery?.id,
+        paymentId: this.delivery?.paymentId,
+        refresh: Date.now().toString()
+      },
+      replaceUrl: true
+    });
+  }
+}
+
 
 private async handleRequiresAction(paymentIntent: any): Promise<void> {
   console.log('Payment requires additional action (3D Secure)');
@@ -764,43 +788,32 @@ private async handleRequiresAction(paymentIntent: any): Promise<void> {
   }
 
 private async processNonCardPayment(): Promise<void> {
-  console.log('Processing non-card payment');
-  
-  if (!this.delivery) {
-    throw new Error('Delivery information not available');
-  }
+  if (!this.delivery) return;
 
   try {
-    if (!this.paymentId) {
-      const paymentData = {
-        deliveryId: this.delivery.id,
-        clientId: this.clientId,
-    amount: this.delivery.finalAmountAfterDiscount, // Remove multiplication
-        currency: 'TND', // Always TND
-        paymentMethod: this.selectedMethod!
-      };
+    const paymentData = {
+      deliveryId: this.delivery.id,
+      clientId: this.clientId,
+      amount: this.delivery.finalAmountAfterDiscount,
+      currency: 'TND',
+      paymentMethod: this.selectedMethod!
+    };
 
-      const response = await firstValueFrom(
-        this.paymentService.createPaymentIntent(paymentData)
-      );
-      
-      if (!response.paymentId) {
-        throw new Error('Payment ID not received from payment service');
-      }
-      
-      this.paymentId = response.paymentId;
-    }
-
+    const response = await firstValueFrom(
+      this.paymentService.createPaymentIntent(paymentData)
+    );
+    
+    this.paymentId = response.paymentId;
+    
+    // Process without expecting clientSecret
     const payment = await firstValueFrom(
       this.paymentService.processNonCardPayment(this.paymentId)
     );
     
-    if (payment && payment.data) {
+    if (payment?.data) {
       this.showPaymentSuccess(payment.data);
-    } else {
-      throw new Error('Payment processing failed - no payment data received');
     }
-  } catch (error: any) {
+  }catch (error: any) {
     console.error('Non-card payment processing error:', error);
     this.showError('Non-card payment failed: ' + (error.message || 'Unknown error'));
     throw error;

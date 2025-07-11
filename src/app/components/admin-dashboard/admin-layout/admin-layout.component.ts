@@ -54,12 +54,13 @@ import { RouterModule } from '@angular/router';
                 <span>Discount Management</span>
               </a>
             </li>
-            <li class="nav-item">
-              <a class="nav-link" routerLink="/admin/payments" routerLinkActive="active">
-                <i class="fas fa-credit-card"></i>
-                <span>Payment Management</span>
-              </a>
-            </li>
+          <li class="nav-item">
+  <a class="nav-link" routerLink="/admin/payments" routerLinkActive="active">
+    <i class="fas fa-credit-card"></i>
+    <span>Payment Management</span>
+  </a>
+</li>
+
             <li class="nav-item">
               <a class="nav-link" routerLink="/admin/bonuses" routerLinkActive="active">
                 <i class="fas fa-gift"></i>

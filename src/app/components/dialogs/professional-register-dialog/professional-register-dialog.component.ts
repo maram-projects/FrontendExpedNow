@@ -49,11 +49,7 @@ export class ProfessionalRegisterDialogComponent {
       phone: ['', Validators.required],
       address: ['', Validators.required],
       vehicleType: ['', Validators.required],
-      vehicleBrand: ['', Validators.required],
-      vehicleModel: ['', Validators.required],
-      vehiclePlateNumber: ['', Validators.required],
-      driverLicenseNumber: ['', Validators.required],
-      driverLicenseCategory: ['', Validators.required],
+    
       termsAccepted: [false, Validators.requiredTrue]
     });
   }

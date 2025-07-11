@@ -58,27 +58,38 @@ export class PaymentDetailsComponent implements OnInit {
     return this.datePipe.transform(date, 'medium') || 'N/A';
   }
 
-  async refundPayment(): Promise<void> {
-    if (!this.payment) return;
-    
-    if (confirm('Are you sure you want to refund this payment?')) {
-      try {
-        this.isLoading = true;
-        const response = await firstValueFrom(this.paymentService.refundPayment(this.payment.id));
-        if (response.success) {
-          // Reload payment details to show updated status
-          await this.loadPaymentDetails();
-          alert('Payment refunded successfully');
-        } else {
-          alert('Failed to refund payment: ' + response.message);
-        }
-      } catch (error: any) {
-        alert('Error refunding payment: ' + error.message);
-      } finally {
-        this.isLoading = false;
+async refundPayment(): Promise<void> {
+  if (!this.payment) return;
+  
+  if (confirm('Are you sure you want to refund this payment?')) {
+    try {
+      this.isLoading = true;
+      
+      // Get currency from payment or default to TND
+      const currency = this.payment.currency || 'TND';
+      
+      const response = await firstValueFrom(
+        this.paymentService.refundPayment(
+          this.payment.id,
+          this.payment.finalAmountAfterDiscount, // Pass the amount
+          currency // Pass the currency
+        )
+      );
+      
+      if (response.success) {
+        // Reload payment details to show updated status
+        await this.loadPaymentDetails();
+        alert('Payment refunded successfully');
+      } else {
+        alert('Failed to refund payment: ' + response.message);
       }
+    } catch (error: any) {
+      alert('Error refunding payment: ' + error.message);
+    } finally {
+      this.isLoading = false;
     }
   }
+}
 
   async cancelPayment(): Promise<void> {
     if (!this.payment) return;

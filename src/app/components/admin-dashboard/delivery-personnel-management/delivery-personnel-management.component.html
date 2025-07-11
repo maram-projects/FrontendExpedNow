@@ -54,40 +54,54 @@
             <td class="user-date">{{user.dateOfRegistration | date:'mediumDate'}}</td>
             
            <td class="vehicle-status">
-  <ng-container *ngIf="user.assignedVehicle; else noVehicleOrId">
-    <span class="vehicle-info">
-      {{ user.assignedVehicle.make }} {{ user.assignedVehicle.model }}
-      <span class="license-plate">({{ user.assignedVehicle.licensePlate }})</span>
-    </span>
+  <ng-container *ngIf="isProfessional(user); else temporaryVehicle">
+    <!-- Professional delivery - show assigned vehicle or assignment option -->
+    <ng-container *ngIf="user.assignedVehicle; else noVehicleOrId">
+      <span class="vehicle-info">
+        {{ user.assignedVehicle.make }} {{ user.assignedVehicle.model }}
+        <span class="license-plate">({{ user.assignedVehicle.licensePlate }})</span>
+      </span>
+    </ng-container>
+    
+    <ng-template #noVehicleOrId>
+      <span class="no-vehicle">
+        <ng-container *ngIf="user.assignedVehicleId; else noVehicle">
+          Vehicle ID: {{ user.assignedVehicleId }}
+        </ng-container>
+        <ng-template #noVehicle>
+          No vehicle assigned
+        </ng-template>
+      </span>
+    </ng-template>
   </ng-container>
   
-  <ng-template #noVehicleOrId>
-    <span class="no-vehicle">
-      <ng-container *ngIf="user.assignedVehicleId; else noVehicle">
-        Vehicle ID: {{ user.assignedVehicleId }}
-      </ng-container>
-      <ng-template #noVehicle>
-        No vehicle assigned
-      </ng-template>
+  <ng-template #temporaryVehicle>
+    <!-- Temporary delivery - show their own vehicle info -->
+    <span class="vehicle-info" *ngIf="user.vehicleType">
+      {{ user.vehicleBrand }} {{ user.vehicleModel }}
+      <span class="license-plate">({{ user.vehiclePlateNumber }})</span>
+    </span>
+    <span class="no-vehicle" *ngIf="!user.vehicleType">
+      Vehicle info not available
     </span>
   </ng-template>
 </td>
             <!-- Fixed Actions Column -->
-            <td class="user-actions">
-              <button class="action-button btn-edit" (click)="showEditUserForm(user)">
-                <i class="fas fa-pencil-alt"></i> Edit
-              </button>
-              <button class="action-button btn-details" (click)="showUserDetails(user)">
-                <i class="fas fa-info-circle"></i> Details
-              </button>
-              
-              <!-- Fixed vehicle assignment check -->
-             <button *ngIf="!user.assignedVehicle?.id && !user.assignedVehicleId" 
-        class="action-button btn-select-vehicle" 
-        (click)="showSelectVehicleForm(user)">
-  <i class="fas fa-car"></i> Assign
-</button>
-            </td>
+           <td class="user-actions">
+  <button class="action-button btn-edit" (click)="showEditUserForm(user)">
+    <i class="fas fa-pencil-alt"></i> Edit
+  </button>
+  <button class="action-button btn-details" (click)="showUserDetails(user)">
+    <i class="fas fa-info-circle"></i> Details
+  </button>
+  
+  <!-- Only show Assign button for professionals without vehicle -->
+  <button *ngIf="isProfessional(user) && !hasAssignedVehicle(user)" 
+          class="action-button btn-select-vehicle" 
+          (click)="showSelectVehicleForm(user)">
+    <i class="fas fa-car"></i> Assign
+  </button>
+</td>
           </tr>
         </tbody>
       </table>
@@ -95,100 +109,119 @@
   </main>
 
   <!-- Add/Edit User Modal -->
-  <div class="modal-overlay" *ngIf="formMode === 'add' || formMode === 'edit'">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title">{{ formMode === 'add' ? 'Add New Delivery Person' : 'Edit Delivery Person' }}</h3>
-        <button type="button" class="btn-close" (click)="formMode = ''">×</button>
-      </div>
-      <div class="modal-body">
-        <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
-          <div class="form-row">
-            <div class="form-group">
-              <label for="firstName">First Name</label>
-              <input type="text" id="firstName" formControlName="firstName" 
-                     [ngClass]="{'invalid': userForm.get('firstName')?.invalid && userForm.get('firstName')?.touched}">
-              <div class="error-message" *ngIf="userForm.get('firstName')?.invalid && userForm.get('firstName')?.touched">
-                First name is required
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="lastName">Last Name</label>
-              <input type="text" id="lastName" formControlName="lastName" 
-                     [ngClass]="{'invalid': userForm.get('lastName')?.invalid && userForm.get('lastName')?.touched}">
-              <div class="error-message" *ngIf="userForm.get('lastName')?.invalid && userForm.get('lastName')?.touched">
-                Last name is required
-              </div>
-            </div>
-          </div>
-          
+<!-- Update the modal section to include all fields -->
+<div class="modal-overlay" *ngIf="formMode === 'edit'">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">Edit Delivery Person</h3>
+      <button type="button" class="btn-close" (click)="formMode = ''">×</button>
+    </div>
+    <div class="modal-body">
+      <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
+        <div class="form-row">
           <div class="form-group">
-            <label for="email">Email</label>
-            <input type="email" id="email" formControlName="email" 
-                   [ngClass]="{'invalid': userForm.get('email')?.invalid && userForm.get('email')?.touched}">
-            <div class="error-message" *ngIf="userForm.get('email')?.invalid && userForm.get('email')?.touched">
-              Valid email is required
+            <label for="firstName">First Name</label>
+            <input type="text" id="firstName" formControlName="firstName" 
+                   [ngClass]="{'invalid': userForm.get('firstName')?.invalid && userForm.get('firstName')?.touched}">
+            <div class="error-message" *ngIf="userForm.get('firstName')?.invalid && userForm.get('firstName')?.touched">
+              First name is required
             </div>
           </div>
-          
-          <div class="form-group" *ngIf="formMode === 'add'">
-            <label for="password">Password</label>
-            <input type="password" id="password" formControlName="password" 
-                   [ngClass]="{'invalid': userForm.get('password')?.invalid && userForm.get('password')?.touched}">
-            <div class="error-message" *ngIf="userForm.get('password')?.invalid && userForm.get('password')?.touched">
-              Password must be at least 6 characters
+          <div class="form-group">
+            <label for="lastName">Last Name</label>
+            <input type="text" id="lastName" formControlName="lastName" 
+                   [ngClass]="{'invalid': userForm.get('lastName')?.invalid && userForm.get('lastName')?.touched}">
+            <div class="error-message" *ngIf="userForm.get('lastName')?.invalid && userForm.get('lastName')?.touched">
+              Last name is required
             </div>
           </div>
-          
-          <div class="form-row">
-            <div class="form-group">
-              <label for="phone">Phone</label>
-              <input type="tel" id="phone" formControlName="phone" 
-                     [ngClass]="{'invalid': userForm.get('phone')?.invalid && userForm.get('phone')?.touched}">
-              <div class="error-message" *ngIf="userForm.get('phone')?.invalid && userForm.get('phone')?.touched">
-                Phone number is required
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="address">Address</label>
-              <input type="text" id="address" formControlName="address" 
-                     [ngClass]="{'invalid': userForm.get('address')?.invalid && userForm.get('address')?.touched}">
-              <div class="error-message" *ngIf="userForm.get('address')?.invalid && userForm.get('address')?.touched">
-                Address is required
-              </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" formControlName="email" 
+                 [ngClass]="{'invalid': userForm.get('email')?.invalid && userForm.get('email')?.touched}">
+          <div class="error-message" *ngIf="userForm.get('email')?.invalid && userForm.get('email')?.touched">
+            Valid email is required
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="phone">Phone</label>
+            <input type="tel" id="phone" formControlName="phone" 
+                   [ngClass]="{'invalid': userForm.get('phone')?.invalid && userForm.get('phone')?.touched}">
+            <div class="error-message" *ngIf="userForm.get('phone')?.invalid && userForm.get('phone')?.touched">
+              Phone number is required
             </div>
           </div>
-          
-          <div class="form-row">
-            <div class="form-group">
-              <label for="userType">User Type</label>
-              <select id="userType" formControlName="userType">
-                <option value="professional">🏆 Professional</option>
-                <option value="temporary">⏱️ Temporary</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="vehicleType">Vehicle Type</label>
-              <select id="vehicleType" formControlName="vehicleType">
-                <option *ngFor="let type of vehicleTypes" [value]="type.value">
-                  {{ type.value === 'MOTORCYCLE' ? '🏍️ ' : type.value === 'CAR' ? '🚗 ' : '🚚 ' }}
-                  {{ type.display }}
-                </option>
-              </select>
+          <div class="form-group">
+            <label for="address">Address</label>
+            <input type="text" id="address" formControlName="address" 
+                   [ngClass]="{'invalid': userForm.get('address')?.invalid && userForm.get('address')?.touched}">
+            <div class="error-message" *ngIf="userForm.get('address')?.invalid && userForm.get('address')?.touched">
+              Address is required
             </div>
           </div>
-          
-          <div class="form-actions">
-            <button type="button" class="secondary-button" (click)="formMode = ''">Cancel</button>
-            <button type="submit" class="primary-button" [disabled]="userForm.invalid || formSubmitting">
-              <span *ngIf="formSubmitting" class="spinner-button"></span>
-              {{ formMode === 'add' ? 'Add Delivery Person' : 'Save Changes' }}
-            </button>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="userType">User Type</label>
+            <select id="userType" formControlName="userType">
+              <option value="professional">🏆 Professional</option>
+              <option value="temporary">⏱️ Temporary</option>
+            </select>
           </div>
-        </form>
-      </div>
+          <div class="form-group">
+            <label for="vehicleType">Vehicle Type</label>
+            <select id="vehicleType" formControlName="vehicleType">
+              <option *ngFor="let type of vehicleTypes" [value]="type.value">
+                {{ type.value === 'MOTORCYCLE' ? '🏍️ ' : type.value === 'CAR' ? '🚗 ' : '🚚 ' }}
+                {{ type.display }}
+              </option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="driverLicenseNumber">Driver License Number</label>
+            <input type="text" id="driverLicenseNumber" formControlName="driverLicenseNumber">
+          </div>
+          <div class="form-group">
+            <label for="driverLicenseCategory">License Category</label>
+            <input type="text" id="driverLicenseCategory" formControlName="driverLicenseCategory">
+          </div>
+        </div>
+        
+        <!-- Vehicle assignment section -->
+        <div class="form-section" *ngIf="availableVehicles.length > 0">
+          <h4>Assigned Vehicle</h4>
+          <div class="vehicle-selection">
+            <select class="form-control" (change)="onVehicleSelected($event)">
+              <option value="">-- Select Vehicle --</option>
+              <option *ngFor="let vehicle of availableVehicles" 
+                      [value]="vehicle.id"
+                      [selected]="vehicle.id === selectedVehicleId">
+                {{vehicle.make}} {{vehicle.model}} ({{vehicle.licensePlate}})
+              </option>
+            </select>
+            <small *ngIf="selectedVehicleId">Currently selected: {{ getVehicleById(selectedVehicleId)?.licensePlate }}</small>
+          </div>
+        </div>
+        
+        <div class="form-actions">
+          <button type="button" class="secondary-button" (click)="formMode = ''">Cancel</button>
+          <button type="submit" class="primary-button" [disabled]="userForm.invalid || formSubmitting">
+            <span *ngIf="formSubmitting" class="spinner-button"></span>
+            Save Changes
+          </button>
+        </div>
+      </form>
     </div>
   </div>
+</div>
 
   <!-- Vehicle Selection Modal -->
   <div class="modal-overlay" *ngIf="showVehicleSelectionForm && userForVehicle">
@@ -254,58 +287,167 @@
           </div>
         </div>
         
-        <!-- Vehicle Details Section - Fixed -->
-        <div class="details-section" *ngIf="selectedUser.assignedVehicle && selectedUser.assignedVehicle.id">
-          <h3>Assigned Vehicle</h3>
-          <div class="vehicle-details">
-            <div class="vehicle-display">
-              <div class="vehicle-photo-container">
-                <img *ngIf="selectedUser.assignedVehicle.photoPath" 
-                     [src]="selectedUser.assignedVehicle.photoPath | vehiclePhoto" 
-                     alt="{{selectedUser.assignedVehicle.make}} {{selectedUser.assignedVehicle.model}}"
-                     class="vehicle-photo">
-                <div *ngIf="!selectedUser.assignedVehicle.photoPath" class="no-photo">
-                  <i class="fas fa-car" style="font-size: 48px; color: #ccc;"></i>
-                  <p>No Photo Available</p>
+       <!-- User Details Modal -->
+<div class="modal-overlay" *ngIf="showDetailsDialog && selectedUser">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">👤 Delivery Person Details</h3>
+      <button type="button" class="btn-close" (click)="closeDetailsDialog()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="user-profile">
+        <div class="user-avatar">
+          <i class="fas fa-user-circle"></i>
+        </div>
+        <div class="user-info">
+          <h2>{{selectedUser.firstName}} {{selectedUser.lastName}}</h2>
+          <span class="role-badge" [ngClass]="{'role-professional': isProfessional(selectedUser), 'role-temporary': !isProfessional(selectedUser)}">
+            {{ isProfessional(selectedUser) ? 'Professional' : 'Temporary' }}
+          </span>
+        </div>
+      </div>
+      
+      <!-- Contact Information Section -->
+      <div class="details-section">
+        <h3>Contact Information</h3>
+        <div class="contact-details">
+          <div class="contact-property">
+            <span class="property-label">Email:</span>
+            <span>{{selectedUser.email}}</span>
+          </div>
+          <div class="contact-property">
+            <span class="property-label">Phone:</span>
+            <span>{{selectedUser.phone}}</span>
+          </div>
+          <div class="contact-property">
+            <span class="property-label">Address:</span>
+            <span>{{selectedUser.address}}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Vehicle Information Section -->
+      <div class="details-section" *ngIf="isProfessional(selectedUser); else temporaryVehicleDetails">
+        <!-- Professional Delivery Vehicle Details -->
+        <h3>Assigned Company Vehicle</h3>
+        <div class="vehicle-details" *ngIf="selectedUser.assignedVehicle && selectedUser.assignedVehicle.id; else noCompanyVehicle">
+          <div class="vehicle-display">
+            <div class="vehicle-photo-container">
+              <img *ngIf="selectedUser.assignedVehicle.photoPath" 
+                   [src]="selectedUser.assignedVehicle.photoPath | vehiclePhoto" 
+                   alt="{{selectedUser.assignedVehicle.make}} {{selectedUser.assignedVehicle.model}}"
+                   class="vehicle-photo">
+              <div *ngIf="!selectedUser.assignedVehicle.photoPath" class="no-photo">
+                <i class="fas fa-car" style="font-size: 48px; color: #ccc;"></i>
+                <p>No Photo Available</p>
+              </div>
+            </div>
+            <div class="vehicle-info">
+              <h4>{{selectedUser.assignedVehicle.make}} {{selectedUser.assignedVehicle.model}}</h4>
+              
+              <div class="vehicle-properties">
+                <div class="vehicle-property">
+                  <span class="property-label">Type:</span>
+                  <span>{{getVehicleTypeName(selectedUser.assignedVehicle.vehicleType)}}</span>
+                </div>
+                <div class="vehicle-property">
+                  <span class="property-label">Year:</span>
+                  <span>{{selectedUser.assignedVehicle.year}}</span>
+                </div>
+                <div class="vehicle-property">
+                  <span class="property-label">License Plate:</span>
+                  <span>{{selectedUser.assignedVehicle.licensePlate}}</span>
+                </div>
+                <div class="vehicle-property">
+                  <span class="property-label">Capacity:</span>
+                  <span>{{selectedUser.assignedVehicle.maxLoad}} kg</span>
+                </div>
+                <div class="vehicle-property">
+                  <span class="property-label">Status:</span>
+                  <span [ngClass]="selectedUser.assignedVehicle.available ? 'status-available' : 'status-unavailable'">
+                    {{selectedUser.assignedVehicle.available ? 'Available' : 'In Use'}}
+                  </span>
                 </div>
               </div>
-              <div class="vehicle-info">
-                <h4>{{selectedUser.assignedVehicle.make}} {{selectedUser.assignedVehicle.model}}</h4>
-                
-                <div class="vehicle-properties">
-                  <div class="vehicle-property">
-                    <span class="property-label">Type:</span>
-                    <span>{{getVehicleTypeName(selectedUser.assignedVehicle.vehicleType)}}</span>
-                  </div>
-                  <div class="vehicle-property">
-                    <span class="property-label">Year:</span>
-                    <span>{{selectedUser.assignedVehicle.year}}</span>
-                  </div>
-                  <div class="vehicle-property">
-                    <span class="property-label">License Plate:</span>
-                    <span>{{selectedUser.assignedVehicle.licensePlate}}</span>
-                  </div>
-                  <div class="vehicle-property">
-                    <span class="property-label">Capacity:</span>
-                    <span>{{selectedUser.assignedVehicle.maxLoad}} kg</span>
-                  </div>
-                  <div class="vehicle-property">
-                    <span class="property-label">Status:</span>
-                    <span [ngClass]="selectedUser.assignedVehicle.available ? 'status-available' : 'status-unavailable'">
-                      {{selectedUser.assignedVehicle.available ? 'Available' : 'In Use'}}
-                    </span>
-                  </div>
+              
+              <button class="view-details-btn" 
+                      (click)="navigateToVehicleDetails(selectedUser.assignedVehicle.id!)">
+                View Full Vehicle Details
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <ng-template #noCompanyVehicle>
+          <div class="no-vehicle">
+            <i class="fas fa-car-crash"></i>
+            <p>No company vehicle assigned</p>
+            <button class="primary-button" (click)="showSelectVehicleForm(selectedUser); closeDetailsDialog()">
+              <i class="fas fa-car"></i> Assign Vehicle
+            </button>
+          </div>
+        </ng-template>
+      </div>
+      
+      <ng-template #temporaryVehicleDetails>
+        <!-- Temporary Delivery Vehicle Details -->
+        <h3>Personal Vehicle Information</h3>
+        <div class="vehicle-details" *ngIf="selectedUser.vehicleType; else noPersonalVehicle">
+          <div class="vehicle-display">
+            <div class="vehicle-photo-container">
+              <div class="no-photo">
+                <i class="fas fa-car" style="font-size: 48px; color: #ccc;"></i>
+                <p>Personal Vehicle</p>
+              </div>
+            </div>
+            <div class="vehicle-info">
+              <h4>{{selectedUser.vehicleBrand || 'Unknown Brand'}} {{selectedUser.vehicleModel || 'Unknown Model'}}</h4>
+              
+              <div class="vehicle-properties">
+                <div class="vehicle-property">
+                  <span class="property-label">Type:</span>
+                  <span>{{getVehicleTypeName(selectedUser.vehicleType)}}</span>
                 </div>
-                
-                <button class="view-details-btn" 
-                        (click)="navigateToVehicleDetails(selectedUser.assignedVehicle.id!)"
-                        *ngIf="selectedUser.assignedVehicle.id">
-                  View Full Vehicle Details
-                </button>
+                <div class="vehicle-property">
+                  <span class="property-label">License Plate:</span>
+                  <span>{{selectedUser.vehiclePlateNumber || 'Not provided'}}</span>
+                </div>
+                <div class="vehicle-property">
+                  <span class="property-label">Driver License:</span>
+                  <span>{{selectedUser.driverLicenseNumber || 'Not provided'}} ({{selectedUser.driverLicenseCategory || 'N/A'}})</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
+        
+        <ng-template #noPersonalVehicle>
+          <div class="no-vehicle">
+            <i class="fas fa-exclamation-circle"></i>
+            <p>No vehicle information provided</p>
+          </div>
+        </ng-template>
+      </ng-template>
+      
+      <!-- Additional Information Section -->
+      <div class="details-section">
+        <h3>Additional Information</h3>
+        <div class="additional-details">
+          <div class="additional-property">
+            <span class="property-label">Registration Date:</span>
+            <span>{{selectedUser.dateOfRegistration | date:'mediumDate'}}</span>
+          </div>
+          <div class="additional-property">
+            <span class="property-label">Account Status:</span>
+            <span [ngClass]="selectedUser.enabled ? 'status-active' : 'status-inactive'">
+              {{selectedUser.enabled ? 'Active' : 'Inactive'}}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
         
         <!-- No Vehicle Section -->
         <div class="details-section" *ngIf="!(selectedUser.assignedVehicle && selectedUser.assignedVehicle.id)">

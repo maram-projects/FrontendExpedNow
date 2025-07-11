@@ -26,7 +26,7 @@ export interface PaymentResponse {
   data: Payment;
 }
 
-interface PaymentListResponse {
+export interface PaymentListResponse {  // Make sure it has 'export'
   payments: Payment[];
   success: boolean;
   data: Payment[];
@@ -115,18 +115,16 @@ export class PaymentService {
   /**
    * Get all payments without pagination
    */
-  getAllPaymentsSimple(): Observable<PaymentListResponse> {
-  return this.http.get<PaymentListResponse>(`${this.apiUrl}/all`, {
+getAllPaymentsSimple(): Observable<any> {
+  return this.http.get(`${this.apiUrl}`, { 
     headers: this.createHeaders(),
-    withCredentials: true
-  }).pipe(
-    retry(2),
-    map(response => ({
-      ...response,
-      data: response.data?.map(payment => this.parsePaymentDates(payment)) || []
-    })),
-    tap(response => console.log('Get all payments simple response:', response)),
-    catchError(this.handleError)
+    params: new HttpParams().set('includeDeliveryPerson', 'true') // Add this param
+  })
+  .pipe(
+    catchError(error => {
+      console.error('Get payments error:', error);
+      return throwError(() => new Error('Failed to fetch payments'));
+    })
   );
 }
 
@@ -146,15 +144,20 @@ createPaymentIntent(paymentData: {
   return this.http.post<CreatePaymentIntentResponse>(
     this.apiUrl,
     paymentData,
-    {
-      headers: this.createHeaders(),
-      withCredentials: true
-    }
+    { headers: this.createHeaders() }
   ).pipe(
     tap(response => {
-      if (!response || !response.clientSecret || !response.paymentId) {
+      // Only require clientSecret for credit card payments
+      const isCardPayment = paymentData.paymentMethod === PaymentMethod.CREDIT_CARD;
+      
+      if (!response || !response.paymentId) {
         console.error('Invalid response:', response);
         throw new Error('Payment service returned invalid response');
+      }
+
+      if (isCardPayment && !response.clientSecret) {
+        console.error('Missing clientSecret for card payment:', response);
+        throw new Error('Payment initialization failed for card');
       }
     }),
     catchError(error => {
@@ -255,55 +258,72 @@ private refreshDashboardData(): void {
     );
   }
 
+
   /**
    * Update payment status
    */
-  updatePaymentStatus(paymentId: string, status: string): Observable<PaymentResponse> {
-    const params = new HttpParams().set('status', status);
-
-    return this.http.put<PaymentResponse>(`${this.apiUrl}/${paymentId}/status`, {}, {
-      params,
-      headers: this.createHeaders(),
-      withCredentials: true
-    }).pipe(
-      tap(response => console.log('Update payment status response:', response)),
-      catchError(this.handleError)
+updatePaymentStatus(paymentId: string, status: string): Observable<any> {
+    return this.http.put(
+        `${this.apiUrl}/${paymentId}/status`,
+        { status },  // Send as JSON body
+        { headers: this.createHeaders() }
+    ).pipe(
+        catchError(error => {
+            console.error('Update payment status error:', error);
+            let errorMessage = 'Failed to update payment status';
+            if (error.error?.message) {
+                errorMessage = error.error.message;
+            }
+            return throwError(() => new Error(errorMessage));
+        })
     );
-  }
+}
 
   /**
    * Cancel a payment
    */
-  cancelPayment(paymentId: string): Observable<PaymentResponse> {
-    return this.http.post<PaymentResponse>(`${this.apiUrl}/${paymentId}/cancel`, {}, {
-      headers: this.createHeaders(),
-      withCredentials: true
-    }).pipe(
-      tap(response => console.log('Cancel payment response:', response)),
-      catchError(this.handleError)
+  cancelPayment(paymentId: string): Observable<any> {
+    return this.http.post(
+      `${this.apiUrl}/${paymentId}/cancel`,
+      {},
+      { headers: this.createHeaders() }
+    ).pipe(
+      catchError(error => {
+        console.error('Cancel payment error:', error);
+        
+        let errorMessage = 'Failed to cancel payment';
+        if (error.error?.message) {
+          errorMessage = error.error.message;
+        }
+        
+        return throwError(() => new Error(errorMessage));
+      })
     );
   }
-
   /**
    * Refund a payment
    */
-  refundPayment(paymentId: string, amount?: number, currency: string = 'TND'): Observable<PaymentResponse> {
-    const params = new HttpParams()
-      .set('amount', amount ? amount.toString() : '')
-      .set('currency', currency);
-      
-    return this.http.post<PaymentResponse>(
-      `${this.apiUrl}/${paymentId}/refund`, 
-      {}, 
-      { 
-        params,
-        headers: this.createHeaders(),
-        withCredentials: true
+refundPayment(paymentId: string, amount?: number, currency: string = 'TND'): Observable<any> {
+  const payload = {
+    amount: amount ?? undefined,  // Send undefined if amount not provided
+    currency
+  };
+
+  return this.http.post(
+    `${this.apiUrl}/${paymentId}/refund`,
+    payload,
+    { headers: this.createHeaders() }
+  ).pipe(
+    catchError(error => {
+      console.error('Refund payment error:', error);
+      let errorMessage = 'Failed to refund payment';
+      if (error.error?.message) {
+        errorMessage = error.error.message;
       }
-    ).pipe(
-      catchError(this.handleError)
-    );
-  }
+      return throwError(() => new Error(errorMessage));
+    })
+  );
+}
 
 
   /**
@@ -419,16 +439,15 @@ private refreshDashboardData(): void {
   /**
    * Get payment statistics
    */
-  getPaymentStats(): Observable<PaymentStatsResponse> {
-    return this.http.get<PaymentStatsResponse>(`${this.apiUrl}/stats`, {
-      headers: this.createHeaders(),
-      withCredentials: true
-    }).pipe(
-      tap(response => console.log('Payment stats response:', response)),
-      catchError(this.handleError)
-    );
+  getPaymentStats(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/stats`, { headers: this.createHeaders() })
+      .pipe(
+        catchError(error => {
+          console.error('Get payment stats error:', error);
+          return throwError(() => new Error('Failed to fetch payment statistics'));
+        })
+      );
   }
-
   /**
    * Get available payment methods
    */
@@ -581,12 +600,7 @@ getPaymentDetails(paymentId: string): Observable<PaymentResponse> {
 }
 
 
-releaseToDeliveryPerson(paymentId: string): Observable<any> {
-    return this.http.post(
-      `${this.apiUrl}/${paymentId}/release-to-delivery`, 
-      {}
-    );
-  }
+
 
   getDeliveryPersonPayments(deliveryPersonId: string): Observable<Payment[]> {
     return this.http.get<Payment[]>(
@@ -594,13 +608,78 @@ releaseToDeliveryPerson(paymentId: string): Observable<any> {
     );
   }
 
-   formatCurrency(amount: number | undefined, currencyCode: string = 'TND'): string {
-    if (amount === undefined || amount === null) return 'N/A';
+  formatCurrency(amount: number, currency: string = 'TND'): string {
+    if (amount === undefined || amount === null) return `${currency} 0.00`;
     
-    return new Intl.NumberFormat('en-TN', {
-      style: 'currency',
-      currency: currencyCode
-    }).format(amount);
+    try {
+      return new Intl.NumberFormat('en-TN', {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 2
+      }).format(amount);
+    } catch (error) {
+      // في حالة فشل التنسيق، استخدم تنسيق بسيط
+      return `${currency} ${amount.toFixed(2)}`;
+    }
   }
 
+
+ getPaymentById(paymentId: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/${paymentId}`, { headers: this.createHeaders() })
+      .pipe(
+        catchError(error => {
+          console.error('Get payment by ID error:', error);
+          return throwError(() => new Error('Failed to fetch payment'));
+        })
+      );
+  }
+
+
+
+getPaymentsByDeliveryPerson(deliveryPersonId: string): Observable<PaymentListResponse> {
+  return this.http.get<PaymentListResponse>(
+    `${this.apiUrl}/delivery-person/${deliveryPersonId}`, 
+    { headers: this.createHeaders() }
+  ).pipe(
+    map(response => ({
+      ...response,
+      data: response.data?.map(payment => ({
+        ...payment,
+        // Ensure dates are parsed
+        paymentDate: payment.paymentDate ? new Date(payment.paymentDate) : undefined,
+        deliveryPersonPaidAt: payment.deliveryPersonPaidAt ? new Date(payment.deliveryPersonPaidAt) : undefined,
+        createdAt: payment.createdAt ? new Date(payment.createdAt) : undefined,
+        updatedAt: payment.updatedAt ? new Date(payment.updatedAt) : undefined
+      })) || []
+    })),
+    catchError(this.handleError)
+  );
+}
+releaseToDeliveryPerson(paymentId: string): Observable<any> {
+    return this.http.post(
+      `${this.apiUrl}/${paymentId}/release-to-delivery`, 
+      {}, 
+      { headers: this.createHeaders() }
+    ).pipe(
+      catchError(error => {
+        console.error('Release payment error:', error);
+        
+        let errorMessage = 'Failed to release payment';
+        
+        if (error.error?.message) {
+          errorMessage = error.error.message;
+        } else if (error.status === 400) {
+          errorMessage = 'Invalid payment state for release';
+        } else if (error.status === 404) {
+          errorMessage = 'Payment not found';
+        } else if (error.status === 403) {
+          errorMessage = 'Not authorized to release payment';
+        } else if (error.status === 500) {
+          errorMessage = 'Server error occurred';
+        }
+        
+        return throwError(() => new Error(errorMessage));
+      })
+    );
+  }
 }

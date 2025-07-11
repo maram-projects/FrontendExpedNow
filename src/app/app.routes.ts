@@ -16,11 +16,12 @@ import { IndividualRegisterComponent } from './components/registers/individual-r
 import { EnterpriseRegisterComponent } from './components/registers/enterprise-register/enterprise-register.component';
 import { TemporaryRegisterComponent } from './components/registers/temporary-register/temporary-register.component';
 import { HomeComponent } from './components/home/home/home.component';
+import { ProfessionalRegisterComponent } from './components/registers/professional-register/professional-register.component';
+
 import { homeGuard } from './guards/home.guard';
 import { AdminDashboardComponentComponent } from './components/admin-dashboard/admin-dashboard-component/admin-dashboard-component.component';
 import { ScheduleComponent } from './components/admin-dashboard/schedule/schedule.component';
 import { DeliveryPersonnelManagementComponent } from './components/admin-dashboard/delivery-personnel-management/delivery-personnel-management.component';
-import { ProfessionalRegisterComponent } from './components/registers/professional-register/professional-register.component';
 import { ForgetPasswordComponent } from './components/forget-password/forget-password.component';
 import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
 import { UserDetailsComponent } from './components/profile/user-details/user-details.component';
@@ -96,10 +97,8 @@ export const routes: Routes = [
       { path: 'vehicles/edit/:id', component: VehicleFormComponent },
       { path: 'vehicles/:id', component: VehicleDetailComponent },
       { path: 'users/view/:id', component: UserDetailsComponent },
-      { 
-        path: 'discounts', 
-        loadComponent: () => import('./components/admin-dashboard/admin-discount/admin-discount.component').then(m => m.AdminDiscountComponent) 
-      },
+      
+      // FIXED: Remove the duplicate and keep only the loadComponent version
       { 
         path: 'payments', 
         loadComponent: () => import('./components/admin-dashboard/admin-payment/admin-payment.component').then(m => m.AdminPaymentComponent) 
@@ -107,6 +106,16 @@ export const routes: Routes = [
       { 
         path: 'payments/:id', 
         loadComponent: () => import('./components/admin-dashboard/payment-details/payment-details.component').then(m => m.PaymentDetailsComponent) 
+      },
+      
+      { 
+        path: 'discounts', 
+        loadComponent: () => import('./components/admin-dashboard/admin-discount/admin-discount.component').then(m => m.AdminDiscountComponent) 
+      },
+      { 
+        path: 'delivery-personnel/register', 
+        component: ProfessionalRegisterComponent,
+        data: { adminMode: true }  // Add admin mode flag
       },
       { 
         path: 'bonuses', 
@@ -128,6 +137,6 @@ export const routes: Routes = [
 
   // Redirects
   { path: 'home', redirectTo: '', pathMatch: 'full' },
-  { path: '', redirectTo: '', pathMatch: 'full' },
+  { path: 'home', redirectTo: '', pathMatch: 'full' }, // Remove this duplicate line too
   { path: '**', redirectTo: '' }
 ];

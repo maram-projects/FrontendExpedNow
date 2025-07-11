@@ -105,25 +105,52 @@ export class MissionDetailsComponent {
     });
   }
   
-  completeMission(missionId: string) {
-    this.missionService.completeMission(missionId).subscribe({
-      next: () => {
-        if (this.mission) {
-          this.mission.status = 'COMPLETED';
-          this.mission.endTime = new Date().toISOString();
-          this.mission.parsedEndTime = new Date();
-          if (this.mission.deliveryRequest) {
-            this.mission.deliveryRequest.status = 'DELIVERED';
-          }
-          this.missionUpdated.emit(this.mission);
+completeMission(missionId: string) {
+  this.missionService.completeMission(missionId).subscribe({
+    next: () => {
+      if (this.mission) {
+        this.mission.status = 'COMPLETED';
+        this.mission.endTime = new Date().toISOString();
+        this.mission.parsedEndTime = new Date();
+        if (this.mission.deliveryRequest) {
+          this.mission.deliveryRequest.status = 'DELIVERED';
         }
-      },
-      error: (err) => {
-        console.error('Failed to complete mission', err);
-        this.errorMessage = 'Failed to complete mission. Please try again.';
+        
+        // Show success message with countdown
+        this.errorMessage = ''; // Clear any previous errors
+        
+        // Optional: Add a countdown timer for user feedback
+        let countdown = 5;
+        const countdownInterval = setInterval(() => {
+          countdown--;
+          if (countdown > 0) {
+            // You can show this message in the UI if needed
+            console.log(`Mission completed! New assignments available in ${countdown} seconds...`);
+          } else {
+            clearInterval(countdownInterval);
+            console.log('Mission completed successfully! You can now take new assignments.');
+          }
+        }, 1000);
+        
+        // Emit the updated mission immediately for UI update
+        this.missionUpdated.emit(this.mission);
+        
+        // Add delay before allowing new assignments
+        setTimeout(() => {
+          // Additional logic here if needed
+          console.log('New assignments are now available');
+          
+          // You could emit another event or update a flag here
+          // For example: this.newAssignmentsAvailable.emit(true);
+        }, 5000);
       }
-    });
-  }
+    },
+    error: (err) => {
+      console.error('Failed to complete mission', err);
+      this.errorMessage = 'Failed to complete mission. Please try again.';
+    }
+  });
+}
   
   calculateDuration(start: Date | null | undefined, end: Date | null | undefined): string {
     if (!start || !end) return 'N/A';

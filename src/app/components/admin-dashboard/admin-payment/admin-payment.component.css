@@ -7,6 +7,226 @@
   min-height: 100vh;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
+/* تنسيقات حالة الإصدار */
+.delivery-info {
+  margin-top: 5px;
+}
+/* إضافة styles في admin-payment.component.css */
+
+/* Release Button Styles */
+.action-btn.release-btn {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.action-btn.release-btn:hover {
+  background: linear-gradient(135deg, #20c997, #28a745);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.action-btn.release-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Delivery Status Indicators */
+.delivery-status {
+  margin-top: 4px;
+  font-size: 0.75rem;
+}
+
+.paid-indicator {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.ready-for-release {
+  color: #ffc107;
+  font-weight: 600;
+}
+
+.not-ready {
+  color: #6c757d;
+  font-weight: 500;
+}
+
+/* Pending Release Stat Card */
+.stat-card.pending-release {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+}
+
+.stat-card.pending-release .stat-icon {
+  font-size: 2rem;
+}
+
+.stat-card.pending-release .stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 10px 0;
+}
+
+.stat-card.pending-release .stat-label {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+/* Status Cell Improvements */
+.status-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* Action Buttons Container */
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.action-btn {
+  min-width: 80px;
+  font-size: 0.8rem;
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.action-btn .btn-icon {
+  font-size: 1rem;
+}
+
+.action-btn .btn-text {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* Button Hover Effects */
+.action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.action-btn:active {
+  transform: translateY(0);
+}
+
+/* Status Update Dropdown */
+.status-update-dropdown {
+  margin-top: 4px;
+}
+
+.status-update-select {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+}
+
+.status-update-select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .action-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
+/* Status Classes */
+.status-completed { background: #d4edda; color: #155724; }
+.status-pending { background: #fff3cd; color: #856404; }
+.status-processing { background: #cce5ff; color: #004085; }
+.status-failed { background: #f8d7da; color: #721c24; }
+.status-cancelled { background: #f1f3f4; color: #5f6368; }
+.status-refunded { background: #e2e3e5; color: #383d41; }
+.status-partially-refunded { background: #ffeaa7; color: #6c5ce7; }
+.status-pending-delivery { background: #fd79a8; color: #2d3436; }
+.status-pending-verification { background: #a29bfe; color: #2d3436; }
+.paid-indicator {
+  color: #28a745;
+  font-weight: 500;
+}
+/* For the release button */
+.release-btn {
+  background-color: #4CAF50; /* Green */
+  color: white;
+}
+
+.release-btn.disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Status indicators */
+.released {
+  color: #4CAF50;
+  font-weight: bold;
+}
+
+.pending-release {
+  color: #FFC107; /* Amber */
+  font-weight: bold;
+}
+
+.not-completed {
+  color: #F44336; /* Red */
+}
+
+/* Share info */
+.share-info {
+  margin-top: 4px;
+  font-size: 0.8em;
+  color: #666;
+}
+.not-paid-indicator {
+  color: #dc3545;
+  font-weight: 500;
+}
 
 /* Header Section */
 .header-section {

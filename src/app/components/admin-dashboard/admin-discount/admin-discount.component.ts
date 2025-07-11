@@ -250,8 +250,14 @@ getTypeClass(type: DiscountType | undefined): string {
 
     return true;
   }
+onDateChange(event: Event): void {
+  const target = event.target as HTMLInputElement;
+  if (target && target.value) {
+    this.newDiscount.validUntil = new Date(target.value);
+  }
+}
 
-  private resetForm(): void {
+  public resetForm(): void {
     this.newDiscount = {
       type: DiscountType.PROMOTIONAL,
       percentage: 10,
@@ -267,9 +273,10 @@ getTypeClass(type: DiscountType | undefined): string {
   }
 
   // Handle date input conversion
-  parseDate(dateString: string): Date {
-    return new Date(dateString);
-  }
+ parseDate(event: Event): Date {
+  const target = event.target as HTMLInputElement;
+  return new Date(target.value);
+}
 
   // Utility method to format date for datetime-local input
   formatDateForInput(date: Date | undefined): string {
@@ -295,4 +302,9 @@ getTypeClass(type: DiscountType | undefined): string {
   trackByDiscountId(index: number, discount: Discount): string {
     return discount.id || index.toString();
   }
+
+  getClientName(clientId: string): string {
+  const client = this.clients.find(c => c.id === clientId);
+  return client ? `${client.firstName} ${client.lastName}` : '';
+}
 }

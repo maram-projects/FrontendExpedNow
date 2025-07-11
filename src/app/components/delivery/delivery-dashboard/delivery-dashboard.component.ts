@@ -11,6 +11,7 @@ import { Bonus, BonusStatus, BonusSummary } from '../../../models/bonus.model';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
+import { PaymentService } from '../../../services/payment.service';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
@@ -27,6 +28,13 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { User } from '../../../models/user.model';
 import { ScheduleComponent } from '../../admin-dashboard/schedule/schedule.component';
+import { Payment} from '../../../models/Payment.model';
+
+import { ShortenPipe } from '../../../pipes/shorten.pipe';
+
+import { 
+  PaymentListResponse 
+} from '../../../services/payment.service';
 
 @Component({
   selector: 'app-delivery-dashboard',
@@ -51,11 +59,22 @@ import { ScheduleComponent } from '../../admin-dashboard/schedule/schedule.compo
     MatDividerModule,
     MatProgressBarModule,
     ScheduleComponent,
+      ShortenPipe,
   ],
   templateUrl: './delivery-dashboard.component.html',
   styleUrls: ['./delivery-dashboard.component.css']
 })
 export class DeliveryDashboardComponent implements OnInit {
+totalReleasedPaymentsAmount: number = 0;
+isCurrentSection(section: 'pending' | 'history' | 'bonuses' | 'overview' | 'payments'): boolean {
+  return this.currentSection === section;
+}
+  isPaymentLoading: boolean = false;
+paymentFilter: string = 'ALL';
+paymentSortBy: string = 'date-desc';
+filteredPayments: Payment[] = [];
+    receivedPayments: Payment[] = [];
+
   assignedDeliveries: DeliveryRequest[] = [];
   isLoading: boolean = true;
   errorMessage: string = '';
@@ -78,8 +97,7 @@ dateFilter: string = 'all';
   selectedDeliveryPerson: User | null = null;
   
   // Section management - إضافة bonus للأقسام
-  currentSection: 'pending' | 'history' | 'bonuses' | 'overview' = 'overview';
-  
+currentSection: 'pending' | 'history' | 'bonuses' | 'overview' | 'payments' = 'overview';
   // View mode for pending deliveries
   viewMode: 'cards' | 'table' = 'cards';
   
@@ -116,17 +134,20 @@ dateFilter: string = 'all';
     private router: Router,
     public authService: AuthService,
     private availabilityService: AvailabilityService,
-    private bonusService: BonusService
+    private bonusService: BonusService,
+      private paymentService: PaymentService // Add this line
+
   ) {}
 
-  ngOnInit(): void {
-    this.loadInitialData();
-    
-    // Auto-show schedule panel for delivery personnel
-    if (!this.authService.isAdmin()) {
-      this.showAvailabilityPanel = true;
-    }
+ngOnInit(): void {
+  this.loadInitialData();
+  this.loadReceivedPayments(); // Add this
+  
+  // Auto-show schedule panel for delivery personnel
+  if (!this.authService.isAdmin()) {
+    this.showAvailabilityPanel = true;
   }
+}
 
  loadInitialData(): void {
   this.loadAssignedDeliveries();
@@ -194,6 +215,8 @@ loadBonusSummary(): void {
     }
   });
 }
+
+
 
   applyBonusFilter(): void {
     if (this.bonusFilter === 'ALL') {
@@ -324,16 +347,17 @@ calculateBonusStats(): void {
   clearSuccessMessage(): void {
     this.successMessage = '';
   }
-
-  switchSection(section: 'pending' | 'history' | 'bonuses' | 'overview'): void {
-    this.currentSection = section;
-    
-    if (section === 'history' && this.filteredHistory.length === 0) {
-      this.loadHistory();
-    } else if (section === 'bonuses' && this.myBonuses.length === 0) {
-      this.loadMyBonuses();
-    }
+switchSection(section: 'pending' | 'history' | 'bonuses' | 'overview' | 'payments'): void {
+  this.currentSection = section;
+  
+  if (section === 'history' && this.filteredHistory.length === 0) {
+    this.loadHistory();
+  } else if (section === 'bonuses' && this.myBonuses.length === 0) {
+    this.loadMyBonuses();
+  } else if (section === 'payments' && this.receivedPayments.length === 0) {
+    this.loadReceivedPayments();
   }
+}
 
   loadHistory(): void {
     this.isHistoryLoading = true;
@@ -1022,5 +1046,198 @@ calculateDuration(start: any, end: any): string {
 
 openChat(deliveryId: string): void {
   this.router.navigate(['/delivery/deliveries', deliveryId, 'chat']);
+}
+
+onPaymentFilterChange(): void {
+  if (this.paymentFilter === 'ALL') {
+    this.filteredPayments = [...this.receivedPayments];
+  } else {
+    // Implement your custom filtering logic here
+    this.filteredPayments = this.receivedPayments.filter(payment => 
+      payment.status === this.paymentFilter
+    );
+  }
+  this.sortPayments();
+}
+
+sortPayments(): void {
+  if (!this.paymentSortBy) return;
+  
+  const [field, direction] = this.paymentSortBy.split('-');
+  
+  this.filteredPayments.sort((a, b) => {
+    let valueA: any, valueB: any;
+    
+    if (field === 'date') {
+      valueA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      valueB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+    } else if (field === 'amount') {
+      valueA = a.deliveryPersonShare || 0;
+      valueB = b.deliveryPersonShare || 0;
+    } else {
+      return 0;
+    }
+    
+    return direction === 'desc' ? valueB - valueA : valueA - valueB;
+  });
+}
+
+getTotalEarnings(): number {
+  return this.receivedPayments.reduce((sum, payment) => sum + (payment.deliveryPersonShare || 0), 0);
+}
+
+getMonthlyEarnings(): number {
+  const now = new Date();
+  return this.receivedPayments
+    .filter(p => p.updatedAt && new Date(p.updatedAt).getMonth() === now.getMonth())
+    .reduce((sum, p) => sum + (p.deliveryPersonShare || 0), 0);
+}
+
+getPaymentsCountThisMonth(): number {
+  const now = new Date();
+  return this.receivedPayments.filter(p => 
+    p.updatedAt && new Date(p.updatedAt).getMonth() === now.getMonth()
+  ).length;
+}
+
+
+getAveragePayment(): number {
+  return this.receivedPayments.length 
+    ? this.getTotalEarnings() / this.receivedPayments.length 
+    : 0;
+}
+
+getLastPaymentAmount(): number {
+  return this.receivedPayments.length 
+    ? this.receivedPayments[0].deliveryPersonShare || 0 
+    : 0;
+}
+
+getLastPaymentDate(): Date | null {
+  if (!this.receivedPayments.length || !this.receivedPayments[0].updatedAt) {
+    return null;
+  }
+  return new Date(this.receivedPayments[0].updatedAt);
+}
+
+// TrackBy function
+trackByPaymentId(index: number, payment: Payment): string {
+  return payment.id;
+}
+private parsePaymentDates(payment: Payment): Payment {
+  return {
+    ...payment,
+    paymentDate: payment.paymentDate ? new Date(payment.paymentDate) : undefined,
+    deliveryDate: payment.deliveryDate ? new Date(payment.deliveryDate) : undefined,
+    createdAt: payment.createdAt ? new Date(payment.createdAt) : undefined,
+    updatedAt: payment.updatedAt ? new Date(payment.updatedAt) : undefined
+  };
+}
+
+// Navigation
+viewPaymentDetails(paymentId: string): void {
+  this.router.navigate(['/delivery/payments', paymentId]);
+}
+
+downloadPaymentReceipt(paymentId: string): void {
+  // Implement receipt download logic
+  console.log('Downloading receipt for:', paymentId);
+}
+
+// Refresh payments
+refreshPayments(): void {
+  this.loadReceivedPayments();
+}
+getTotalPaymentsThisMonth(): number {
+  const now = new Date();
+  return this.receivedPayments
+    .filter(p => p.updatedAt && new Date(p.updatedAt).getMonth() === now.getMonth())
+    .reduce((sum, p) => sum + (p.deliveryPersonShare || 0), 0);
+}
+// Dans delivery-dashboard.component.ts
+
+// Ajoutez cette méthode pour formater le montant
+formatCurrency(amount: number | undefined | null, currency: string = 'TND'): string {
+  if (amount === undefined || amount === null) return `${currency} 0.00`;
+  
+  return new Intl.NumberFormat('en-TN', {
+    style: 'currency',
+    currency: currency
+  }).format(amount);
+}
+
+loadReceivedPayments(): void {
+  this.isPaymentLoading = true;
+  const currentUser = this.authService.getCurrentUser();
+  
+  if (!currentUser?.userId) {
+    this.isPaymentLoading = false;
+    return;
+  }
+
+  this.paymentService.getPaymentsByDeliveryPerson(currentUser.userId).subscribe({
+    next: (response: PaymentListResponse) => {
+      if (response.success) {
+        this.receivedPayments = response.data || [];
+        this.filteredPayments = [...this.receivedPayments];
+        this.calculateTotalReleasedPayments();
+        
+        // Sort by date descending by default
+        this.paymentSortBy = 'date-desc';
+        this.sortPayments();
+      }
+      this.isPaymentLoading = false;
+    },
+    error: (err: Error) => {
+      console.error('Error loading payments', err);
+      this.isPaymentLoading = false;
+    }
+  });
+}
+
+
+calculateTotalReleasedPayments(): void {
+  this.totalReleasedPaymentsAmount = this.receivedPayments
+    .filter(p => p.deliveryPersonPaid)
+    .reduce((sum, payment) => sum + (payment.deliveryPersonShare || 0), 0);
+}
+
+
+
+
+// Add these methods to your DeliveryDashboardComponent class
+
+getPaymentStatusValues(): string[] {
+  return ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'REFUNDED']; // Adjust based on your actual payment status values
+}
+
+getPaymentStatusIcon(status: string): string {
+  const icons: Record<string, string> = {
+    'PENDING': 'hourglass_empty',
+    'PROCESSING': 'autorenew',
+    'COMPLETED': 'check_circle',
+    'FAILED': 'error',
+    'REFUNDED': 'assignment_return'
+  };
+  return icons[status] || 'help';
+}
+
+
+getStatusClass(status: string): string {
+  const statusMap: Record<string, string> = {
+    'COMPLETED': 'status-completed',
+    'PENDING': 'status-pending',
+    'PROCESSING': 'status-processing',
+    'FAILED': 'status-failed',
+    'REFUNDED': 'status-refunded',
+    'PARTIALLY_REFUNDED': 'status-partially-refunded',
+    'CANCELLED': 'status-cancelled'
+  };
+  
+  return statusMap[status] || 'status-unknown';
+}
+
+get totalDisplayedAmount(): number {
+  return this.filteredPayments.reduce((sum, p) => sum + (p.deliveryPersonShare || 0), 0);
 }
 }

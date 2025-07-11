@@ -335,4 +335,7 @@ isClient(): boolean {
         console.log(success ? 'Navigation successful' : 'Navigation failed');
       });
     }
+registerByAdmin(userData: User): Observable<any> {
+  return this.http.post(`${this.apiUrl}/admin/register/delivery-person`, userData);
+}
   }

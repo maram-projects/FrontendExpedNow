@@ -153,7 +153,7 @@ body {
 }
 
 .card-body {
-    padding: 2rem;
+    padding: 4rem;
 }
 
 /* Profile Card */
@@ -163,7 +163,7 @@ body {
 
 .profile-header {
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 3rem;
 }
 
 .profile-avatar {
@@ -190,7 +190,7 @@ body {
     font-weight: 600;
     background: var(--primary-gradient);
     -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    -webkit-text-fill-color: #95bbd0;
     background-clip: text;
 }
 
@@ -269,6 +269,7 @@ body {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    animation-range-end: var(--border-radius);
 }
 
 .payment-stats {

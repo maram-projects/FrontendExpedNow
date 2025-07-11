@@ -5,7 +5,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { forkJoin, of, Subject } from 'rxjs';
+import { forkJoin, Observable, of, Subject } from 'rxjs';
 import { catchError, map, switchMap, takeUntil, finalize, tap } from 'rxjs/operators';
 
 import { convertDtoToVehicle, convertVehicleToDto, Vehicle, VehicleDTO } from '../../../models/Vehicle.model';
@@ -81,18 +81,18 @@ export class DeliveryPersonnelManagementComponent implements OnInit, OnDestroy {
   // Subscription management
   private destroy$ = new Subject<void>();
 
-  constructor(
-    private adminService: AdminService,
-    private authService: AuthService,
-    private formBuilder: FormBuilder,
-    private userService: UserService,
-    private vehicleService: VehicleService,
-    private dialog: MatDialog,
-    private snackBar: MatSnackBar,
-    private router: Router
-  ) {
-    this.userForm = this.createUserForm();
-  }
+constructor(
+  private adminService: AdminService,
+  private authService: AuthService,
+  private fb: FormBuilder,  // Add this line
+  private userService: UserService,
+  private vehicleService: VehicleService,
+  private dialog: MatDialog,
+  private snackBar: MatSnackBar,
+  private router: Router
+) {
+  this.userForm = this.createUserForm();
+}
 
   ngOnInit(): void {
     this.initializeComponent();
@@ -108,6 +108,32 @@ export class DeliveryPersonnelManagementComponent implements OnInit, OnDestroy {
     this.vehicleService.clearCache();
     this.loadDeliveryPersonnel();
   }
+
+  showEditUserForm(user: DeliveryPersonnel): void {
+  this.formMode = 'edit';
+  this.selectedUserId = user.id!;
+  
+  // Set up the form with user data
+  this.userForm = this.fb.group({
+    firstName: [user.firstName, Validators.required],
+    lastName: [user.lastName, Validators.required],
+    email: [user.email, [Validators.required, Validators.email]],
+    phone: [user.phone, Validators.required],
+    address: [user.address, Validators.required],
+    userType: [this.getUserType(user.roles || []), Validators.required],
+    vehicleType: [user.vehicleType || 'MOTORCYCLE', Validators.required],
+    driverLicenseNumber: [user.driverLicenseNumber || '', Validators.required],
+    driverLicenseCategory: [user.driverLicenseCategory || '', Validators.required]
+  });
+
+  // If user has an assigned vehicle, set it
+  if (user.assignedVehicleId) {
+    this.selectedVehicleId = user.assignedVehicleId;
+  }
+
+  this.loadAvailableVehicles();
+}
+
 
   // Professional Registration Dialog
   openProfessionalRegisterDialog(): void {
@@ -163,99 +189,90 @@ export class DeliveryPersonnelManagementComponent implements OnInit, OnDestroy {
   }
 
   // Form Management
-  private createUserForm(): FormGroup {
-    return this.formBuilder.group({
-      firstName: ['', [Validators.required, Validators.minLength(2)]],
-      lastName: ['', [Validators.required, Validators.minLength(2)]],
-      email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(6)]],
-      phone: ['', [Validators.required, Validators.pattern(/^\+?[\d\s-()]+$/)]],
-      address: ['', [Validators.required, Validators.minLength(10)]],
-      userType: ['professional', [Validators.required]],
-      
-      // Professional fields
-      driverLicenseNumber: ['', [Validators.required]],
-      driverLicenseCategory: ['', [Validators.required]],
-      identityPhotoUrl: [''],
-      criminalRecordDocumentUrl: [''],
-      
-      // Vehicle fields
-      vehicleType: ['MOTORCYCLE', [Validators.required]],
-      vehicleBrand: [''],
-      vehicleModel: [''],
-      vehiclePlateNumber: [''],
-      vehicleInsuranceExpiry: [''],
-      vehicleInspectionExpiry: ['']
-    });
-  }
+private createUserForm(): FormGroup {
+  return this.fb.group({  // <-- Changed from formBuilder to fb
+    firstName: ['', [Validators.required, Validators.minLength(2)]],
+    lastName: ['', [Validators.required, Validators.minLength(2)]],
+    email: ['', [Validators.required, Validators.email]],
+    password: ['', [Validators.required, Validators.minLength(6)]],
+    phone: ['', [Validators.required, Validators.pattern(/^\+?[\d\s-()]+$/)]],
+    address: ['', [Validators.required, Validators.minLength(10)]],
+    userType: ['professional', [Validators.required]],
+    
+    // Professional fields
+    driverLicenseNumber: ['', [Validators.required]],
+    driverLicenseCategory: ['', [Validators.required]],
+    identityPhotoUrl: [''],
+    criminalRecordDocumentUrl: [''],
+    
+    // Vehicle fields
+    vehicleType: ['MOTORCYCLE', [Validators.required]],
+    vehicleBrand: [''],
+    vehicleModel: [''],
+    vehiclePlateNumber: [''],
+    vehicleInsuranceExpiry: [''],
+    vehicleInspectionExpiry: ['']
+  });
+}
 
-  // Data Loading
 loadDeliveryPersonnel(): void {
   this.loading = true;
   
   this.userService.getDeliveryPersonnel().pipe(
-    switchMap((users: User[]) => {
-      // Normalize vehicle IDs
-      const usersWithNormalizedIds = users.map(user => ({
-        ...user,
-        assignedVehicleId: user.assignedVehicleId || (user as any).assigned_vehicle_id || null
-      }));
-
-      // Filter users with vehicles
-      const usersWithVehicles = usersWithNormalizedIds.filter(
-        user => user.assignedVehicleId
-      );
-
-      if (usersWithVehicles.length === 0) {
-        return of(usersWithNormalizedIds);
-      }
-
-      // Load vehicles
-      const vehicleObservables = usersWithVehicles.map(user => 
-        this.vehicleService.getVehicleById(user.assignedVehicleId!).pipe(
-          map(vehicle => ({ user, vehicle })),
-          catchError(() => of({ user, vehicle: null }))
-        )
-      );
-
-      return forkJoin(vehicleObservables).pipe(
-        map(results => {
-          return usersWithNormalizedIds.map(user => {
-            const result = results.find(r => r.user.id === user.id);
-            return result ? { ...user, assignedVehicle: result.vehicle } : user;
-          });
-        })
-      );
-    }),
-    finalize(() => this.loading = false)
-  ).subscribe(users => this.users = users);
+    switchMap((users: User[]) => this.processDeliveryPersonnel(users)),
+    finalize(() => this.loading = false),
+    takeUntil(this.destroy$)
+  ).subscribe({
+    next: (users) => {
+      this.users = users;
+      console.log('Final users loaded:', this.users.length);
+    },
+    error: (err) => {
+      console.error('Error loading delivery personnel:', err);
+      this.handleError('Failed to load delivery personnel', err);
+    }
+  });
 }
+
 
  // Fixed component methods
 private processDeliveryPersonnel(users: User[]) {
-   console.log('Processing users:', users);
+  console.log('Processing users:', users);
   
-  // Filter delivery personnel
+  // Filter delivery personnel with more flexible role checking
   const deliveryPersonnel = users.filter(user => {
     const roles = user.roles || [];
-    const isDeliveryPerson = roles.includes('ROLE_PROFESSIONAL') ||
-                           roles.includes('ROLE_TEMPORARY') ||
-                           roles.includes('ROLE_DELIVERY_PERSON') ||
-                           user.userType === 'professional' ||
-                           user.userType === 'temporary';
+    const userType = user.userType?.toLowerCase();
     
-    console.log(`User ${user.email} is delivery person:`, isDeliveryPerson);
+    const isDeliveryPerson = 
+      // Check roles
+      roles.some(role => 
+        role.includes('PROFESSIONAL') || 
+        role.includes('TEMPORARY') || 
+        role.includes('DELIVERY')
+      ) ||
+      // Check userType
+      userType === 'professional' || 
+      userType === 'temporary' ||
+      // Fallback: if user has vehicle-related properties, likely a delivery person
+      !!(user.vehicleType || user.driverLicenseNumber || user.assignedVehicleId);
+    
+    console.log(`User ${user.email} is delivery person:`, isDeliveryPerson, {
+      roles,
+      userType,
+      hasVehicleProps: !!(user.vehicleType || user.driverLicenseNumber || user.assignedVehicleId)
+    });
+    
     return isDeliveryPerson;
   });
+
   // Normalize assignedVehicleId field for each user
   deliveryPersonnel.forEach(user => {
-    // Get the first non-null/non-undefined value, or null if all are null/undefined
     const vehicleId = user.assignedVehicleId || 
                      (user as any).assigned_vehicle_id || 
                      (user as any).vehicleId || 
                      null;
     
-    // Only assign if we have a valid string value
     user.assignedVehicleId = (vehicleId && typeof vehicleId === 'string' && vehicleId.trim() !== '') 
                            ? vehicleId 
                            : null;
@@ -266,18 +283,7 @@ private processDeliveryPersonnel(users: User[]) {
     console.log(`User ${user.firstName}: assignedVehicleId=${user.assignedVehicleId}`);
   });
 
-  // DEBUG: Log the initial state
-  console.log('=== DELIVERY PERSONNEL DEBUG ===');
-  deliveryPersonnel.forEach(user => {
-    console.log(`User ${user.firstName} ${user.lastName}:`, {
-      id: user.id,
-      assignedVehicleId: user.assignedVehicleId,
-      hasAssignedVehicleId: !!user.assignedVehicleId
-    });
-  });
-
   // Load vehicle details for users with assigned vehicles
-  // Filter out users with null/empty assignedVehicleId
   const usersWithVehicles = deliveryPersonnel.filter(user => 
     user.assignedVehicleId && 
     user.assignedVehicleId.trim() !== ''
@@ -308,21 +314,14 @@ private processDeliveryPersonnel(users: User[]) {
         if (user && vehicle) {
           console.log(`Assigning vehicle to user ${user.firstName}:`, vehicle);
           user.assignedVehicle = vehicle;
-        } else {
-          console.log(`Failed to assign vehicle - User found: ${!!user}, Vehicle found: ${!!vehicle}`);
         }
-      });
-      
-      // Final state check
-      console.log('Final processed users:');
-      deliveryPersonnel.forEach(user => {
-        console.log(`${user.firstName}: assignedVehicleId=${user.assignedVehicleId}, hasAssignedVehicle=${!!user.assignedVehicle}`);
       });
       
       return deliveryPersonnel;
     })
   );
 }
+
   private loadAvailableVehicles(): void {
     this.vehicleService.clearCache();
     
@@ -349,79 +348,89 @@ private processDeliveryPersonnel(users: User[]) {
     this.setPasswordValidators(true);
   }
 
-  showEditUserForm(user: DeliveryPersonnel): void {
-    this.formMode = 'edit';
-    this.selectedUserId = user.id!;
-    this.setPasswordValidators(false);
 
-    const userType = this.getUserType(user.roles || []);
-    this.userForm.patchValue({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      phone: user.phone,
-      address: user.address,
-      userType: userType,
-      vehicleType: user.vehicleType || 'MOTORCYCLE'
-    });
-
-    this.loadAvailableVehicles();
+onSubmit(): void {
+  if (this.userForm.invalid) {
+    this.markFormGroupTouched();
+    return;
   }
 
-  onSubmit(): void {
-    if (this.userForm.invalid) {
-      this.markFormGroupTouched();
-      return;
+  this.formSubmitting = true;
+  const formData = this.userForm.value;
+  const userData = this.buildUserData(formData);
+
+  let operation$: Observable<any>;
+
+  if (this.formMode === 'add') {
+    operation$ = this.authService.register(userData, formData.userType);
+  } else {
+    operation$ = this.userService.updateUser(this.selectedUserId!, userData);
+  }
+
+  operation$.pipe(
+    takeUntil(this.destroy$),
+    finalize(() => this.formSubmitting = false)
+  ).subscribe({
+    next: (response) => {
+      const message = this.formMode === 'add' 
+        ? 'Delivery person added successfully!' 
+        : 'Delivery person updated successfully!';
+      this.showSuccessMessage(message);
+      
+      // FIXED: Update user in place instead of reloading all data
+      if (this.formMode === 'edit' && response.user) {
+        this.updateUserInPlace(response.user);
+      } else {
+        // Only reload if adding new user or if update response doesn't include user data
+        this.loadDeliveryPersonnel();
+      }
+      
+      this.resetFormState();
+    },
+    error: (err) => {
+      this.handleError(`Failed to ${this.formMode} delivery person`, err);
     }
-  
-    this.formSubmitting = true;
-    const formData = this.userForm.value;
-    const userData = this.buildUserData(formData);
-  
-    const operation$ = this.formMode === 'add' 
-      ? this.authService.register(userData, formData.userType)
-      : this.userService.updateUser(this.selectedUserId!, userData);
-  
-    operation$
-      .pipe(
-        takeUntil(this.destroy$),
-        finalize(() => {
-          this.formSubmitting = false;
-        })
-      )
-      .subscribe({
-        next: () => {
-          const message = this.formMode === 'add' 
-            ? 'Delivery person added successfully!' 
-            : 'Delivery person updated successfully!';
-          this.showSuccessMessage(message);
-          this.resetFormState();
-          this.loadDeliveryPersonnel();
-        },
-        error: (err) => {
-          this.handleError(`Failed to ${this.formMode} delivery person`, err);
-        }
-      });
+  });
+}
+
+// Add this new method to update user in place
+private updateUserInPlace(updatedUser: User): void {
+  const userIndex = this.users.findIndex(u => u.id === updatedUser.id);
+  if (userIndex !== -1) {
+    // Preserve the assigned vehicle data
+    const existingVehicle = this.users[userIndex].assignedVehicle;
+    const existingVehicleId = this.users[userIndex].assignedVehicleId;
+    
+    this.users[userIndex] = {
+      ...updatedUser,
+      assignedVehicle: existingVehicle,
+      assignedVehicleId: existingVehicleId || updatedUser.assignedVehicleId
+    };
   }
+}
+
 
   private buildUserData(formData: any): any {
-    const userData: any = {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      phone: formData.phone,
-      address: formData.address,
-      vehicleType: formData.vehicleType,
-      assignedVehicleId: this.selectedVehicleId,
-      userType: formData.userType
-    };
+  const userData: any = {
+    firstName: formData.firstName,
+    lastName: formData.lastName,
+    email: formData.email,
+    phone: formData.phone,
+    address: formData.address,
+    vehicleType: formData.vehicleType,
+    assignedVehicleId: this.selectedVehicleId,
+    userType: formData.userType,
+    driverLicenseNumber: formData.driverLicenseNumber,
+    driverLicenseCategory: formData.driverLicenseCategory
+  };
 
-    if (this.formMode === 'add') {
-      userData.password = formData.password;
-    }
-
-    return userData;
+  if (this.formMode === 'add') {
+    userData.password = formData.password;
+    userData.confirmPassword = formData.password;
   }
+
+  return userData;
+}
 
   blockUser(userId: string): void {
     const user = this.users.find(u => u.id === userId);
@@ -522,6 +531,11 @@ debugAssignedVehicle(user: User): void {
     this.logAnyVehicleDetails(user.assignedVehicle, 'Assigned Vehicle');
   }
   console.log('==============================');
+}
+
+
+getVehicleById(vehicleId: string): Vehicle | undefined {
+  return this.availableVehicles.find(v => v.id === vehicleId);
 }
 // Example in your component template:
 getVehicleDisplayInfo(user: User): string {
@@ -713,9 +727,13 @@ navigateToVehicleDetails(vehicleId: string, userId?: string): void {
            user?.roles?.includes('ROLE_PROFESSIONAL') || false;
   }
 
-  hasAssignedVehicle(user: DeliveryPersonnel): boolean {
-    return !!(user?.assignedVehicle?.id);
-  }
+hasAssignedVehicle(user: DeliveryPersonnel): boolean {
+  // For temporary delivery, consider they always have a vehicle
+  if (!this.isProfessional(user)) return true;
+  
+  // For professionals, check actual assignment
+  return !!(user?.assignedVehicle?.id || user?.assignedVehicleId);
+}
 
   onVehicleSelected(event: Event): void {
     const target = event.target as HTMLSelectElement;
@@ -838,6 +856,10 @@ convertToVehicleDTO(vehicleData: Vehicle | VehicleDTO | null | undefined): Vehic
     // It's a Vehicle model, convert it
     return convertVehicleToDto(vehicleData as Vehicle);
   }
+}
+
+navigateToProfessionalRegister(): void {
+  this.router.navigate(['/admin/delivery-personnel/register']);
 }
 
 // Remove: logVehicleDetailsDTO(), logVehicleDetailsModel()

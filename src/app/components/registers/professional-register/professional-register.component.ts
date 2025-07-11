@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { User, VEHICLE_TYPES } from '../../../models/user.model';
 import { CommonModule } from '@angular/common';
@@ -29,12 +29,15 @@ export class ProfessionalRegisterComponent implements OnInit {
   passwordStrength: number = 0;
   availableVehicles: any[] = [];
   selectedVehicleId: string | null = null;
+  adminMode = false;
 
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
     private router: Router,
-    private vehicleService: VehicleService
+    private vehicleService: VehicleService,
+        private route: ActivatedRoute,
+
   ) {
     this.currentYear = new Date().getFullYear();
     this.professionalForm = this.fb.group({
@@ -97,9 +100,21 @@ export class ProfessionalRegisterComponent implements OnInit {
     };
   }
 
-  ngOnInit(): void {
-    this.loadAvailableVehicles();
+   ngOnInit(): void {
+    this.adminMode = this.route.snapshot.data['adminMode'] || false;
+    if (this.adminMode) {
+      this.prepareAdminForm();
+    }
   }
+  private prepareAdminForm(): void {
+    // Set default values for admin mode
+    this.professionalForm.patchValue({
+      termsAccepted: true,
+      verified: true
+    });
+  }
+
+
 
   get f() { return this.professionalForm.controls; }
 
@@ -155,6 +170,7 @@ export class ProfessionalRegisterComponent implements OnInit {
       this.error = 'Passwords do not match';
       return;
     }
+    
     
     if (this.professionalForm.invalid) {
       return;

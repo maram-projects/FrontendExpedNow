@@ -1,4 +1,4 @@
-<!-- admin-payment.component.html -->
+<!-- admin-payment.component.html - Fixed version -->
 <div class="admin-payment-container" [@slideInUp]>
   <!-- Header Section -->
   <div class="header-section">
@@ -81,6 +81,15 @@
       <div class="stat-value">{{ getRefundedPaymentsCount() }}</div>
       <div class="stat-label">Refunded Payments</div>
     </div>
+
+    <div class="stat-card pending-release">
+      <div class="stat-header">
+        <span class="stat-icon">🚚</span>
+        <h3>Pending Release</h3>
+      </div>
+      <div class="stat-value">{{ getPendingReleaseCount() }}</div>
+      <div class="stat-label">{{ formatCurrency(getTotalPendingReleaseAmount()) }}</div>
+    </div>
   </div>
 
   <!-- Filters Section -->
@@ -138,6 +147,7 @@
             <th class="col-id">Payment ID</th>
             <th class="col-client">Client</th>
             <th class="col-delivery">Delivery</th>
+            <th class="col-delivery-person">Delivery Person</th>
             <th class="col-amount">Amount</th>
             <th class="col-method">Method</th>
             <th class="col-status">Status</th>
@@ -186,24 +196,43 @@
               </div>
             </td>
 
+            <!-- Delivery Person -->
+            <td class="col-delivery-person">
+              <div *ngIf="payment.deliveryPerson; else noDeliveryPerson">
+                <div class="delivery-person-info">
+                  <div class="person-name">{{ payment.deliveryPerson.fullName }}</div>
+                  <div class="person-contact">
+                    <small>{{ payment.deliveryPerson.phone }}</small>
+                  </div>
+                  <div *ngIf="payment.deliveryPerson.vehicle" class="vehicle-info">
+                    <small>
+                      {{ payment.deliveryPerson.vehicle.type }} • 
+                      {{ payment.deliveryPerson.vehicle.licensePlate || 'No plate' }}
+                    </small>
+                  </div>
+                </div>
+              </div>
+              <ng-template #noDeliveryPerson>
+                <span class="no-person">Not assigned</span>
+              </ng-template>
+            </td>
+
             <!-- Amount -->
             <td class="col-amount">
               <div class="amount-cell">
                 <div class="amount-info">
-                
-    <!-- Show converted amount for Stripe payments -->
-    <div *ngIf="payment.convertedAmount" class="converted-amount">
-      ≈ {{ formatConvertedAmount(payment) }}
-    </div>
-               <span class="final-amount">
-  {{ formatCurrency(payment.finalAmountAfterDiscount, payment.currency) }}
-</span>
-
-<!-- For original amount -->
-<span *ngIf="payment.discountAmount && payment.discountAmount > 0" 
-      class="original-amount">
-  <del>{{ formatCurrency(payment.amount, payment.currency) }}</del>
-</span>
+                  <span class="final-amount">
+                    {{ formatCurrency(payment.finalAmountAfterDiscount, payment.currency) }}
+                  </span>
+                  <!-- Show original amount if discount applied -->
+                  <span *ngIf="payment.discountAmount && payment.discountAmount > 0" 
+                        class="original-amount">
+                    <del>{{ formatCurrency(payment.amount, payment.currency) }}</del>
+                  </span>
+                  <!-- Show converted amount for Stripe payments -->
+                  <div *ngIf="payment.convertedAmount" class="converted-amount">
+                    ≈ {{ formatConvertedAmount(payment) }}
+                  </div>
                 </div>
                 <div *ngIf="payment.discountCode" class="discount-info">
                   <small class="discount-code">
@@ -234,9 +263,24 @@
                 <span class="status-badge" [ngClass]="getStatusClass(payment.status)">
                   {{ payment.status | titlecase }}
                 </span>
-                <div *ngIf="payment.deliveryPersonPaid" class="delivery-paid-indicator">
-                  <small class="paid-indicator">✓ Paid to Delivery</small>
-                </div>
+                
+                <!-- Show delivery status info -->
+                <div *ngIf="payment.deliveryPersonId" class="delivery-status">
+  <small [ngClass]="{
+    'released': payment.deliveryPersonPaid,
+    'pending-release': !payment.deliveryPersonPaid && payment.status === 'COMPLETED',
+    'not-completed': payment.status !== 'COMPLETED'
+  }">
+    {{ 
+      payment.deliveryPersonPaid ? 
+      'Released ' + formatDateOnly(payment.deliveryPersonPaidAt) : 
+      (payment.status === 'COMPLETED' ? 'Ready for release' : 'Complete payment first')
+    }}
+  </small>
+  <div *ngIf="payment.deliveryPersonShare && payment.deliveryPersonPaid" class="share-info">
+    <small>Released: {{ formatCurrency(payment.deliveryPersonShare, payment.currency) }}</small>
+  </div>
+</div>
               </div>
             </td>
 
@@ -259,18 +303,53 @@
               <div class="actions-cell">
                 <div class="action-buttons">
                   
-                  <!-- Refund Button -->
+                  <!-- Mark as Completed Button -->
+                  <button 
+                    *ngIf="canMarkAsCompleted(payment)"
+                    class="action-btn complete-btn"
+                    (click)="markAsCompleted(payment.id)"
+                    [disabled]="isLoading"
+                    [title]="'Mark payment as completed'"
+                    [@buttonHover]="buttonStates['complete-' + payment.id] || 'normal'"
+                    (mouseenter)="onButtonHover('complete-' + payment.id, true)"
+                    (mouseleave)="onButtonHover('complete-' + payment.id, false)">
+                    <span class="btn-icon">✅</span>
+                    <span class="btn-text">Complete</span>
+                  </button>
+
+                  <!-- Release to Delivery Button -->
                  <button 
-    *ngIf="canRefund(payment)"
-    class="action-btn refund-btn"
-    (click)="refundPayment(payment)" 
-    [title]="'Refund payment ' + payment.id"
-    [@buttonHover]="buttonStates['refund-' + payment.id] || 'normal'"
-    (mouseenter)="onButtonHover('refund-' + payment.id, true)"
-    (mouseleave)="onButtonHover('refund-' + payment.id, false)">
-    <span class="btn-icon">↩️</span>
-    <span class="btn-text">Refund</span>
+  class="action-btn release-btn"
+  [class.disabled]="!canReleaseToDelivery(payment)"
+  (click)="canReleaseToDelivery(payment) && releaseToDeliveryPerson(payment.id)"
+  [disabled]="isLoading || !canReleaseToDelivery(payment)"
+  [matTooltip]="getCannotReleaseReason(payment)"
+  [@buttonHover]="buttonStates['release-' + payment.id] || 'normal'"
+  (mouseenter)="onButtonHover('release-' + payment.id, true)"
+  (mouseleave)="onButtonHover('release-' + payment.id, false)">
+  <span class="btn-icon">🚚</span>
+  <span class="btn-text">
+    {{ 
+      canReleaseToDelivery(payment) ? 
+      'Release ' + formatCurrency(payment.finalAmountAfterDiscount * 0.8, payment.currency) : 
+      getCannotReleaseReason(payment) 
+    }}
+  </span>
 </button>
+
+                  <!-- Refund Button -->
+                  <button 
+                    *ngIf="canRefund(payment)"
+                    class="action-btn refund-btn"
+                    (click)="refundPayment(payment)" 
+                    [disabled]="isLoading"
+                    [title]="'Refund payment ' + payment.id"
+                    [@buttonHover]="buttonStates['refund-' + payment.id] || 'normal'"
+                    (mouseenter)="onButtonHover('refund-' + payment.id, true)"
+                    (mouseleave)="onButtonHover('refund-' + payment.id, false)">
+                    <span class="btn-icon">↩️</span>
+                    <span class="btn-text">Refund</span>
+                  </button>
 
                   <!-- Cancel Button -->
                   <button 
@@ -284,20 +363,6 @@
                     (mouseleave)="onButtonHover('cancel-' + payment.id, false)">
                     <span class="btn-icon">❌</span>
                     <span class="btn-text">Cancel</span>
-                  </button>
-
-                  <!-- Release to Delivery Button -->
-                  <button 
-                    *ngIf="canReleaseToDelivery(payment)"
-                    class="action-btn release-btn"
-                    (click)="releaseToDeliveryPerson(payment.id)"
-                    [disabled]="isLoading"
-                    [title]="'Release payment to delivery person'"
-                    [@buttonHover]="buttonStates['release-' + payment.id] || 'normal'"
-                    (mouseenter)="onButtonHover('release-' + payment.id, true)"
-                    (mouseleave)="onButtonHover('release-' + payment.id, false)">
-                    <span class="btn-icon">🚚</span>
-                    <span class="btn-text">Release</span>
                   </button>
 
                   <!-- Status Update Dropdown -->
@@ -352,11 +417,11 @@
 
   <!-- Footer Section -->
   <div class="footer-section" *ngIf="!isLoading && filteredPayments.length > 0">
-  <div class="summary-info">
-    <span class="summary-text">
-      Total displayed: {{ filteredPayments.length }} payments | 
-      Total value: {{ formatCurrency(getFilteredTotalAmount()) }}
-    </span>
+    <div class="summary-info">
+      <span class="summary-text">
+        Total displayed: {{ filteredPayments.length }} payments | 
+        Total value: {{ formatCurrency(getFilteredTotalAmount()) }}
+      </span>
+    </div>
   </div>
 </div>
-  </div>

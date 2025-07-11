@@ -99,27 +99,54 @@ closeMissionDialog() {
   this.selectedMissionId = null; // This is important!
 }
   
-  completeMission(missionId: string) {
-    this.missionService.completeMission(missionId).subscribe({
-      next: () => {
-        const missionIndex = this.missions.findIndex(m => m.id === missionId);
-        if (missionIndex !== -1) {
-          this.missions[missionIndex].status = 'COMPLETED';
-          this.missions[missionIndex].endTime = new Date();
-          this.successMessage = 'Mission completed successfully';
-          
-          if (this.missions[missionIndex].deliveryRequest) {
-            this.missions[missionIndex].deliveryRequest.status = 'DELIVERED';
-          }
+completeMission(missionId: string) {
+  this.missionService.completeMission(missionId).subscribe({
+    next: () => {
+      const missionIndex = this.missions.findIndex(m => m.id === missionId);
+      if (missionIndex !== -1) {
+        this.missions[missionIndex].status = 'COMPLETED';
+        this.missions[missionIndex].endTime = new Date();
+        
+        // Update delivery request status if exists
+        if (this.missions[missionIndex].deliveryRequest) {
+          this.missions[missionIndex].deliveryRequest.status = 'DELIVERED';
         }
-      },
-      error: (err) => {
-        console.error('Failed to complete mission', err);
-        this.errorMessage = err.error?.message || 'Failed to complete mission';
       }
-    });
-  }
-  
+      
+      // Show temporary message with countdown
+      this.successMessage = 'Mission completed! New assignments available in 5 seconds...';
+      this.errorMessage = ''; // Clear any previous errors
+      
+      // Optional: Add a countdown timer
+      let countdown = 5;
+      const countdownInterval = setInterval(() => {
+        countdown--;
+        if (countdown > 0) {
+          this.successMessage = `Mission completed! New assignments available in ${countdown} seconds...`;
+        } else {
+          clearInterval(countdownInterval);
+          this.successMessage = 'Mission completed successfully! You can now take new assignments.';
+        }
+      }, 1000);
+      
+      // Enable new assignments after delay
+      setTimeout(() => {
+        // Refresh the missions list to show updated data
+        this.loadMissions();
+        
+        // Clear the success message after showing final message for a bit
+        setTimeout(() => {
+          this.successMessage = '';
+        }, 3000);
+      }, 5000);
+    },
+    error: (err) => {
+      console.error('Failed to complete mission', err);
+      this.errorMessage = err.error?.message || 'Failed to complete mission';
+      this.successMessage = ''; // Clear success message on error
+    }
+  });
+}
   openMissionDetails(missionId: string) {
     this.selectedMissionId = missionId;
     this.showMissionDialog = true;
