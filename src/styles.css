@@ -1,6 +1,8 @@
 /* Add this if not already present */
 @import 'bootstrap/dist/css/bootstrap.min.css';
 @import '@fortawesome/fontawesome-free/css/all.min.css';
+@import './app/shared/chatbot/chatbot.component.css';
+
 
 /* Custom styles for admin layout */
 .sidebar {

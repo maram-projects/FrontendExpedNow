@@ -71,7 +71,8 @@
               "buildTarget": "expednow:build:production"
             },
             "development": {
-              "buildTarget": "expednow:build:development"
+              "buildTarget": "expednow:build:development",
+              "proxyConfig": "proxy.conf.json"  
             }
           },
           "defaultConfiguration": "development"

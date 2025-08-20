@@ -70,9 +70,22 @@
                   >
                     <i class="fas fa-map-marker-alt"></i>
                   </button>
-                  <div class="invalid-feedback">
-                    Oops! We need to know where to start!
-                  </div>
+                </div>
+                <div class="invalid-feedback">
+                  Oops! We need to know where to start!
+                </div>
+                
+                <!-- Search Results Dropdown -->
+                <div *ngIf="searchResults.length > 0 && activeAddressType === 'pickup'" class="dropdown-menu show w-100 mt-1" style="max-height: 200px; overflow-y: auto;">
+                  <button 
+                    *ngFor="let result of searchResults" 
+                    type="button" 
+                    class="dropdown-item"
+                    (click)="selectSearchResult(result)"
+                  >
+                    <i class="fas fa-map-marker-alt me-2 text-muted"></i>
+                    {{ result.address }}
+                  </button>
                 </div>
               </div>
               
@@ -97,9 +110,22 @@
                   >
                     <i class="fas fa-map-marker-alt"></i>
                   </button>
-                  <div class="invalid-feedback">
-                    Don't forget to tell us where to go!
-                  </div>
+                </div>
+                <div class="invalid-feedback">
+                  Don't forget to tell us where to go!
+                </div>
+                
+                <!-- Search Results Dropdown -->
+                <div *ngIf="searchResults.length > 0 && activeAddressType === 'delivery'" class="dropdown-menu show w-100 mt-1" style="max-height: 200px; overflow-y: auto;">
+                  <button 
+                    *ngFor="let result of searchResults" 
+                    type="button" 
+                    class="dropdown-item"
+                    (click)="selectSearchResult(result)"
+                  >
+                    <i class="fas fa-map-marker-alt me-2 text-muted"></i>
+                    {{ result.address }}
+                  </button>
                 </div>
               </div>
             </div>
@@ -132,15 +158,22 @@
                   [ngClass]="{'is-invalid': deliveryForm.get('packageWeight')?.invalid && deliveryForm.get('packageWeight')?.touched}"
                   min="0.1"
                   step="0.1"
+                  [max]="selectedVehicleMaxLoad > 0 ? selectedVehicleMaxLoad : null"
                 >
                 <div class="invalid-feedback">
                   <span *ngIf="deliveryForm.get('packageWeight')?.errors?.['min']">
                     Minimum weight is 0.1kg
                   </span>
+                  <span *ngIf="deliveryForm.get('packageWeight')?.errors?.['max']">
+                    Maximum weight for selected vehicle is {{ selectedVehicleMaxLoad }}kg
+                  </span>
                   <span *ngIf="deliveryForm.get('packageWeight')?.errors?.['required']">
                     Package weight is required
                   </span>
                 </div>
+                <small *ngIf="selectedVehicleMaxLoad > 0" class="text-muted">
+                  Max load for selected vehicle: {{ selectedVehicleMaxLoad }}kg
+                </small>
               </div>
             </div>
 
@@ -180,16 +213,252 @@
               </div>
             </div>
 
-            <!-- Special Instructions -->
+            <!-- Vehicle Selection (Optional) -->
+            <div class="row mb-3" *ngIf="vehicles.length > 0">
+              <div class="col-md-6 form-group">
+                <label for="vehicleId" class="form-label">🚚 Vehicle (Optional)</label>
+                <select 
+                  id="vehicleId" 
+                  formControlName="vehicleId" 
+                  class="form-select"
+                  [disabled]="isLoadingVehicles"
+                >
+                  <option value="">-- Auto-assign vehicle --</option>
+                  <option *ngFor="let vehicle of vehicles" [value]="vehicle.id">
+                    {{ vehicle.make }} {{ vehicle.model }} - Max Load: {{ vehicle.maxLoad }}kg
+                  </option>
+                </select>
+                <small class="text-muted">
+                  <span *ngIf="isLoadingVehicles">
+                    <i class="fas fa-spinner fa-spin me-1"></i>Loading vehicles...
+                  </span>
+                  <span *ngIf="!isLoadingVehicles">
+                    Leave empty to auto-assign the best vehicle
+                  </span>
+                </small>
+              </div>
+              
+              <div class="col-md-6 form-group">
+                <label for="priority" class="form-label">⚡ Priority</label>
+                <select 
+                  id="priority" 
+                  formControlName="priority" 
+                  class="form-select"
+                >
+                  <option value="NORMAL">Normal</option>
+                  <option value="HIGH">High Priority</option>
+                  <option value="URGENT">Urgent</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Recipient Information (Optional) -->
+            <div class="row mb-3">
+              <div class="col-md-6 form-group">
+                <label for="recipientName" class="form-label">👤 Recipient Name (Optional)</label>
+                <input 
+                  type="text" 
+                  id="recipientName" 
+                  formControlName="recipientName" 
+                  class="form-control" 
+                  placeholder="Who will receive the package?"
+                >
+              </div>
+              
+              <div class="col-md-6 form-group">
+                <label for="recipientPhone" class="form-label">📞 Recipient Phone (Optional)</label>
+                <input 
+                  type="tel" 
+                  id="recipientPhone" 
+                  formControlName="recipientPhone" 
+                  class="form-control" 
+                  placeholder="Recipient's phone number"
+                >
+              </div>
+            </div>
+
+            <!-- Image Upload Section -->
             <div class="mb-3 form-group">
-              <label for="additionalInstructions" class="form-label">📝 Special Instructions (Optional)</label>
-              <textarea 
-                id="additionalInstructions" 
-                formControlName="additionalInstructions" 
-                class="form-control" 
-                rows="3"
-                placeholder="Any special delivery instructions? 🕵️"
-              ></textarea>
+              <label for="imageInput" class="form-label">📸 Package Image (Optional)</label>
+              <input 
+                type="file" 
+                id="imageInput" 
+                #imageInput
+                class="form-control"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                (change)="onImageSelected($event)"
+              >
+              <small class="text-muted">
+                Upload an image of your package. Max size: 5MB. Supported formats: JPEG, PNG, GIF, WebP
+              </small>
+              
+              <!-- Image Error -->
+              <div *ngIf="imageError" class="alert alert-danger mt-2">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                {{ imageError }}
+              </div>
+              
+              <!-- Image Preview -->
+              <div *ngIf="imagePreview" class="mt-3">
+                <div class="d-flex align-items-start">
+                  <img [src]="imagePreview" alt="Package preview" class="img-thumbnail me-3" style="max-width: 200px; max-height: 200px;">
+                  <div class="flex-grow-1">
+                    <p class="mb-1"><strong>Selected Image:</strong></p>
+                    <p class="text-muted mb-1" *ngIf="selectedImage">
+                      Size: {{ getImageSizeInMB(selectedImage.size) }} MB
+                    </p>
+                    <button type="button" class="btn btn-sm btn-outline-danger" (click)="removeImage()">
+                      <i class="fas fa-trash me-1"></i>Remove Image
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Image Analysis Loading -->
+              <div *ngIf="isAnalyzingImage" class="mt-3">
+                <div class="d-flex align-items-center">
+                  <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                  <span>Analyzing image...</span>
+                </div>
+              </div>
+            </div>
+
+   <!-- Image Analysis Results -->
+<div *ngIf="analysisResult || hasAnalysisResults" class="mb-3 p-3 bg-light rounded shadow-sm">
+  <h6 class="mb-3">📊 Image Analysis Results</h6>
+  
+  <div class="row">
+    <!-- Image Quality Card -->
+    <div *ngIf="imageQuality" class="col-md-4 mb-3">
+      <div class="card h-100">
+        <div class="card-header bg-info text-white">
+          <i class="fas fa-star me-2"></i>Image Quality
+        </div>
+        <div class="card-body">
+          <p class="card-text">
+            <span [ngClass]="{
+              'text-success': imageQuality === 'good',
+              'text-warning': imageQuality === 'medium',
+              'text-danger': imageQuality === 'poor'
+            }">
+              {{ imageQuality === 'good' ? '👍 Good' : 
+                 imageQuality === 'medium' ? '👌 Medium' : 
+                 '👎 Poor' }}
+            </span>
+          </p>
+          <small class="text-muted">
+            {{ imageQuality === 'good' ? 'Clear and sharp image' :
+               imageQuality === 'medium' ? 'Acceptable quality' :
+               'Consider retaking the photo' }}
+          </small>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Extracted Text -->
+<div *ngIf="analysisResult?.extracted_text || analysisResult?.analysis?.text_extraction?.full_text" class="col-md-12 mb-3">
+  <div class="card">
+    <div class="card-header bg-info text-white">
+      <i class="fas fa-font me-2"></i>Extracted Text
+    </div>
+    <div class="card-body">
+      <p class="card-text">{{ analysisResult?.extracted_text || analysisResult?.analysis?.text_extraction?.full_text }}</p>
+    </div>
+  </div>
+</div>
+    <!-- Detected Information Cards -->
+    <div class="col-md-4 mb-3" *ngIf="weightFromImage">
+      <div class="card h-100">
+        <div class="card-header bg-success text-white">
+          <i class="fas fa-weight-hanging me-2"></i>Detected Weight
+        </div>
+        <div class="card-body">
+          <p class="card-text">{{ weightFromImage }} kg</p>
+          <button 
+            type="button" 
+            class="btn btn-sm btn-outline-primary" 
+            (click)="deliveryForm.get('packageWeight')?.setValue(weightFromImage)"
+          >
+            <i class="fas fa-check me-1"></i>Use this weight
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-4 mb-3" *ngIf="packageTypeFromImage">
+      <div class="card h-100">
+        <div class="card-header bg-warning text-dark">
+          <i class="fas fa-box me-2"></i>Package Type
+        </div>
+        <div class="card-body">
+          <p class="card-text">{{ packageTypeFromImage }}</p>
+          <button 
+            type="button" 
+            class="btn btn-sm btn-outline-primary" 
+            (click)="deliveryForm.get('packageType')?.setValue(packageTypeFromImage)"
+          >
+            <i class="fas fa-check me-1"></i>Use this type
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-4 mb-3" *ngIf="phoneNumberFromImage">
+      <div class="card h-100">
+        <div class="card-header bg-primary text-white">
+          <i class="fas fa-phone me-2"></i>Phone Number
+        </div>
+        <div class="card-body">
+          <p class="card-text">{{ phoneNumberFromImage }}</p>
+          <button 
+            type="button" 
+            class="btn btn-sm btn-outline-primary" 
+            (click)="deliveryForm.get('recipientPhone')?.setValue(phoneNumberFromImage)"
+          >
+            <i class="fas fa-check me-1"></i>Use this number
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Apply All Button -->
+  <div class="text-center mt-3" *ngIf="hasAnalysisResults">
+    <button 
+      type="button" 
+      class="btn btn-primary" 
+      (click)="applyDetections()"
+    >
+      <i class="fas fa-magic me-2"></i>Apply All Detections
+    </button>
+  </div>
+</div>
+
+            <!-- Special Instructions -->
+            <div class="row mb-3">
+              <div class="col-md-6 form-group">
+                <label for="additionalInstructions" class="form-label">📝 Additional Instructions (Optional)</label>
+                <textarea 
+                  id="additionalInstructions" 
+                  formControlName="additionalInstructions" 
+                  class="form-control" 
+                  rows="3"
+                  placeholder="Any special delivery instructions? 🕵️"
+                ></textarea>
+              </div>
+              
+              <div class="col-md-6 form-group">
+                <label for="specialInstructions" class="form-label">🔒 Special Instructions (Optional)</label>
+                <textarea 
+                  id="specialInstructions" 
+                  formControlName="specialInstructions" 
+                  class="form-control" 
+                  rows="3"
+                  placeholder="Any special handling requirements?"
+                ></textarea>
+              </div>
             </div>
 
             <!-- Form Actions -->
@@ -200,10 +469,10 @@
               <button 
                 type="submit" 
                 class="btn btn-primary" 
-                [disabled]="isSubmitting"
+                [disabled]="!canSubmit"
               >
                 <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                <i class="fas fa-paper-plane me-2"></i>
+                <i *ngIf="!isSubmitting" class="fas fa-paper-plane me-2"></i>
                 {{ isSubmitting ? 'Processing...' : 'Send It!' }}
               </button>
             </div>
@@ -248,3 +517,74 @@
     </div>
   </div>
 </div>
+
+<style>
+.fun-message {
+  transition: opacity 0.5s ease-in-out;
+}
+
+.fun-message.in {
+  opacity: 1;
+}
+
+.fun-message.out {
+  opacity: 0;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.card-header {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+}
+
+.img-thumbnail {
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+}
+
+.dropdown-menu {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.dropdown-item:hover {
+  background-color: #f8f9fa;
+}
+
+.alert {
+  border: none;
+  border-radius: 8px;
+}
+
+.btn {
+  border-radius: 6px;
+}
+
+.form-control, .form-select {
+  border-radius: 6px;
+}
+
+.card {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.map-container {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 15px;
+  }
+  
+  .card {
+    margin: 10px 0;
+  }
+}
+</style>

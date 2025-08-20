@@ -14,13 +14,20 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { PaymentStatus } from '../../../models/Payment.model';
 import { BonusStatus } from '../../../models/bonus.model';
 import { DiscountType } from '../../../models/discount.model';
+import { ChatbotComponent } from '../../../shared/chatbot/chatbot.component';
 
 @Component({
   selector: 'app-admin-dashboard-component',
   standalone: true,
-  imports: [CommonModule, NgxChartsModule, RouterModule, FormsModule],
+  imports: [
+    CommonModule, 
+    NgxChartsModule, 
+    RouterModule, 
+    FormsModule,
+    ChatbotComponent 
+  ],
   templateUrl: './admin-dashboard-component.component.html',
-  styleUrls: ['./admin-dashboard-component.component.css'],
+  styleUrls: ['./admin-dashboard-component.component.css','../../../shared/chatbot/chatbot.component.css'],
   schemas: [CUSTOM_ELEMENTS_SCHEMA]
 })
 export class AdminDashboardComponentComponent implements OnInit {
@@ -36,6 +43,9 @@ export class AdminDashboardComponentComponent implements OnInit {
   selectedDeliveryPerson: User | null = null;
   isLoading = false;
   checkDateTime: Date = new Date();
+
+  // Chat state
+  showChat = false;
 
   // Day of Week enum for template access
   DayOfWeek = DayOfWeek;
@@ -69,6 +79,11 @@ export class AdminDashboardComponentComponent implements OnInit {
   
     this.loadDashboardStats();
     this.loadDeliveryPersons();
+  }
+
+  // Chat toggle method
+  toggleChat(): void {
+    this.showChat = !this.showChat;
   }
 
   loadDashboardStats(): void {

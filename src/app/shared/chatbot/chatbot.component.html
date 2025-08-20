@@ -1,0 +1,280 @@
+<!-- chatbot.component.html - Interface Moderne & Professionnelle -->
+
+<!-- Bouton Flottant Moderne du Chatbot -->
+<div class="chatbot-toggle"
+     [class.open]="isOpen()"
+     (click)="toggleChat()"
+     (mousedown)="startLongPress()"
+     (mouseup)="endLongPress()"
+     (mouseleave)="endLongPress()"
+     (touchstart)="startLongPress()"
+     (touchend)="endLongPress()">
+  
+  <!-- Tooltip -->
+  <div class="chatbot-tooltip">
+    {{ isOpen() ? 'Fermer l\'assistant IA' : 'Assistant IA - Cliquez pour discuter' }}
+  </div>
+  
+  <!-- Icône Principale -->
+  <i class="fas" 
+     [class.fa-robot]="!isOpen()"
+     [class.fa-times]="isOpen()"></i>
+  
+  <!-- Indicateur d'État de Connexion -->
+  <span class="connection-status" 
+        [class.offline]="!isConnected()"
+        [class.authenticated]="isConnected() && isAuthenticated()"
+        [title]="getConnectionStatusText()"></span>
+  
+  <!-- Badge de Notification -->
+  @if (messageCount() > 1 && !isOpen()) {
+    <span class="notification-badge">{{ messageCount() - 1 }}</span>
+  }
+  
+  <!-- Menu Actions Rapides (apparaît lors d'un appui long) -->
+  <div class="quick-actions" [class.show]="showQuickActions()">
+    <button class="quick-action-btn" 
+            (click)="executeQuickAction('stats')"
+            type="button">
+      📊 Afficher les statistiques
+    </button>
+    <button class="quick-action-btn" 
+            (click)="executeQuickAction('users')"
+            type="button">
+      👥 Utilisateurs actifs
+    </button>
+    <button class="quick-action-btn" 
+            (click)="executeQuickAction('help')"
+            type="button">
+      💡 Aide
+    </button>
+    <button class="quick-action-btn" 
+            (click)="executeQuickAction('reports')"
+            type="button">
+      📈 Rapports
+    </button>
+  </div>
+</div>
+
+<!-- Fenêtre du Chatbot -->
+<div class="chatbot-window" [class.open]="isOpen()">
+  <!-- En-tête Amélioré -->
+  <div class="chatbot-header">
+    <div class="header-info">
+      <h3>🤖 Assistant Administratif IA</h3>
+      <span class="status" [class.offline]="!isConnected()">
+        {{ getConnectionStatusText() }}
+        @if (isAuthenticated()) {
+          <i class="fas fa-shield-alt" style="margin-left: 5px;"></i>
+        }
+      </span>
+    </div>
+    <div class="header-actions">
+      <!-- Bouton Actualiser/Réessayer -->
+      @if (shouldShowRetryButton()) {
+        <button class="btn-retry"
+                (click)="retryConnection()"
+                title="Réessayer"
+                type="button">
+          <i class="fas fa-redo"></i>
+        </button>
+      }
+      
+      <!-- Bouton Effacer la Conversation -->
+      <button class="btn-clear"
+              (click)="clearChat()"
+              title="Effacer la conversation"
+              [disabled]="messageCount() <= 1"
+              type="button">
+        <i class="fas fa-trash"></i>
+      </button>
+      
+      <!-- Bouton Minimiser/Fermer -->
+      <button class="btn-close"
+              (click)="toggleChat()"
+              title="Minimiser"
+              type="button">
+        <i class="fas fa-minus"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Zone de Messages Améliorée -->
+  <div class="chatbot-messages" #messagesContainer>
+    @for (message of messages(); track trackByMessage($index, message)) {
+      <div class="message" [class]="message.sender">
+        <div class="message-content">
+          <!-- Message avec meilleur formatage -->
+          <div [innerHTML]="formatMessage(message.text)"></div>
+          <span class="message-time">
+            <i class="fas fa-clock" style="margin-right: 4px;"></i>
+            {{ formatTime(message.timestamp) }}
+          </span>
+        </div>
+      </div>
+    }
+
+    <!-- Indicateur de Frappe Amélioré -->
+    @if (isTyping()) {
+      <div class="message bot typing-indicator">
+        <div class="message-content">
+          <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <span class="typing-text">
+            <i class="fas fa-robot" style="margin-right: 5px;"></i>
+            L'assistant écrit...
+          </span>
+        </div>
+      </div>
+    }
+
+    <!-- Message d'État de Connexion Amélioré -->
+    @if (!isConnected() && messageCount() > 0) {
+      <div class="connection-message">
+        <i class="fas fa-wifi-slash"></i>
+        <span>Connexion perdue - Vérifiez votre internet</span>
+        @if (shouldShowRetryButton()) {
+          <button class="retry-btn" 
+                  (click)="retryConnection()"
+                  type="button">
+            <i class="fas fa-redo"></i>
+            Réessayer
+          </button>
+        }
+      </div>
+    }
+
+    <!-- Message de Bienvenue/Aide -->
+    @if (messageCount() === 1 && !isTyping()) {
+      <div class="welcome-suggestions">
+        <div class="suggestion-title">💡 Suggestions rapides :</div>
+        <div class="suggestions-grid">
+          <button class="suggestion-btn" 
+                  (click)="sendQuickMessage('Quelles sont les dernières statistiques ?')"
+                  type="button">
+            📊 Statistiques
+          </button>
+          <button class="suggestion-btn" 
+                  (click)="sendQuickMessage('Combien d\'utilisateurs sont actifs ?')"
+                  type="button">
+            👥 Utilisateurs
+          </button>
+          <button class="suggestion-btn" 
+                  (click)="sendQuickMessage('Afficher les rapports quotidiens')"
+                  type="button">
+            📈 Rapports
+          </button>
+          <button class="suggestion-btn" 
+                  (click)="sendQuickMessage('Comment puis-je gérer le système ?')"
+                  type="button">
+            ⚙️ Aide
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Zone de Saisie Améliorée -->
+  <div class="chatbot-input">
+    <!-- Conteneur de Saisie Principal -->
+    <div class="input-container">
+      <textarea
+        [(ngModel)]="userInputValue"
+        (keydown)="onKeyPress($event)"
+        (input)="onInputChange($any($event.target).value)"
+        placeholder="Tapez votre message ici... (Appuyez sur Entrée pour envoyer)"
+        class="message-input"
+        rows="1"
+        [disabled]="!isConnected() || isTyping()"
+        maxlength="500"
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false">
+      </textarea>
+
+      <!-- Bouton d'Envoi Amélioré -->
+      <button
+        class="send-button"
+        (click)="sendMessage()"
+        [disabled]="!canSend()"
+        [title]="canSend() ? 'Envoyer (Entrée)' : getDisabledReason()"
+        type="button">
+        @if (isTyping()) {
+          <i class="fas fa-spinner fa-spin"></i>
+        } @else if (canSend()) {
+          <i class="fas fa-paper-plane"></i>
+        } @else {
+          <i class="fas fa-ban"></i>
+        }
+      </button>
+    </div>
+
+    <!-- Pied de Page de Saisie Amélioré -->
+    <div class="input-footer">
+      <div class="footer-left">
+        <!-- Compteur de Caractères -->
+        <span class="char-counter"
+              [class.warning]="userInput().length > 450"
+              [class.danger]="userInput().length >= 500">
+          <i class="fas fa-keyboard" style="margin-right: 4px;"></i>
+          {{ userInput().length }}/500
+        </span>
+      </div>
+
+      <div class="footer-right">
+        @if (!isConnected()) {
+          <span class="connection-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            Pas de connexion
+          </span>
+        } @else if (isTyping()) {
+          <span class="typing-status">
+            <i class="fas fa-circle-notch fa-spin"></i>
+            Envoi en cours...
+          </span>
+        } @else if (isConnected()) {
+          <span class="online-status">
+            <i class="fas fa-check-circle"></i>
+            Connecté
+          </span>
+        }
+      </div>
+    </div>
+
+    <!-- Actions Rapides Améliorées (Toujours visibles quand connecté) -->
+    @if (isConnected() && !isTyping() && messageCount() > 1) {
+      <div class="quick-actions">
+        <button class="quick-action-btn" 
+                (click)="sendQuickMessage('📊 Afficher les statistiques actuelles')"
+                type="button">
+          📊 Statistiques
+        </button>
+        <button class="quick-action-btn" 
+                (click)="sendQuickMessage('👥 Combien d\'utilisateurs sont actifs ?')"
+                type="button">
+          👥 Utilisateurs
+        </button>
+        <button class="quick-action-btn" 
+                (click)="sendQuickMessage('💰 Afficher les revenus')"
+                type="button">
+          💰 Revenus
+        </button>
+        <button class="quick-action-btn" 
+                (click)="sendQuickMessage('❓ Aide')"
+                type="button">
+          ❓ Aide
+        </button>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- Superposition Améliorée pour mobile -->
+@if (isOpen()) {
+  <div class="chatbot-overlay" 
+       [class.show]="isOpen()"
+       (click)="toggleChat()"></div>
+}

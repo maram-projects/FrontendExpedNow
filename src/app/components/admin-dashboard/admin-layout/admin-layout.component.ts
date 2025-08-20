@@ -1,11 +1,12 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { ChatbotComponent } from '../../../shared/chatbot/chatbot.component';
 
 @Component({
   selector: 'app-admin-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule], // إضافة ChatbotComponent
   template: `
     <div class="container-fluid">
       <div class="row">
@@ -33,8 +34,6 @@ import { RouterModule } from '@angular/router';
                 <span>Delivery Personnel Management</span>
               </a>
             </li>
-           
-      
             <li class="nav-item">
               <a class="nav-link" routerLink="/admin/vehicles" routerLinkActive="active">
                 <i class="fas fa-car"></i>
@@ -47,33 +46,31 @@ import { RouterModule } from '@angular/router';
                 <span>Availability Schedule</span>
               </a>
             </li>
-            <!-- New Navigation Items -->
             <li class="nav-item">
               <a class="nav-link" routerLink="/admin/discounts" routerLinkActive="active">
                 <i class="fas fa-tag"></i>
                 <span>Discount Management</span>
               </a>
             </li>
-          <li class="nav-item">
-  <a class="nav-link" routerLink="/admin/payments" routerLinkActive="active">
-    <i class="fas fa-credit-card"></i>
-    <span>Payment Management</span>
-  </a>
-</li>
-
+            <li class="nav-item">
+              <a class="nav-link" routerLink="/admin/payments" routerLinkActive="active">
+                <i class="fas fa-credit-card"></i>
+                <span>Payment Management</span>
+              </a>
+            </li>
             <li class="nav-item">
               <a class="nav-link" routerLink="/admin/bonuses" routerLinkActive="active">
                 <i class="fas fa-gift"></i>
                 <span>Bonus Management</span>
               </a>
             </li>
-             <li class="nav-item">
+            <li class="nav-item">
               <a class="nav-link" routerLink="/admin/roles" routerLinkActive="active">
                 <i class="fas fa-user-tag"></i>
                 <span>Role Management</span>
               </a>
             </li>
-             <li class="nav-item">
+            <li class="nav-item">
               <a class="nav-link" routerLink="/admin/settings" routerLinkActive="active">
                 <i class="fas fa-cog"></i>
                 <span>System Settings</span>
@@ -83,11 +80,13 @@ import { RouterModule } from '@angular/router';
         </nav>
         
         <!-- Main content -->
-        <main class="col-md-10 ms-sm-auto px-md-4">
+        <main class="col-md-10 ms-sm-auto px-md-4 main-content">
           <router-outlet></router-outlet>
         </main>
       </div>
     </div>
+
+
   `,
   styles: [`
     .sidebar {
@@ -188,6 +187,12 @@ import { RouterModule } from '@angular/router';
       animation: pulse 1.5s infinite ease-in-out;
     }
 
+    
+
+   
+
+  
+
     /* Mobile responsiveness */
     @media (max-width: 768px) {
       .sidebar {
@@ -199,6 +204,19 @@ import { RouterModule } from '@angular/router';
       .sidebar .nav-link {
         padding: 0.6rem 1rem;
         margin: 0.3rem 0.6rem;
+      }
+
+      .main-content {
+        padding-bottom: 120px;
+      }
+
+   
+      
+    }
+
+    @media (max-width: 480px) {
+      .main-content {
+        padding-bottom: 140px;
       }
     }
   `]

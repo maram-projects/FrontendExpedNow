@@ -870,80 +870,70 @@ private async processNonCardPayment(): Promise<void> {
     return methodNames[method] || 'Unknown Payment Method';
   }
 
-  private showPaymentSuccess(payment: Payment): void {
-    console.log('Showing payment success');
-    if (!this.delivery) return;
+ private showPaymentSuccess(payment: Payment): void {
+  console.log('Showing payment success');
+  if (!this.delivery) return;
 
-    const modalRef = this.dialog.open(PaymentSuccessModalComponent, {
-      data: {
-        deliveryId: this.delivery.id,
-        amount: this.delivery.finalAmountAfterDiscount,
-        paymentMethod: this.getMethodName(this.selectedMethod!),
-        transactionId: payment.transactionId
-      }
-    });
+  const modalRef = this.dialog.open(PaymentSuccessModalComponent, {
+    data: {
+      deliveryId: this.delivery.id,
+      amount: this.delivery.finalAmountAfterDiscount,
+      paymentMethod: this.getMethodName(this.selectedMethod!),
+      transactionId: payment.transactionId
+    }
+  });
 
-    modalRef.afterClosed().subscribe(() => {
-      if (this.delivery && payment.id) {
-        this.deliveryService.updateDeliveryPaymentStatus(
-          this.delivery.id,
-          payment.id,
-          this.mapToDeliveryPaymentStatus(PaymentStatus.COMPLETED),
-          this.selectedMethod || undefined,
-          this.delivery.finalAmountAfterDiscount,
-          this.delivery.amount,
-          this.delivery.discountAmount || 0,
-          this.discountCode
-        ).subscribe({
-          next: () => {
-            this.navigateAfterPayment(payment.id);
-          },
-          error: () => {
-            this.navigateAfterPayment(payment.id);
-          }
-        });
-      }
-    });
-  }
-
-  private navigateAfterPayment(paymentId: string): void {
-    console.log('Navigating after payment');
-    const queryParams = {
-      paymentSuccess: 'true',
-      paymentId: paymentId,
-      refresh: Date.now().toString()
-    };
-
-    if (this.dialogData) {
-      this.dialogRef.close({
-        success: true,
-        paymentId: paymentId,
-        delivery: this.delivery // Send updated delivery back
-      });
-    } else {
-      this.router.navigate(['/client/dashboard'], { 
-        queryParams: {
-          ...queryParams,
-          deliveryId: this.delivery?.id
+  modalRef.afterClosed().subscribe(() => {
+    if (this.delivery && payment.id) {
+      this.deliveryService.updateDeliveryPaymentStatus(
+        this.delivery.id,
+        payment.id,
+        this.mapToDeliveryPaymentStatus(PaymentStatus.COMPLETED),
+        this.selectedMethod || undefined
+      ).subscribe({
+        next: () => {
+          this.navigateAfterPayment(payment.id);
+        },
+        error: () => {
+          this.navigateAfterPayment(payment.id);
         }
       });
     }
-  }
+  });
+}
+private navigateAfterPayment(paymentId: string): void {
+  console.log('Navigating after payment');
+  const queryParams = {
+    paymentSuccess: 'true',
+    paymentId: paymentId,
+    refresh: Date.now().toString()
+  };
 
+  if (this.dialogData) {
+    this.dialogRef.close({
+      success: true,
+      paymentId: paymentId,
+      delivery: this.delivery // Send updated delivery back
+    });
+  } else {
+    this.router.navigate(['/client/dashboard'], {
+      queryParams: {
+        ...queryParams,
+        deliveryId: this.delivery?.id
+      }
+    });
+  }
+}
 private updateDeliveryPaymentStatus(deliveryId: string, paymentId: string): Observable<any> {
   return this.deliveryService.updateDeliveryPaymentStatus(
     deliveryId,
     paymentId,
     'COMPLETED',
-    this.selectedMethod || undefined,
-    this.delivery?.finalAmountAfterDiscount || 0,
-    this.delivery?.amount || 0,
-    this.delivery?.discountAmount || 0,
-    this.discountCode
+    this.selectedMethod || undefined
   ).pipe(
     tap(() => {
       if (this.delivery) {
-this.delivery.paymentStatus = PaymentStatus.COMPLETED;
+        this.delivery.paymentStatus = PaymentStatus.COMPLETED;
         this.delivery.paymentId = paymentId;
         this.delivery.paymentDate = new Date();
       }
@@ -951,31 +941,30 @@ this.delivery.paymentStatus = PaymentStatus.COMPLETED;
   );
 }
 
-  private mapToDeliveryPaymentStatus(status: PaymentStatus): DeliveryPaymentStatus {
-    switch (status) {
-      case PaymentStatus.PENDING:
-        return 'PENDING' as DeliveryPaymentStatus;
-      case PaymentStatus.PROCESSING:
-        return 'PROCESSING' as DeliveryPaymentStatus;
-       case PaymentStatus.COMPLETED:
-            return 'DELIVERED' as DeliveryPaymentStatus; // Changed from 'COMPLETED'
-      case PaymentStatus.FAILED:
-        return 'FAILED' as DeliveryPaymentStatus;
-      case PaymentStatus.CANCELLED:
-        return 'CANCELLED' as DeliveryPaymentStatus;
-      case PaymentStatus.REFUNDED:
-        return 'REFUNDED' as DeliveryPaymentStatus;
-      case PaymentStatus.PARTIALLY_REFUNDED:
-        return 'PARTIALLY_REFUNDED' as DeliveryPaymentStatus;
-      case PaymentStatus.PENDING_DELIVERY:
-        return 'PENDING_DELIVERY' as DeliveryPaymentStatus;
-      case PaymentStatus.PENDING_VERIFICATION:
-        return 'PENDING_VERIFICATION' as DeliveryPaymentStatus;
-      default:
-        return 'PENDING' as DeliveryPaymentStatus;
-    }
+ private mapToDeliveryPaymentStatus(status: PaymentStatus): DeliveryPaymentStatus {
+  switch (status) {
+    case PaymentStatus.PENDING:
+      return 'PENDING' as DeliveryPaymentStatus;
+    case PaymentStatus.PROCESSING:
+      return 'PROCESSING' as DeliveryPaymentStatus;
+    case PaymentStatus.COMPLETED:
+      return 'DELIVERED' as DeliveryPaymentStatus; // Changed from 'COMPLETED'
+    case PaymentStatus.FAILED:
+      return 'FAILED' as DeliveryPaymentStatus;
+    case PaymentStatus.CANCELLED:
+      return 'CANCELLED' as DeliveryPaymentStatus;
+    case PaymentStatus.REFUNDED:
+      return 'REFUNDED' as DeliveryPaymentStatus;
+    case PaymentStatus.PARTIALLY_REFUNDED:
+      return 'PARTIALLY_REFUNDED' as DeliveryPaymentStatus;
+    case PaymentStatus.PENDING_DELIVERY:
+      return 'PENDING_DELIVERY' as DeliveryPaymentStatus;
+    case PaymentStatus.PENDING_VERIFICATION:
+      return 'PENDING_VERIFICATION' as DeliveryPaymentStatus;
+    default:
+      return 'PENDING' as DeliveryPaymentStatus;
   }
-
+}
   resetPayment(): void {
     console.log('Resetting payment');
     this.paymentStatus = PaymentStatus.PENDING;
