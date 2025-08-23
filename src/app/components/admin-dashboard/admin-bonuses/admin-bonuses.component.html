@@ -82,6 +82,16 @@
             z-index: 1050;
             min-width: 300px;
         }
+        
+        /* Improved dropdown styling */
+        .form-select {
+            padding-top: 1.625rem;
+            padding-bottom: 0.625rem;
+        }
+        .form-floating>.form-select {
+            padding-top: 1.625rem;
+            padding-bottom: 0.625rem;
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -320,7 +330,7 @@
                         <td>
                             <div class="d-flex align-items-center">
                                 <i class="fas fa-user-tie me-2 text-muted"></i>
-                                <span>{{ bonus.deliveryPersonId | slice:0:8 }}</span>
+                                <span>{{ getDeliveryPersonName(bonus.deliveryPersonId) }}</span>
                             </div>
                         </td>
                         <td>
@@ -459,23 +469,28 @@
                 <div class="modal-body">
                     <form #createBonusForm="ngForm">
                         <div class="row g-3">
+                            <!-- Delivery Person Dropdown -->
                             <div class="col-md-6">
                                 <div class="form-floating">
-                                    <input 
-                                        type="text" 
-                                        class="form-control" 
+                                    <select 
+                                        class="form-select" 
                                         id="deliveryPersonId"
                                         name="deliveryPersonId"
                                         #deliveryPersonId="ngModel"
                                         [(ngModel)]="newBonus.deliveryPersonId"
-                                        required
-                                        placeholder="Delivery Person ID">
-                                    <label for="deliveryPersonId">Delivery Person ID *</label>
+                                        required>
+                                        <option value="">Select Delivery Person</option>
+                                        <option *ngFor="let person of deliveryPersons" [value]="person.id">
+                                            {{ person.fullName }} ({{ person.id }})
+                                        </option>
+                                    </select>
+                                    <label for="deliveryPersonId">Delivery Person *</label>
                                 </div>
                                 <div class="invalid-feedback" [style.display]="deliveryPersonId.invalid && deliveryPersonId.touched ? 'block' : 'none'">
-                                    Delivery Person ID is required
+                                    Delivery Person is required
                                 </div>
                             </div>
+                            
                             <div class="col-md-6">
                                 <div class="form-floating">
                                     <input 
@@ -563,24 +578,23 @@
                                 </div>
                             </div>
 
-                            <!-- Add this to your form -->
-<div class="col-12">
-  <div class="form-floating">
-    <input 
-      type="text" 
-      class="form-control" 
-      id="reason"
-      name="reason"
-      #reason="ngModel"
-      [(ngModel)]="newBonus.reason"
-      required
-      placeholder="Reason for bonus">
-    <label for="reason">Reason *</label>
-  </div>
-  <div class="invalid-feedback" [style.display]="reason.invalid && reason.touched ? 'block' : 'none'">
-    Reason is required
-  </div>
-</div>
+                            <div class="col-12">
+                                <div class="form-floating">
+                                    <input 
+                                        type="text" 
+                                        class="form-control" 
+                                        id="reason"
+                                        name="reason"
+                                        #reason="ngModel"
+                                        [(ngModel)]="newBonus.reason"
+                                        required
+                                        placeholder="Reason for bonus">
+                                    <label for="reason">Reason *</label>
+                                </div>
+                                <div class="invalid-feedback" [style.display]="reason.invalid && reason.touched ? 'block' : 'none'">
+                                    Reason is required
+                                </div>
+                            </div>
                         </div>
                     </form>
                 </div>

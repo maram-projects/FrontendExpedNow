@@ -376,48 +376,57 @@
           <!-- Amount Column -->
           <ng-container matColumnDef="amount">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Amount</th>
-            <td mat-cell *matCellDef="let payment">
-              <div class="amount-cell">
-                <div class="released-amount">
-                  {{ formatCurrency(payment.deliveryPersonShare) }}
-                  <span class="share-percentage">(80%)</span>
-                </div>
-                <div class="original-amount">
-                  Total: {{ formatCurrency(payment.amount) }}
-                </div>
-              </div>
-            </td>
+          <!-- In your payment table -->
+<!-- In the payments table -->
+<td mat-cell *matCellDef="let payment">
+  <div class="amount-cell">
+    <div class="released-amount" *ngIf="payment.deliveryPersonPaid">
+      {{ formatCurrency(payment.deliveryPersonShare) }}
+      <span class="share-percentage">(80%)</span>
+    </div>
+    <div class="pending-amount" *ngIf="!payment.deliveryPersonPaid && payment.status === 'COMPLETED'">
+      Pending release: {{ formatCurrency(payment.amount * 0.8) }}
+    </div>
+  </div>
+</td>
           </ng-container>
           
           <!-- Date Column -->
           <ng-container matColumnDef="date">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Date Released</th>
-            <td mat-cell *matCellDef="let payment">
-              <div class="date-cell">
-                <div class="release-date">
-                  {{ payment.deliveryPersonPaidAt | date:'mediumDate' }}
-                </div>
-                <div class="release-time">
-                  {{ payment.deliveryPersonPaidAt | date:'shortTime' }}
-                </div>
-              </div>
-            </td>
+           <td mat-cell *matCellDef="let payment">
+  <div class="date-cell">
+    <div class="release-date" *ngIf="payment.deliveryPersonPaidAt">
+      {{ payment.deliveryPersonPaidAt | date:'mediumDate' }}
+    </div>
+    <div class="release-time" *ngIf="payment.deliveryPersonPaidAt">
+      {{ payment.deliveryPersonPaidAt | date:'shortTime' }}
+    </div>
+    <div *ngIf="!payment.deliveryPersonPaidAt" class="not-released">
+      Not released yet
+    </div>
+  </div>
+</td>
           </ng-container>
           
           <!-- Status Column -->
           <ng-container matColumnDef="status">
             <th mat-header-cell *matHeaderCellDef>Status</th>
-            <td mat-cell *matCellDef="let payment">
-              <div class="status-cell">
-                <span class="status-badge" [ngClass]="getStatusClass(payment.status)">
-                  {{ payment.deliveryPersonPaid ? 'RELEASED' : payment.status }}
-                </span>
-                <div *ngIf="payment.deliveryPersonPaid" class="paid-indicator">
-                  <mat-icon>verified</mat-icon>
-                  Payment Released
-                </div>
-              </div>
-            </td>
+        <td mat-cell *matCellDef="let payment">
+  <div class="status-cell">
+    <span class="status-badge" [ngClass]="getStatusClass(payment.status)">
+      {{ payment.deliveryPersonPaid ? 'RELEASED' : payment.status }}
+    </span>
+    <div *ngIf="payment.deliveryPersonPaid" class="paid-indicator">
+      <mat-icon>verified</mat-icon>
+      Payment Released ({{ payment.deliveryPersonShare | currency:'TND':'symbol':'1.2-2' }})
+    </div>
+    <div *ngIf="!payment.deliveryPersonPaid && payment.status === 'COMPLETED'" class="pending-release">
+      <mat-icon>schedule</mat-icon>
+      Awaiting Release
+    </div>
+  </div>
+</td>
           </ng-container>
           
           <!-- Actions Column -->

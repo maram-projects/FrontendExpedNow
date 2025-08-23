@@ -29,7 +29,8 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { User } from '../../../models/user.model';
 import { ScheduleComponent } from '../../admin-dashboard/schedule/schedule.component';
 import { Payment} from '../../../models/Payment.model';
-
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { PaymentStatus } from '../../../models/Payment.model';
 import { ShortenPipe } from '../../../pipes/shorten.pipe';
 
 import { 
@@ -135,7 +136,9 @@ currentSection: 'pending' | 'history' | 'bonuses' | 'overview' | 'payments' = 'o
     public authService: AuthService,
     private availabilityService: AvailabilityService,
     private bonusService: BonusService,
-      private paymentService: PaymentService // Add this line
+      private paymentService: PaymentService ,// Add this line,
+        private snackBar: MatSnackBar // Add this
+
 
   ) {}
 
@@ -1059,7 +1062,6 @@ onPaymentFilterChange(): void {
   }
   this.sortPayments();
 }
-
 sortPayments(): void {
   if (!this.paymentSortBy) return;
   
@@ -1147,6 +1149,7 @@ downloadPaymentReceipt(paymentId: string): void {
 // Refresh payments
 refreshPayments(): void {
   this.loadReceivedPayments();
+  this.snackBar.open('Payments refreshed', 'Close', { duration: 2000 });
 }
 getTotalPaymentsThisMonth(): number {
   const now = new Date();
@@ -1154,6 +1157,7 @@ getTotalPaymentsThisMonth(): number {
     .filter(p => p.updatedAt && new Date(p.updatedAt).getMonth() === now.getMonth())
     .reduce((sum, p) => sum + (p.deliveryPersonShare || 0), 0);
 }
+
 // Dans delivery-dashboard.component.ts
 
 // Ajoutez cette méthode pour formater le montant
@@ -1162,10 +1166,10 @@ formatCurrency(amount: number | undefined | null, currency: string = 'TND'): str
   
   return new Intl.NumberFormat('en-TN', {
     style: 'currency',
-    currency: currency
+    currency: currency,
+    minimumFractionDigits: 2
   }).format(amount);
 }
-
 loadReceivedPayments(): void {
   this.isPaymentLoading = true;
   const currentUser = this.authService.getCurrentUser();
@@ -1177,14 +1181,33 @@ loadReceivedPayments(): void {
 
   this.paymentService.getPaymentsByDeliveryPerson(currentUser.userId).subscribe({
     next: (response: PaymentListResponse) => {
-      if (response.success) {
-        this.receivedPayments = response.data || [];
+      if (response.success && response.data) {
+        // Add debugging to see what's happening
+        console.log('Raw payments data:', response.data);
+        console.log('Current user ID:', currentUser.userId);
+        
+        // Process the payments data to ensure proper formatting
+        this.receivedPayments = response.data.map(payment =>
+          this.paymentService.processPaymentData(payment)
+        );
+        
+        console.log('Processed payments:', this.receivedPayments);
+        
+        // Instead of filtering by share amount, filter by status and delivery person assignment
+        this.receivedPayments = this.receivedPayments.filter(payment =>
+          payment.status === 'COMPLETED' && payment.deliveryPersonId === currentUser.userId
+        );
+        
+        console.log('Filtered payments:', this.receivedPayments);
+        
         this.filteredPayments = [...this.receivedPayments];
         this.calculateTotalReleasedPayments();
         
         // Sort by date descending by default
         this.paymentSortBy = 'date-desc';
         this.sortPayments();
+      } else {
+        console.error('Failed to load payments:', response.message);
       }
       this.isPaymentLoading = false;
     },
@@ -1195,13 +1218,15 @@ loadReceivedPayments(): void {
   });
 }
 
-
 calculateTotalReleasedPayments(): void {
   this.totalReleasedPaymentsAmount = this.receivedPayments
-    .filter(p => p.deliveryPersonPaid)
+    .filter(p => p.deliveryPersonPaid) // Use the correct property name
     .reduce((sum, payment) => sum + (payment.deliveryPersonShare || 0), 0);
 }
 
+isPaymentReleased(payment: Payment): boolean {
+  return payment.deliveryPersonPaid === true;
+}
 
 
 
@@ -1210,6 +1235,9 @@ calculateTotalReleasedPayments(): void {
 getPaymentStatusValues(): string[] {
   return ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'REFUNDED']; // Adjust based on your actual payment status values
 }
+
+
+
 
 getPaymentStatusIcon(status: string): string {
   const icons: Record<string, string> = {
@@ -1221,7 +1249,6 @@ getPaymentStatusIcon(status: string): string {
   };
   return icons[status] || 'help';
 }
-
 
 getStatusClass(status: string): string {
   const statusMap: Record<string, string> = {
@@ -1236,6 +1263,7 @@ getStatusClass(status: string): string {
   
   return statusMap[status] || 'status-unknown';
 }
+
 
 get totalDisplayedAmount(): number {
   return this.filteredPayments.reduce((sum, p) => sum + (p.deliveryPersonShare || 0), 0);

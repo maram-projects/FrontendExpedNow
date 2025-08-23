@@ -1,427 +1,941 @@
-<!-- admin-payment.component.html - Fixed version -->
+<!-- Improved admin-payment.component.html with best practices -->
 <div class="admin-payment-container" [@slideInUp]>
-  <!-- Header Section -->
-  <div class="header-section">
+  <!-- Header Section with improved accessibility -->
+  <header class="header-section" role="banner">
     <div class="page-title-section">
-      <h1 class="page-title">
-        <span class="title-icon">💳</span>
+      <h1 class="page-title" id="main-title">
+        <span class="title-icon" aria-hidden="true">💳</span>
         Payment Management
       </h1>
       <p class="page-subtitle">Manage and monitor all payment transactions</p>
     </div>
     
-    <div class="header-actions">
+    <div class="header-actions" role="toolbar" aria-label="Main actions">
       <button 
+        type="button"
         class="action-btn refresh-btn"
         (click)="refresh()"
         [disabled]="isLoading"
+        [attr.aria-label]="'Refresh payments list'"
         [@buttonHover]="buttonStates['refresh'] || 'normal'"
         (mouseenter)="onButtonHover('refresh', true)"
         (mouseleave)="onButtonHover('refresh', false)">
-        <span class="btn-icon">🔄</span>
-        Refresh
+        <span class="btn-icon" aria-hidden="true">🔄</span>
+        <span class="btn-text">Refresh</span>
       </button>
       
       <button 
+        type="button"
         class="action-btn export-btn"
         (click)="exportPayments()"
         [disabled]="isLoading || filteredPayments.length === 0"
+        [attr.aria-label]="'Export ' + filteredPayments.length + ' payments to CSV'"
         [@buttonHover]="buttonStates['export'] || 'normal'"
         (mouseenter)="onButtonHover('export', true)"
         (mouseleave)="onButtonHover('export', false)">
-        <span class="btn-icon">📊</span>
-        Export CSV
+        <span class="btn-icon" aria-hidden="true">📊</span>
+        <span class="btn-text">Export CSV</span>
       </button>
     </div>
-  </div>
+  </header>
 
-  <!-- Statistics Cards -->
-  <div class="stats-grid" [@fadeInScale]>
-    <div class="stat-card total-revenue">
-      <div class="stat-header">
-        <span class="stat-icon">💰</span>
-        <h3>Total Revenue</h3>
-      </div>
-      <div class="stat-value">{{ formatCurrency(getTotalAmount()) }}</div>
-      <div class="stat-label">Total Amount</div>
+  <!-- Statistics Cards with improved semantics -->
+  <section class="stats-section" aria-labelledby="stats-title">
+    <h2 id="stats-title" class="sr-only">Payment Statistics</h2>
+    <div class="stats-grid" [@fadeInScale]>
+      
+      <article class="stat-card total-revenue" role="img" [attr.aria-label]="'Total revenue: ' + formatCurrency(getTotalAmount())">
+        <div class="stat-header">
+          <span class="stat-icon" aria-hidden="true">💰</span>
+          <h3>Total Revenue</h3>
+        </div>
+        <div class="stat-value" [attr.aria-label]="formatCurrency(getTotalAmount())">
+          {{ formatCurrency(getTotalAmount()) }}
+        </div>
+        <div class="stat-label">Total Amount</div>
+      </article>
+
+      <article class="stat-card completed-payments" role="img" [attr.aria-label]="getCompletedPaymentsCount() + ' completed payments'">
+        <div class="stat-header">
+          <span class="stat-icon" aria-hidden="true">✅</span>
+          <h3>Completed</h3>
+        </div>
+        <div class="stat-value">{{ getCompletedPaymentsCount() }}</div>
+        <div class="stat-label">Successful Payments</div>
+      </article>
+
+      <article class="stat-card pending-payments" role="img" [attr.aria-label]="getPendingPaymentsCount() + ' pending payments'">
+        <div class="stat-header">
+          <span class="stat-icon" aria-hidden="true">⏳</span>
+          <h3>Pending</h3>
+        </div>
+        <div class="stat-value">{{ getPendingPaymentsCount() }}</div>
+        <div class="stat-label">Awaiting Processing</div>
+      </article>
+
+      <article class="stat-card failed-payments" role="img" [attr.aria-label]="getFailedPaymentsCount() + ' failed payments'">
+        <div class="stat-header">
+          <span class="stat-icon" aria-hidden="true">❌</span>
+          <h3>Failed</h3>
+        </div>
+        <div class="stat-value">{{ getFailedPaymentsCount() }}</div>
+        <div class="stat-label">Failed Transactions</div>
+      </article>
+
+      <article class="stat-card refunded-payments" role="img" [attr.aria-label]="getRefundedPaymentsCount() + ' refunded payments'">
+        <div class="stat-header">
+          <span class="stat-icon" aria-hidden="true">↩️</span>
+          <h3>Refunded</h3>
+        </div>
+        <div class="stat-value">{{ getRefundedPaymentsCount() }}</div>
+        <div class="stat-label">Refunded Payments</div>
+      </article>
+
+      <article class="stat-card pending-release" role="img" [attr.aria-label]="getPendingReleaseCount() + ' payments pending release worth ' + formatCurrency(getTotalPendingReleaseAmount())">
+        <div class="stat-header">
+          <span class="stat-icon" aria-hidden="true">🚚</span>
+          <h3>Pending Release</h3>
+        </div>
+        <div class="stat-value">{{ getPendingReleaseCount() }}</div>
+        <div class="stat-label">{{ formatCurrency(getTotalPendingReleaseAmount()) }}</div>
+      </article>
     </div>
+  </section>
 
-    <div class="stat-card completed-payments">
-      <div class="stat-header">
-        <span class="stat-icon">✅</span>
-        <h3>Completed</h3>
+  <!-- Improved Filters Section -->
+  <section class="filters-section" [@fadeInScale] aria-labelledby="filters-title">
+    <h2 id="filters-title" class="sr-only">Filter Payments</h2>
+    
+    <form class="filter-form" (ngSubmit)="$event.preventDefault()" role="search">
+      <div class="filter-group">
+        
+        <!-- Enhanced Search Input -->
+        <div class="search-container">
+          <label for="search-input" class="sr-only">Search payments</label>
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input
+            id="search-input"
+            type="search"
+            class="search-input"
+            placeholder="Search by Payment ID, Client ID, Delivery ID, or Transaction ID..."
+            [(ngModel)]="searchTerm"
+            (input)="filterPayments()"
+            [disabled]="isLoading"
+            name="search"
+            autocomplete="off"
+            [attr.aria-describedby]="'search-help'"
+            [attr.aria-label]="'Search through ' + payments.length + ' payments'">
+          <button 
+            type="button" 
+            class="search-clear" 
+            *ngIf="searchTerm" 
+            (click)="searchTerm = ''; filterPayments()"
+            [attr.aria-label]="'Clear search'"
+            tabindex="0">
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
+
+        <!-- Enhanced Status Filter -->
+        <div class="status-filter">
+          <label for="status-select" class="filter-label">Status Filter:</label>
+          <select
+            id="status-select"
+            class="status-select"
+            [(ngModel)]="selectedStatus"
+            (change)="filterPayments()"
+            [disabled]="isLoading"
+            name="status"
+            [attr.aria-describedby]="'status-help'">
+            <option value="ALL">All Statuses ({{ payments.length }})</option>
+          <option *ngFor="let status of getEnumValues(PaymentStatus)" 
+        [value]="status">
+    {{ status | titlecase }} ({{ getStatusCount(status) }})
+</option>
+          </select>
+        </div>
+
+        <!-- Quick Filter Buttons -->
+        <div class="quick-filters" role="group" aria-label="Quick status filters">
+          <button 
+            type="button"
+            class="quick-filter-btn"
+            [class.active]="selectedStatus ===  PaymentStatus.COMPLETED"
+            (click)="selectedStatus =  PaymentStatus.COMPLETED ; filterPayments()"
+            [disabled]="isLoading">
+            Completed
+          </button>
+          <button 
+            type="button"
+            class="quick-filter-btn"
+            [class.active]="selectedStatus === PaymentStatus.PENDING"
+            (click)="selectedStatus =PaymentStatus.PENDING; filterPayments()"
+            [disabled]="isLoading">
+            Pending
+          </button>
+          <button 
+            type="button"
+            class="quick-filter-btn"
+            [class.active]="selectedStatus === PaymentStatus.FAILED"
+            (click)="selectedStatus = PaymentStatus.FAILED; filterPayments()"
+            [disabled]="isLoading">
+            Failed
+          </button>
+        </div>
       </div>
-      <div class="stat-value">{{ getCompletedPaymentsCount() }}</div>
-      <div class="stat-label">Successful Payments</div>
-    </div>
 
-    <div class="stat-card pending-payments">
-      <div class="stat-header">
-        <span class="stat-icon">⏳</span>
-        <h3>Pending</h3>
+      <!-- Filter Results Info -->
+      <div class="results-info" role="status" aria-live="polite">
+        <span class="results-text">
+          Showing {{ filteredPayments.length }} of {{ payments.length }} payments
+          <ng-container *ngIf="searchTerm || selectedStatus !== 'ALL'">
+            <button 
+              type="button"
+              class="clear-all-filters"
+              (click)="searchTerm = ''; selectedStatus = 'ALL'; filterPayments()"
+              [attr.aria-label]="'Clear all filters'">
+              Clear all filters
+            </button>
+          </ng-container>
+        </span>
       </div>
-      <div class="stat-value">{{ getPendingPaymentsCount() }}</div>
-      <div class="stat-label">Awaiting Processing</div>
-    </div>
+    </form>
+  </section>
 
-    <div class="stat-card failed-payments">
-      <div class="stat-header">
-        <span class="stat-icon">❌</span>
-        <h3>Failed</h3>
-      </div>
-      <div class="stat-value">{{ getFailedPaymentsCount() }}</div>
-      <div class="stat-label">Failed Transactions</div>
-    </div>
-
-    <div class="stat-card refunded-payments">
-      <div class="stat-header">
-        <span class="stat-icon">↩️</span>
-        <h3>Refunded</h3>
-      </div>
-      <div class="stat-value">{{ getRefundedPaymentsCount() }}</div>
-      <div class="stat-label">Refunded Payments</div>
-    </div>
-
-    <div class="stat-card pending-release">
-      <div class="stat-header">
-        <span class="stat-icon">🚚</span>
-        <h3>Pending Release</h3>
-      </div>
-      <div class="stat-value">{{ getPendingReleaseCount() }}</div>
-      <div class="stat-label">{{ formatCurrency(getTotalPendingReleaseAmount()) }}</div>
-    </div>
-  </div>
-
-  <!-- Filters Section -->
-  <div class="filters-section" [@fadeInScale]>
-    <div class="filter-group">
-      <div class="search-container">
-        <span class="search-icon">🔍</span>
-        <input
-          type="text"
-          class="search-input"
-          placeholder="Search by Payment ID, Client ID, Delivery ID, or Transaction ID..."
-          [(ngModel)]="searchTerm"
-          (input)="filterPayments()"
-          [disabled]="isLoading">
-      </div>
-
-      <div class="status-filter">
-        <label class="filter-label">Status Filter:</label>
-        <select
-          class="status-select"
-          [(ngModel)]="selectedStatus"
-          (change)="filterPayments()"
-          [disabled]="isLoading">
-          <option value="ALL">All Statuses</option>
-          <option *ngFor="let status of getEnumValues(PaymentStatus)" [value]="status">
-            {{ status | titlecase }}
-          </option>
-        </select>
-      </div>
-    </div>
-
-    <div class="results-info">
-      <span class="results-text">
-        Showing {{ filteredPayments.length }} of {{ payments.length }} payments
-      </span>
-    </div>
-  </div>
-
-  <!-- Loading Spinner -->
-  <div *ngIf="isLoading" class="loading-container">
-    <mat-spinner diameter="50"></mat-spinner>
+  <!-- Loading State with Better UX -->
+  <div *ngIf="isLoading" class="loading-container" role="status" aria-live="polite">
+    <mat-spinner diameter="50" [attr.aria-label]="'Loading payments'"></mat-spinner>
     <p class="loading-text">Loading payments...</p>
+    <div class="loading-progress">
+      <div class="progress-bar"></div>
+    </div>
   </div>
 
-  <!-- Payments Table -->
-  <div class="table-container" *ngIf="!isLoading" [@staggerList]>
+  <!-- Enhanced Payments Table -->
+  <main class="table-container" *ngIf="!isLoading" [@staggerList] role="main">
     <div class="table-header">
-      <h2 class="table-title">Payment Transactions</h2>
+      <h2 class="table-title" id="payments-table-title">
+        Payment Transactions
+        <span class="table-count">({{ filteredPayments.length }})</span>
+      </h2>
+      
+      <!-- Table Controls -->
+      <div class="table-controls">
+        <div class="view-options" role="group" aria-label="Table view options">
+          <button 
+            type="button"
+            class="view-btn"
+            [class.active]="true"
+            [attr.aria-label]="'Table view'">
+            <span aria-hidden="true">📋</span> Table
+          </button>
+        </div>
+      </div>
     </div>
 
+    <!-- Responsive Table Wrapper -->
     <div class="table-wrapper" *ngIf="filteredPayments.length > 0; else noPayments">
-      <table class="payments-table">
-        <thead>
-          <tr>
-            <th class="col-id">Payment ID</th>
-            <th class="col-client">Client</th>
-            <th class="col-delivery">Delivery</th>
-            <th class="col-delivery-person">Delivery Person</th>
-            <th class="col-amount">Amount</th>
-            <th class="col-method">Method</th>
-            <th class="col-status">Status</th>
-            <th class="col-date">Date</th>
-            <th class="col-actions">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let payment of filteredPayments; trackBy: trackByPaymentId" 
-              class="payment-row" [@fadeInScale]>
-            
-            <!-- Payment ID -->
-            <td class="col-id">
-              <div class="payment-id-cell">
-                <span class="payment-id" [title]="payment.id">
-                  {{ payment.id | shorten:8 }}
-                </span>
-                <div class="payment-details" *ngIf="payment.transactionId">
-                  <small class="transaction-id">
-                    Txn: {{ payment.transactionId | shorten:12 }}
-                  </small>
-                </div>
-              </div>
-            </td>
-
-            <!-- Client ID -->
-            <td class="col-client">
-              <div class="client-cell">
-                <span class="client-id" [title]="payment.clientId">
-                  {{ payment.clientId | shorten:10 }}
-                </span>
-              </div>
-            </td>
-
-            <!-- Delivery ID -->
-            <td class="col-delivery">
-              <div class="delivery-cell">
-                <span *ngIf="payment.deliveryId; else noDelivery" 
-                      class="delivery-id" 
-                      [title]="payment.deliveryId">
-                  {{ payment.deliveryId | shorten:10 }}
-                </span>
-                <ng-template #noDelivery>
-                  <span class="no-delivery">N/A</span>
-                </ng-template>
-              </div>
-            </td>
-
-            <!-- Delivery Person -->
-            <td class="col-delivery-person">
-              <div *ngIf="payment.deliveryPerson; else noDeliveryPerson">
-                <div class="delivery-person-info">
-                  <div class="person-name">{{ payment.deliveryPerson.fullName }}</div>
-                  <div class="person-contact">
-                    <small>{{ payment.deliveryPerson.phone }}</small>
-                  </div>
-                  <div *ngIf="payment.deliveryPerson.vehicle" class="vehicle-info">
-                    <small>
-                      {{ payment.deliveryPerson.vehicle.type }} • 
-                      {{ payment.deliveryPerson.vehicle.licensePlate || 'No plate' }}
+      <div class="table-scroll-container">
+        <table class="payments-table" 
+               role="table" 
+               [attr.aria-labelledby]="'payments-table-title'"
+               [attr.aria-rowcount]="filteredPayments.length + 1">
+          
+          <thead role="rowgroup">
+            <tr role="row" [attr.aria-rowindex]="1">
+              <th scope="col" class="col-id sortable" role="columnheader" tabindex="0">
+                Payment ID
+                <span class="sort-indicator" aria-hidden="true"></span>
+              </th>
+              <th scope="col" class="col-client" role="columnheader">Client</th>
+              <th scope="col" class="col-delivery" role="columnheader">Delivery</th>
+              <th scope="col" class="col-delivery-person" role="columnheader">Delivery Person</th>
+              <th scope="col" class="col-amount sortable" role="columnheader" tabindex="0">
+                Amount
+                <span class="sort-indicator" aria-hidden="true"></span>
+              </th>
+              <th scope="col" class="col-method" role="columnheader">Method</th>
+              <th scope="col" class="col-status" role="columnheader">Status</th>
+              <th scope="col" class="col-date sortable" role="columnheader" tabindex="0">
+                Date
+                <span class="sort-indicator" aria-hidden="true"></span>
+              </th>
+              <th scope="col" class="col-actions" role="columnheader">
+                <span class="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          
+          <tbody role="rowgroup">
+            <tr *ngFor="let payment of filteredPayments; trackBy: trackByPaymentId; let i = index" 
+                class="payment-row" 
+                [@fadeInScale]
+                role="row"
+                [attr.aria-rowindex]="i + 2"
+                [attr.aria-describedby]="'payment-' + payment.id + '-description'">
+              
+              <!-- Payment ID Cell -->
+              <td class="col-id" role="gridcell" [attr.aria-describedby]="'payment-' + payment.id + '-id'">
+                <div class="payment-id-cell">
+                  <button 
+                    type="button"
+                    class="payment-id-btn"
+                    [title]="'Copy payment ID: ' + payment.id"
+                    (click)="copyToClipboard(payment.id)"
+                    [attr.aria-label]="'Payment ID ' + (payment.id | shorten:8) + '. Click to copy full ID'">
+                    <span class="payment-id">{{ payment.id | shorten:8 }}</span>
+                    <span class="copy-icon" aria-hidden="true">📋</span>
+                  </button>
+                  
+                  <div class="payment-details" *ngIf="payment.transactionId">
+                    <small class="transaction-id" [title]="'Transaction ID: ' + payment.transactionId">
+                      <abbr title="Transaction">Txn</abbr>: {{ payment.transactionId | shorten:12 }}
                     </small>
                   </div>
                 </div>
-              </div>
-              <ng-template #noDeliveryPerson>
-                <span class="no-person">Not assigned</span>
-              </ng-template>
-            </td>
+                
+                <!-- Hidden description for screen readers -->
+                <div [id]="'payment-' + payment.id + '-description'" class="sr-only">
+                  Payment {{ payment.id | shorten:8 }} for {{ formatCurrency(payment.finalAmountAfterDiscount, payment.currency) }}
+                  Status: {{ payment.status }}
+                  <ng-container *ngIf="payment.deliveryPerson">
+                    Delivery person: {{ payment.deliveryPerson.fullName }}
+                  </ng-container>
+                </div>
+              </td>
 
-            <!-- Amount -->
-            <td class="col-amount">
-              <div class="amount-cell">
-                <div class="amount-info">
-                  <span class="final-amount">
-                    {{ formatCurrency(payment.finalAmountAfterDiscount, payment.currency) }}
+              <!-- Client ID Cell -->
+              <td class="col-client" role="gridcell">
+                <div class="client-cell">
+                  <span class="client-id" 
+                        [title]="'Client ID: ' + payment.clientId"
+                        [attr.aria-label]="'Client ' + (payment.clientId | shorten:10)">
+                    {{ payment.clientId | shorten:10 }}
                   </span>
-                  <!-- Show original amount if discount applied -->
-                  <span *ngIf="payment.discountAmount && payment.discountAmount > 0" 
-                        class="original-amount">
-                    <del>{{ formatCurrency(payment.amount, payment.currency) }}</del>
+                </div>
+              </td>
+
+              <!-- Delivery ID Cell -->
+              <td class="col-delivery" role="gridcell">
+                <div class="delivery-cell">
+                  <span *ngIf="payment.deliveryId; else noDelivery" 
+                        class="delivery-id" 
+                        [title]="'Delivery ID: ' + payment.deliveryId"
+                        [attr.aria-label]="'Delivery ' + (payment.deliveryId | shorten:10)">
+                    {{ payment.deliveryId | shorten:10 }}
                   </span>
-                  <!-- Show converted amount for Stripe payments -->
-                  <div *ngIf="payment.convertedAmount" class="converted-amount">
-                    ≈ {{ formatConvertedAmount(payment) }}
+                  <ng-template #noDelivery>
+                    <span class="no-delivery" aria-label="No delivery assigned">N/A</span>
+                  </ng-template>
+                </div>
+              </td>
+
+              <!-- Enhanced Delivery Person Cell -->
+             <!-- Delivery Person Cell -->
+<td class="col-delivery-person" role="gridcell">
+  <div *ngIf="payment.deliveryPerson || payment.deliveryPersonId; else noDeliveryPerson" class="delivery-person-info">
+    <!-- Show full delivery person if available -->
+    <div *ngIf="payment.deliveryPerson as person" class="person-details">
+      <div class="person-name" [title]="person.fullName">
+{{ person!.fullName }}
+      </div>
+      <div class="person-contact">
+        <small>
+          <a [href]="'tel:' + person.phone"
+             [attr.aria-label]="'Call ' + person.fullName + ' at ' + person.phone"
+             class="phone-link">
+            {{ person.phone }}
+          </a>
+        </small>
+      </div>
+      <div *ngIf="person.vehicle" class="vehicle-info">
+        <small [attr.aria-label]="'Vehicle: ' + person.vehicle.type + ', license plate ' + (person.vehicle.licensePlate || 'unknown')">
+          <span class="vehicle-type">{{ person.vehicle.type }}</span>
+          <span class="vehicle-separator" aria-hidden="true"> • </span>
+          <span class="license-plate">{{ person.vehicle.licensePlate || 'No plate' }}</span>
+        </small>
+      </div>
+    </div>
+
+    <!-- Fallback: Only deliveryPersonId exists (name not loaded yet) -->
+    <div *ngIf="!payment.deliveryPerson && payment.deliveryPersonId" class="person-details">
+      <div class="person-name text-muted" [title]="'Delivery Person ID: ' + payment.deliveryPersonId">
+        Loading...
+      </div>
+      <div class="person-contact">
+        <small>ID: {{ payment.deliveryPersonId | shorten:8 }}</small>
+      </div>
+    </div>
+
+    <!-- Show release status if payment has been released -->
+    <div *ngIf="payment.deliveryPersonPaid" class="release-info mt-1">
+      <small class="text-success">
+        <strong>Released:</strong> {{ formatCurrency(payment.deliveryPersonShare, payment.currency) }}
+        <span *ngIf="payment.deliveryPersonPaidAt">
+          on {{ payment.deliveryPersonPaidAt | date:'short' }}
+        </span>
+      </small>
+    </div>
+  </div>
+
+  <!-- No delivery person at all -->
+  <ng-template #noDeliveryPerson>
+    <span class="no-person" aria-label="No delivery person assigned">Not assigned</span>
+  </ng-template>
+</td>
+
+<!-- Enhanced Amount Cell -->
+<td class="col-amount" role="gridcell">
+  <div class="amount-cell">
+    <div class="amount-info">
+      <!-- Final amount after discount -->
+      <span class="final-amount"
+            [attr.aria-label]="'Final amount: ' + formatCurrency(payment.finalAmountAfterDiscount, payment.currency)">
+        {{ formatCurrency(payment.finalAmountAfterDiscount, payment.currency) }}
+      </span>
+<!-- Strikethrough original amount if discount applied -->
+<span *ngIf="(payment.discountAmount || 0) > 0 && payment.amount" 
+      class="original-amount"
+      [attr.aria-label]="'Original amount before discount: ' + formatCurrency(payment.amount!, payment.currency)">
+  <del>{{ formatCurrency(payment.amount!, payment.currency) }}</del>
+</span>
+      <!-- Converted amount (e.g., USD → TND) -->
+      <div *ngIf="payment.convertedAmount" 
+           class="converted-amount"
+           [attr.aria-label]="'Converted amount: ' + formatConvertedAmount(payment)">
+        <abbr title="Approximately">≈</abbr> {{ formatConvertedAmount(payment) }}
+      </div>
+    </div>
+
+    <!-- Discount info -->
+    <div *ngIf="payment.discountCode" class="discount-info">
+      <small class="discount-code"
+             [attr.aria-label]="'Discount code applied: ' + payment.discountCode + ', saved ' + formatCurrency(payment.discountAmount, payment.currency)">
+        <span class="discount-label">Code:</span> {{ payment.discountCode }}
+        <span class="discount-savings">(-{{ formatCurrency(payment.discountAmount, payment.currency) }})</span>
+      </small>
+    </div>
+  </div>
+</td>
+
+              <!-- Payment Method Cell -->
+              <td class="col-method" role="gridcell">
+                <div class="method-cell">
+                  <div class="method-badge" [attr.aria-label]="'Payment method: ' + (payment.method | titlecase)">
+                    <span class="method-icon" aria-hidden="true">{{ getPaymentMethodIcon(payment.method) }}</span>
+                    <span class="method-text">{{ payment.method | titlecase }}</span>
+                  </div>
+                  <div *ngIf="payment.cardLast4" class="card-info">
+                    <small [attr.aria-label]="payment.cardBrand + ' card ending in ' + payment.cardLast4">
+                      <span class="card-brand">{{ payment.cardBrand }}</span>
+                      <span class="card-mask" aria-hidden="true"> •••• </span>
+                      <span class="card-last4">{{ payment.cardLast4 }}</span>
+                    </small>
                   </div>
                 </div>
-                <div *ngIf="payment.discountCode" class="discount-info">
-                  <small class="discount-code">
-                    Code: {{ payment.discountCode }}
-                  </small>
-                </div>
-              </div>
-            </td>
+              </td>
 
-            <!-- Payment Method -->
-            <td class="col-method">
-              <div class="method-cell">
-                <span class="method-badge">
-                  <span class="method-icon">{{ getPaymentMethodIcon(payment.method) }}</span>
-                  <span class="method-text">{{ payment.method | titlecase }}</span>
-                </span>
-                <div *ngIf="payment.cardLast4" class="card-info">
-                  <small>
-                    {{ payment.cardBrand }} •••• {{ payment.cardLast4 }}
-                  </small>
-                </div>
-              </div>
-            </td>
-
-            <!-- Status -->
-            <td class="col-status">
-              <div class="status-cell">
-                <span class="status-badge" [ngClass]="getStatusClass(payment.status)">
-                  {{ payment.status | titlecase }}
-                </span>
-                
-                <!-- Show delivery status info -->
-                <div *ngIf="payment.deliveryPersonId" class="delivery-status">
+              <!-- Enhanced Status Cell -->
+              <td class="col-status" role="gridcell">
+                <div class="status-cell">
+                  <span class="status-badge" 
+                        [ngClass]="getStatusClass(payment.status)"
+                        [attr.aria-label]="'Payment status: ' + (payment.status | titlecase)">
+                    {{ payment.status | titlecase }}
+                  </span>
+                  
+                  <!-- Delivery status with better accessibility -->
+               <div *ngIf="payment.deliveryPersonId" class="delivery-status">
   <small [ngClass]="{
     'released': payment.deliveryPersonPaid,
     'pending-release': !payment.deliveryPersonPaid && payment.status === 'COMPLETED',
     'not-completed': payment.status !== 'COMPLETED'
-  }">
-    {{ 
-      payment.deliveryPersonPaid ? 
-      'Released ' + formatDateOnly(payment.deliveryPersonPaidAt) : 
-      (payment.status === 'COMPLETED' ? 'Ready for release' : 'Complete payment first')
-    }}
+  }" [attr.aria-label]="getDeliveryStatusAriaLabel(payment)">
+    {{ getDeliveryPaymentStatus(payment) }}
+    <ng-container *ngIf="payment.deliveryPersonPaid && payment.deliveryPersonPaidAt && isValidDate(payment.deliveryPersonPaidAt)">
+      <time [attr.dateTime]="formatDateOnly(payment.deliveryPersonPaidAt)" 
+            [title]="formatDate(payment.deliveryPersonPaidAt)">
+        {{ formatDateOnly(payment.deliveryPersonPaidAt) }}
+      </time>
+    </ng-container>
   </small>
+  
   <div *ngIf="payment.deliveryPersonShare && payment.deliveryPersonPaid" class="share-info">
-    <small>Released: {{ formatCurrency(payment.deliveryPersonShare, payment.currency) }}</small>
+    <small [attr.aria-label]="'Amount released to delivery person: ' + formatCurrency(payment.deliveryPersonShare, payment.currency)">
+      <span class="share-label">Released:</span> 
+      {{ formatCurrency(payment.deliveryPersonShare, payment.currency) }}
+    </small>
   </div>
 </div>
-              </div>
-            </td>
-
-            <!-- Date -->
-            <td class="col-date">
-              <div class="date-cell">
-                <div class="date-info">
-                  <span class="date-primary">
-                    {{ formatDateOnly(payment.paymentDate) }}
-                  </span>
-                  <small class="date-time">
-                    {{ formatTimeOnly(payment.paymentDate) }}
-                  </small>
                 </div>
-              </div>
-            </td>
+              </td>
 
-            <!-- Actions -->
-            <td class="col-actions">
-              <div class="actions-cell">
-                <div class="action-buttons">
-                  
-                  <!-- Mark as Completed Button -->
-                  <button 
-                    *ngIf="canMarkAsCompleted(payment)"
-                    class="action-btn complete-btn"
-                    (click)="markAsCompleted(payment.id)"
-                    [disabled]="isLoading"
-                    [title]="'Mark payment as completed'"
-                    [@buttonHover]="buttonStates['complete-' + payment.id] || 'normal'"
-                    (mouseenter)="onButtonHover('complete-' + payment.id, true)"
-                    (mouseleave)="onButtonHover('complete-' + payment.id, false)">
-                    <span class="btn-icon">✅</span>
-                    <span class="btn-text">Complete</span>
-                  </button>
+              <!-- Date Cell -->
+<td class="col-date" role="gridcell">
+  <div class="date-cell">
+    <div class="date-info">
+      <ng-container *ngIf="isValidDate(payment.paymentDate); else invalidDate">
+        <time class="date-primary" 
+              [attr.dateTime]="formatDateOnly(payment.paymentDate)"
+              [title]="formatDate(payment.paymentDate)"
+              [attr.aria-label]="'Payment date: ' + formatDate(payment.paymentDate)">
+          {{ formatDateOnly(payment.paymentDate) }}
+        </time>
+        <small class="date-time" 
+               [attr.aria-label]="'Payment time: ' + formatTimeOnly(payment.paymentDate)">
+          {{ formatTimeOnly(payment.paymentDate) }}
+        </small>
+      </ng-container>
+      <ng-template #invalidDate>
+        <span class="invalid-date" aria-label="Invalid date">N/A</span>
+      </ng-template>
+    </div>
+  </div>
+</td>
 
-                  <!-- Release to Delivery Button -->
-                 <button 
-  class="action-btn release-btn"
-  [class.disabled]="!canReleaseToDelivery(payment)"
-  (click)="canReleaseToDelivery(payment) && releaseToDeliveryPerson(payment.id)"
-  [disabled]="isLoading || !canReleaseToDelivery(payment)"
-  [matTooltip]="getCannotReleaseReason(payment)"
-  [@buttonHover]="buttonStates['release-' + payment.id] || 'normal'"
-  (mouseenter)="onButtonHover('release-' + payment.id, true)"
-  (mouseleave)="onButtonHover('release-' + payment.id, false)">
-  <span class="btn-icon">🚚</span>
-  <span class="btn-text">
-    {{ 
-      canReleaseToDelivery(payment) ? 
-      'Release ' + formatCurrency(payment.finalAmountAfterDiscount * 0.8, payment.currency) : 
-      getCannotReleaseReason(payment) 
-    }}
-  </span>
-</button>
-
-                  <!-- Refund Button -->
-                  <button 
-                    *ngIf="canRefund(payment)"
-                    class="action-btn refund-btn"
-                    (click)="refundPayment(payment)" 
-                    [disabled]="isLoading"
-                    [title]="'Refund payment ' + payment.id"
-                    [@buttonHover]="buttonStates['refund-' + payment.id] || 'normal'"
-                    (mouseenter)="onButtonHover('refund-' + payment.id, true)"
-                    (mouseleave)="onButtonHover('refund-' + payment.id, false)">
-                    <span class="btn-icon">↩️</span>
-                    <span class="btn-text">Refund</span>
-                  </button>
-
-                  <!-- Cancel Button -->
-                  <button 
-                    *ngIf="canCancel(payment)"
-                    class="action-btn cancel-btn"
-                    (click)="cancelPayment(payment.id)"
-                    [disabled]="isLoading"
-                    [title]="'Cancel payment ' + payment.id"
-                    [@buttonHover]="buttonStates['cancel-' + payment.id] || 'normal'"
-                    (mouseenter)="onButtonHover('cancel-' + payment.id, true)"
-                    (mouseleave)="onButtonHover('cancel-' + payment.id, false)">
-                    <span class="btn-icon">❌</span>
-                    <span class="btn-text">Cancel</span>
-                  </button>
-
-                  <!-- Status Update Dropdown -->
-                  <div class="status-update-dropdown">
-                    <select
-                      class="status-update-select"
-                      [value]="payment.status"
-                      (change)="updatePaymentStatus(payment.id, $any($event.target).value)"
+              <!-- Enhanced Actions Cell -->
+              <td class="col-actions" role="gridcell">
+                <div class="actions-cell">
+                  <div class="action-buttons" role="group" [attr.aria-label]="'Actions for payment ' + (payment.id | shorten:8)">
+                    
+                    <!-- Mark as Completed Button -->
+                    <button 
+                      *ngIf="canMarkAsCompleted(payment)"
+                      type="button"
+                      class="action-btn complete-btn"
+                      (click)="markAsCompleted(payment.id)"
                       [disabled]="isLoading"
-                      [title]="'Update status for payment ' + payment.id">
-                      <option [value]="payment.status" disabled>
-                        Change Status
-                      </option>
-                      <option *ngFor="let status of getEnumValues(PaymentStatus)" 
-                              [value]="status"
-                              [disabled]="status === payment.status">
-                        {{ status | titlecase }}
-                      </option>
-                    </select>
+                      [attr.aria-label]="'Mark payment ' + (payment.id | shorten:8) + ' as completed'"
+                      [@buttonHover]="buttonStates['complete-' + payment.id] || 'normal'"
+                      (mouseenter)="onButtonHover('complete-' + payment.id, true)"
+                      (mouseleave)="onButtonHover('complete-' + payment.id, false)">
+                      <span class="btn-icon" aria-hidden="true">✅</span>
+                      <span class="btn-text">Complete</span>
+                    </button>
+
+                    <!-- Release to Delivery Button with better UX -->
+                    <button 
+                      type="button"
+                      class="action-btn release-btn"
+                      [class.disabled]="!canReleaseToDelivery(payment)"
+                      (click)="canReleaseToDelivery(payment) && releaseToDeliveryPerson(payment.id)"
+                      [disabled]="isLoading || !canReleaseToDelivery(payment)"
+                      [matTooltip]="getCannotReleaseReason(payment)"
+                      [attr.aria-label]="getReleaseButtonAriaLabel(payment)"
+                      [@buttonHover]="buttonStates['release-' + payment.id] || 'normal'"
+                      (mouseenter)="onButtonHover('release-' + payment.id, true)"
+                      (mouseleave)="onButtonHover('release-' + payment.id, false)">
+                      <span class="btn-icon" aria-hidden="true">🚚</span>
+                      <span class="btn-text">
+                        <ng-container *ngIf="canReleaseToDelivery(payment); else cannotRelease">
+                          Release {{ formatCurrency((payment.deliveryPersonShare || payment.finalAmountAfterDiscount * 0.8), payment.currency) }}
+                        </ng-container>
+                        <ng-template #cannotRelease>
+                          {{ getCannotReleaseReason(payment) }}
+                        </ng-template>
+                      </span>
+                    </button>
+
+                    <!-- Refund Button -->
+                    <button 
+                      *ngIf="canRefund(payment)"
+                      type="button"
+                      class="action-btn refund-btn"
+                      (click)="refundPayment(payment)" 
+                      [disabled]="isLoading"
+                      [attr.aria-label]="'Refund payment ' + (payment.id | shorten:8) + ' for ' + formatCurrency(payment.finalAmountAfterDiscount, payment.currency)"
+                      [@buttonHover]="buttonStates['refund-' + payment.id] || 'normal'"
+                      (mouseenter)="onButtonHover('refund-' + payment.id, true)"
+                      (mouseleave)="onButtonHover('refund-' + payment.id, false)">
+                      <span class="btn-icon" aria-hidden="true">↩️</span>
+                      <span class="btn-text">Refund</span>
+                    </button>
+
+                    <!-- Cancel Button -->
+                    <button 
+                      *ngIf="canCancel(payment)"
+                      type="button"
+                      class="action-btn cancel-btn"
+                      (click)="cancelPayment(payment.id)"
+                      [disabled]="isLoading"
+                      [attr.aria-label]="'Cancel payment ' + (payment.id | shorten:8)"
+                      [@buttonHover]="buttonStates['cancel-' + payment.id] || 'normal'"
+                      (mouseenter)="onButtonHover('cancel-' + payment.id, true)"
+                      (mouseleave)="onButtonHover('cancel-' + payment.id, false)">
+                      <span class="btn-icon" aria-hidden="true">❌</span>
+                      <span class="btn-text">Cancel</span>
+                    </button>
+
+                    <!-- Enhanced Status Update Dropdown -->
+                    <div class="status-update-dropdown">
+                      <label [for]="'status-select-' + payment.id" class="sr-only">
+                        Change status for payment {{ payment.id | shorten:8 }}
+                      </label>
+                      <select
+                        [id]="'status-select-' + payment.id"
+                        class="status-update-select"
+                        [value]="payment.status"
+                        (change)="updatePaymentStatus(payment.id, $any($event.target).value)"
+                        [disabled]="isLoading"
+                        [attr.aria-label]="'Current status: ' + (payment.status | titlecase) + '. Select to change'">
+                        <option [value]="payment.status" disabled>
+                          Change Status
+                        </option>
+                        <option *ngFor="let status of getEnumValues(PaymentStatus)" 
+                                [value]="status"
+                                [disabled]="status === payment.status">
+                          {{ status | titlecase }}
+                        </option>
+                      </select>
+                    </div>
+
                   </div>
-
                 </div>
-              </div>
-            </td>
+              </td>
 
-          </tr>
-        </tbody>
-      </table>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
-    <!-- No Payments Message -->
+    <!-- Enhanced No Payments Message -->
     <ng-template #noPayments>
-      <div class="no-payments-container" [@fadeInScale]>
+      <div class="no-payments-container" [@fadeInScale] role="status" aria-live="polite">
         <div class="no-payments-content">
-          <span class="no-payments-icon">💳</span>
+          <span class="no-payments-icon" aria-hidden="true">💳</span>
           <h3 class="no-payments-title">No Payments Found</h3>
           <p class="no-payments-message">
-            {{ searchTerm || selectedStatus !== 'ALL' 
-               ? 'No payments match your current filters. Try adjusting your search criteria.' 
-               : 'No payments have been processed yet.' }}
+            <ng-container *ngIf="searchTerm || selectedStatus !== 'ALL'; else noPaymentsAtAll">
+              No payments match your current filters. Try adjusting your search criteria or clearing filters.
+            </ng-container>
+            <ng-template #noPaymentsAtAll>
+              No payments have been processed yet. New payments will appear here automatically.
+            </ng-template>
           </p>
-          <button 
-            *ngIf="searchTerm || selectedStatus !== 'ALL'"
-            class="clear-filters-btn"
-            (click)="searchTerm = ''; selectedStatus = 'ALL'; filterPayments()">
-            Clear Filters
-          </button>
+          
+          <div class="no-payments-actions">
+            <button 
+              *ngIf="searchTerm || selectedStatus !== 'ALL'"
+              type="button"
+              class="clear-filters-btn"
+              (click)="searchTerm = ''; selectedStatus = 'ALL'; filterPayments()"
+              [attr.aria-label]="'Clear all filters and show all payments'">
+              <span aria-hidden="true">🔄</span> Clear Filters
+            </button>
+            
+            <button 
+              type="button"
+              class="refresh-data-btn"
+              (click)="refresh()"
+              [disabled]="isLoading"
+              [attr.aria-label]="'Refresh payments data'">
+              <span aria-hidden="true">↻</span> Refresh Data
+            </button>
+          </div>
         </div>
       </div>
     </ng-template>
-  </div>
+  </main>
 
-  <!-- Footer Section -->
-  <div class="footer-section" *ngIf="!isLoading && filteredPayments.length > 0">
-    <div class="summary-info">
-      <span class="summary-text">
-        Total displayed: {{ filteredPayments.length }} payments | 
-        Total value: {{ formatCurrency(getFilteredTotalAmount()) }}
-      </span>
+<!-- Enhanced Footer Section -->
+  <footer class="footer-section" *ngIf="!isLoading && filteredPayments.length > 0" role="contentinfo">
+    <div class="footer-content">
+      
+      <!-- Summary Statistics -->
+      <div class="summary-stats">
+        <div class="summary-info" role="group" aria-label="Payment summary statistics">
+          <div class="summary-item">
+            <span class="summary-label">Total displayed:</span>
+            <span class="summary-value" [attr.aria-label]="filteredPayments.length + ' payments displayed'">
+              {{ filteredPayments.length }} payments
+            </span>
+          </div>
+          
+          <div class="summary-divider" aria-hidden="true">|</div>
+          
+          <div class="summary-item">
+            <span class="summary-label">Total value:</span>
+            <span class="summary-value" [attr.aria-label]="'Total value: ' + formatCurrency(getFilteredTotalAmount())">
+              {{ formatCurrency(getFilteredTotalAmount()) }}
+            </span>
+          </div>
+          
+          <div class="summary-divider" aria-hidden="true" *ngIf="selectedStatus !== 'ALL' || searchTerm">|</div>
+          
+          <!-- Additional context for filtered results -->
+          <div class="summary-item" *ngIf="selectedStatus !== 'ALL' || searchTerm">
+            <span class="summary-label">Filtered from:</span>
+            <span class="summary-value" [attr.aria-label]="'Filtered from ' + payments.length + ' total payments'">
+              {{ payments.length }} total
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Actions -->
+      <div class="footer-actions" role="group" aria-label="Footer actions">
+        
+        <!-- Bulk Actions (if any payments selected) -->
+        <div class="bulk-actions" *ngIf="selectedPaymentIds && selectedPaymentIds.length > 0">
+          <span class="bulk-label">{{ selectedPaymentIds.length }} selected:</span>
+          
+          <button 
+            type="button"
+            class="bulk-btn export-selected"
+            (click)="exportSelectedPayments()"
+            [disabled]="isLoading"
+            [attr.aria-label]="'Export ' + selectedPaymentIds.length + ' selected payments'">
+            <span class="btn-icon" aria-hidden="true">📤</span>
+            Export Selected
+          </button>
+          
+          <button 
+            type="button"
+            class="bulk-btn clear-selection"
+            (click)="clearSelection()"
+            [attr.aria-label]="'Clear selection of ' + selectedPaymentIds.length + ' payments'">
+            <span class="btn-icon" aria-hidden="true">✕</span>
+            Clear Selection
+          </button>
+        </div>
+
+        <!-- Pagination Info (if implementing pagination) -->
+        <div class="pagination-info" *ngIf="totalPages && totalPages > 1">
+          <span class="page-info" [attr.aria-label]="'Page ' + currentPage + ' of ' + totalPages">
+            Page {{ currentPage }} of {{ totalPages }}
+          </span>
+          
+          <div class="pagination-controls" role="group" aria-label="Pagination controls">
+            <button 
+              type="button"
+              class="page-btn prev-page"
+              (click)="goToPreviousPage()"
+              [disabled]="currentPage === 1 || isLoading"
+              [attr.aria-label]="'Go to previous page'"
+              [title]="'Previous page'">
+              <span aria-hidden="true">‹</span>
+            </button>
+            
+            <button 
+              type="button"
+              class="page-btn next-page"
+              (click)="goToNextPage()"
+              [disabled]="currentPage === totalPages || isLoading"
+              [attr.aria-label]="'Go to next page'"
+              [title]="'Next page'">
+              <span aria-hidden="true">›</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+          
+          <!-- Auto-refresh toggle -->
+          <div class="auto-refresh-toggle">
+            <label class="toggle-label" for="auto-refresh-checkbox">
+              <input 
+                type="checkbox" 
+                id="auto-refresh-checkbox"
+                class="toggle-checkbox"
+                [(ngModel)]="autoRefreshEnabled"
+                (change)="toggleAutoRefresh()"
+                [disabled]="isLoading"
+                name="autoRefresh">
+              <span class="toggle-slider" aria-hidden="true"></span>
+              <span class="toggle-text">Auto-refresh</span>
+            </label>
+            <small class="auto-refresh-interval" *ngIf="autoRefreshEnabled">
+              Every {{ autoRefreshInterval / 1000 }}s
+            </small>
+          </div>
+
+          <!-- Last updated info -->
+        <div class="last-updated" *ngIf="lastUpdated && isValidDate(lastUpdated)">
+  <span class="updated-label">Last updated:</span>
+  <time 
+    class="updated-time" 
+    [attr.dateTime]="formatDateOnly(lastUpdated)"
+    [title]="formatDate(lastUpdated)"
+    [attr.aria-label]="'Last updated: ' + formatDate(lastUpdated)">
+    {{ getTimeAgo(lastUpdated) }}
+  </time>
+</div>
+
+          <!-- Settings/Preferences -->
+          <button 
+            type="button"
+            class="settings-btn"
+            (click)="openSettings()"
+            [disabled]="isLoading"
+            [attr.aria-label]="'Open table settings'"
+            [title]="'Table settings and preferences'">
+            <span class="btn-icon" aria-hidden="true">⚙️</span>
+            <span class="btn-text sr-only">Settings</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Performance/Status Indicators -->
+      <div class="status-indicators" *ngIf="showStatusIndicators">
+        
+        <!-- Connection status -->
+        <div class="connection-status" 
+             [class.online]="isOnline" 
+             [class.offline]="!isOnline"
+             [attr.aria-label]="isOnline ? 'Online' : 'Offline'">
+          <span class="status-icon" aria-hidden="true">
+            {{ isOnline ? '🟢' : '🔴' }}
+          </span>
+          <span class="status-text">
+            {{ isOnline ? 'Online' : 'Offline' }}
+          </span>
+        </div>
+
+        <!-- Sync status -->
+        <div class="sync-status" 
+             *ngIf="syncStatus"
+             [class]="'sync-' + syncStatus"
+             [attr.aria-label]="'Sync status: ' + syncStatus">
+          <span class="status-icon" aria-hidden="true">
+            {{ getSyncIcon(syncStatus) }}
+          </span>
+          <span class="status-text">
+            {{ syncStatus | titlecase }}
+          </span>
+        </div>
+
+        <!-- Data freshness indicator -->
+        <div class="data-freshness" 
+             *ngIf="dataFreshness"
+             [class]="'freshness-' + dataFreshness"
+             [attr.aria-label]="'Data freshness: ' + dataFreshness">
+          <span class="freshness-icon" aria-hidden="true">
+            {{ getFreshnessIcon(dataFreshness) }}
+          </span>
+          <span class="freshness-text">
+            {{ dataFreshness | titlecase }} data
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer Bottom -->
+    <div class="footer-bottom">
+      <div class="footer-meta">
+        <span class="app-info">
+          Payment Management System
+        </span>
+        
+        <div class="footer-links">
+          <button 
+            type="button" 
+            class="footer-link"
+            (click)="openHelp()"
+            [attr.aria-label]="'Open help documentation'">
+            Help
+          </button>
+          
+          <span class="link-divider" aria-hidden="true">•</span>
+          
+          <button 
+            type="button" 
+            class="footer-link"
+            (click)="openSupport()"
+            [attr.aria-label]="'Contact support'">
+            Support
+          </button>
+          
+          <span class="link-divider" aria-hidden="true">•</span>
+          
+          <button 
+            type="button" 
+            class="footer-link"
+            (click)="showKeyboardShortcuts()"
+            [attr.aria-label]="'Show keyboard shortcuts'">
+            Shortcuts
+          </button>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast/Notification Container -->
+  <div class="toast-container" 
+       role="region" 
+       aria-live="polite" 
+       aria-label="Notifications"
+       *ngIf="toasts && toasts.length > 0">
+    <div *ngFor="let toast of toasts; trackBy: trackByToastId" 
+         class="toast"
+         [ngClass]="'toast-' + toast.type"
+         [@slideInFadeOut]
+         role="alert">
+      <div class="toast-content">
+        <span class="toast-icon" aria-hidden="true">{{ getToastIcon(toast.type) }}</span>
+        <span class="toast-message">{{ toast.message }}</span>
+      </div>
+      <button 
+        type="button"
+        class="toast-close"
+        (click)="dismissToast(toast.id)"
+        [attr.aria-label]="'Dismiss notification'">
+        <span aria-hidden="true">×</span>
+      </button>
     </div>
   </div>
+
+  <!-- Keyboard Shortcuts Modal (if needed) -->
+  <div class="modal-backdrop" 
+       *ngIf="showShortcutsModal"
+       (click)="closeShortcutsModal()"
+       [@fadeIn]>
+    <div class="shortcuts-modal" 
+         role="dialog" 
+         aria-labelledby="shortcuts-title"
+         aria-modal="true"
+         (click)="$event.stopPropagation()">
+      
+      <header class="modal-header">
+        <h2 id="shortcuts-title">Keyboard Shortcuts</h2>
+        <button 
+          type="button"
+          class="modal-close"
+          (click)="closeShortcutsModal()"
+          [attr.aria-label]="'Close shortcuts dialog'">
+          <span aria-hidden="true">×</span>
+        </button>
+      </header>
+      
+      <div class="modal-body">
+        <div class="shortcuts-grid">
+          <div class="shortcut-group">
+            <h3>Navigation</h3>
+            <div class="shortcut-item">
+              <kbd>Ctrl + F</kbd>
+              <span>Focus search</span>
+            </div>
+            <div class="shortcut-item">
+              <kbd>Ctrl + R</kbd>
+              <span>Refresh data</span>
+            </div>
+          </div>
+          
+          <div class="shortcut-group">
+            <h3>Actions</h3>
+            <div class="shortcut-item">
+              <kbd>Ctrl + E</kbd>
+              <span>Export data</span>
+            </div>
+            <div class="shortcut-item">
+              <kbd>Esc</kbd>
+              <span>Clear filters</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>

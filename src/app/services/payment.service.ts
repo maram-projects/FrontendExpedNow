@@ -28,6 +28,8 @@ export interface PaymentResponse {
 
 export interface PaymentListResponse {  // Make sure it has 'export'
   payments: Payment[];
+    message?: string; // Add this line
+
   success: boolean;
   data: Payment[];
   pagination?: {
@@ -115,12 +117,21 @@ export class PaymentService {
   /**
    * Get all payments without pagination
    */
-getAllPaymentsSimple(): Observable<any> {
-  return this.http.get(`${this.apiUrl}`, { 
+getAllPaymentsSimple(): Observable<PaymentListResponse> {
+  return this.http.get<PaymentListResponse>(`${this.apiUrl}`, { 
     headers: this.createHeaders(),
-    params: new HttpParams().set('includeDeliveryPerson', 'true') // Add this param
-  })
-  .pipe(
+    params: new HttpParams().set('includeDeliveryPerson', 'true')
+  }).pipe(
+    map(response => {
+      // Ensure consistent response structure
+      if (response.success && response.data) {
+        return {
+          ...response,
+          data: response.data.map(payment => this.processPaymentData(payment))
+        };
+      }
+      return response;
+    }),
     catchError(error => {
       console.error('Get payments error:', error);
       return throwError(() => new Error('Failed to fetch payments'));
@@ -635,26 +646,127 @@ getPaymentDetails(paymentId: string): Observable<PaymentResponse> {
   }
 
 
-
 getPaymentsByDeliveryPerson(deliveryPersonId: string): Observable<PaymentListResponse> {
   return this.http.get<PaymentListResponse>(
     `${this.apiUrl}/delivery-person/${deliveryPersonId}`, 
-    { headers: this.createHeaders() }
+    { 
+      headers: this.createHeaders(),
+      params: new HttpParams()
+        .set('includeAll', 'true')
+        .set('includeDeliveryPerson', 'true')
+    }
   ).pipe(
-    map(response => ({
-      ...response,
-      data: response.data?.map(payment => ({
-        ...payment,
-        // Ensure dates are parsed
-        paymentDate: payment.paymentDate ? new Date(payment.paymentDate) : undefined,
-        deliveryPersonPaidAt: payment.deliveryPersonPaidAt ? new Date(payment.deliveryPersonPaidAt) : undefined,
-        createdAt: payment.createdAt ? new Date(payment.createdAt) : undefined,
-        updatedAt: payment.updatedAt ? new Date(payment.updatedAt) : undefined
-      })) || []
-    })),
-    catchError(this.handleError)
+    map(response => {
+      if (response.success && response.data) {
+        return {
+          ...response,
+          data: response.data.map(payment => this.processPaymentData(payment))
+        };
+      }
+      return response;
+    }),
+    catchError(error => {
+      console.error('Error fetching delivery person payments:', error);
+      return throwError(() => new Error('Failed to fetch delivery person payments'));
+    })
   );
 }
+getDeliveryPersonPaymentSummary(deliveryPersonId: string): Observable<any> {
+  return this.http.get<any>(
+    `${this.apiUrl}/delivery-person/${deliveryPersonId}/summary`,
+    { headers: this.createHeaders() }
+  ).pipe(
+    catchError(error => {
+      console.error('Error fetching payment summary:', error);
+      return throwError(() => new Error('Failed to fetch payment summary'));
+    })
+  );
+}
+
+public processPaymentData(payment: any): Payment {
+  console.log('Processing payment data:', payment); // Debug log
+  
+  const processedPayment = {
+    // Preserve original payment data
+    ...payment,
+    
+    // Ensure numeric fields are properly parsed
+    amount: this.safeParseNumber(payment.amount),
+    finalAmountAfterDiscount: this.safeParseNumber(payment.finalAmountAfterDiscount),
+    deliveryPersonShare: this.safeParseNumber(payment.deliveryPersonShare) || 0,
+    discountAmount: this.safeParseNumber(payment.discountAmount) || 0,
+    
+    // Ensure boolean fields are properly parsed
+    deliveryPersonPaid: payment.deliveryPersonPaid === true,
+    
+    // Ensure string/ID fields are properly handled
+    id: payment.id?.toString() || payment._id?.toString(),
+    deliveryPersonId: payment.deliveryPersonId?.toString(), // Single declaration here
+    customerId: payment.customerId?.toString(),
+    orderId: payment.orderId?.toString(),
+    
+    // Ensure status field is properly handled
+    status: payment.status?.toUpperCase() || 'PENDING',
+    
+    // Ensure payment method is handled
+    paymentMethod: payment.paymentMethod || 'UNKNOWN',
+    
+    // Ensure dates are properly parsed
+    paymentDate: payment.paymentDate ? new Date(payment.paymentDate) : undefined,
+    deliveryPersonPaidAt: payment.deliveryPersonPaidAt ? new Date(payment.deliveryPersonPaidAt) : undefined,
+    createdAt: payment.createdAt ? new Date(payment.createdAt) : undefined,
+    updatedAt: payment.updatedAt ? new Date(payment.updatedAt) : undefined,
+    
+    // Ensure delivery person data is preserved and properly formatted
+    deliveryPerson: payment.deliveryPerson ? {
+      id: payment.deliveryPerson.id?.toString(),
+      fullName: payment.deliveryPerson.fullName || 'Unknown Delivery Person',
+      phone: payment.deliveryPerson.phone || '',
+      email: payment.deliveryPerson.email || ''
+    } : null,
+    
+    // Ensure customer data is preserved
+    customer: payment.customer ? {
+      id: payment.customer.id?.toString(),
+      fullName: payment.customer.fullName || 'Unknown Customer',
+      phone: payment.customer.phone || '',
+      email: payment.customer.email || ''
+    } : null,
+    
+    // Ensure order data is preserved
+    order: payment.order ? {
+      id: payment.order.id?.toString(),
+      orderNumber: payment.order.orderNumber || '',
+      items: payment.order.items || []
+    } : null,
+    
+    // Additional fields that might be needed
+    notes: payment.notes || '',
+    transactionId: payment.transactionId || '',
+    
+    // Ensure address fields if present
+    deliveryAddress: payment.deliveryAddress || '',
+    
+    // Handle any discount information
+    discountType: payment.discountType || null,
+    discountPercentage: this.safeParseNumber(payment.discountPercentage) || 0
+  } as Payment;
+  
+  console.log('Processed payment result:', processedPayment); // Debug log
+  
+  return processedPayment;
+}
+
+public safeParseNumber(value: any): number {
+  if (value === null || value === undefined || value === '') return 0;
+  if (typeof value === 'number') return isNaN(value) ? 0 : value;
+  if (typeof value === 'string') {
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+}
+
 releaseToDeliveryPerson(paymentId: string): Observable<any> {
     return this.http.post(
       `${this.apiUrl}/${paymentId}/release-to-delivery`, 

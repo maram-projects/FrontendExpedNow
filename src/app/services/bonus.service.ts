@@ -1,7 +1,7 @@
 // bonus.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { catchError, retry, tap, map } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { environment } from '../../environments/environment';
@@ -700,6 +700,55 @@ getDeliveryPersonSummary(userId: string): Observable<any> {
     withCredentials: true
   }).pipe(
     catchError(this.handleError)
+  );
+}
+
+// Replace the getDeliveryPersons method in your bonus.service.ts - FIXED VERSION
+
+getDeliveryPersons(): Observable<any[]> {
+  console.log('Service: Fetching delivery persons from:', `${this.apiUrl}/delivery-persons`);
+  
+  return this.http.get<any>(`${this.apiUrl}/delivery-persons`, {
+    headers: this.createHeaders(),
+    withCredentials: true
+  }).pipe(
+    tap(response => {
+      console.log('Service: Raw HTTP response:', response);
+      console.log('Service: Response structure:', {
+        success: response?.success,
+        message: response?.message,
+        data: response?.data,
+        dataType: typeof response?.data,
+        dataIsArray: Array.isArray(response?.data),
+        count: response?.count
+      });
+    }),
+    map(response => {
+      // Check if the response indicates failure
+      if (response.success === false) {
+        console.error('Service: API returned failure:', response.message);
+        throw new Error(response.message || 'Failed to fetch delivery persons');
+      }
+      
+      // Extract data from response
+      let data = response.data || response.bonuses || response || [];
+      
+      // Ensure data is an array
+      if (!Array.isArray(data)) {
+        console.warn('Service: Data is not an array, converting:', data);
+        data = data ? [data] : [];
+      }
+      
+      console.log('Service: Processed delivery persons:', data);
+      console.log('Service: First person example:', data[0]);
+      
+      return data;
+    }),
+    catchError(error => {
+      console.error('Service: Error fetching delivery persons:', error);
+      // Return empty array instead of throwing error to prevent component crash
+      return of([]);
+    })
   );
 }
 
