@@ -203,14 +203,12 @@ loadBonusSummary(): void {
       this.bonusSummary = {
         totalBonuses: summary.totalBonuses || 0,
         totalAmount: summary.totalEarnings || 0,
-        pendingCount: summary.pendingBonuses || 0,
-        approvedCount: summary.approvedBonuses || 0,
-        paidCount: summary.paidBonuses || 0,
+        createdCount: summary.createdBonuses || 0,  // Changed from pendingBonuses
+        paidCount: summary.paidBonuses || 0,        // Changed from approvedBonuses
         rejectedCount: summary.rejectedBonuses || 0,
-        // Add the missing amount properties
-        pendingAmount: summary.pendingAmount || 0,
-        approvedAmount: summary.approvedAmount || 0,
-        paidAmount: summary.paidAmount || 0
+        // Update amount properties if available
+        createdAmount: summary.createdAmount || 0,  // Changed from pendingAmount
+        paidAmount: summary.paidAmount || 0         // Changed from approvedAmount
       };
     },
     error: (err) => {
@@ -235,8 +233,9 @@ loadBonusSummary(): void {
 calculateBonusStats(): void {
   this.totalBonusAmount = this.myBonuses.reduce((sum, bonus) => sum + (bonus.amount || 0), 0);
   
+  // Update to use CREATED status instead of PENDING/APPROVED
   this.pendingBonusAmount = this.myBonuses
-    .filter(b => b.status === BonusStatus.PENDING || b.status === BonusStatus.APPROVED)
+    .filter(b => b.status === BonusStatus.CREATED)  // Changed from PENDING/APPROVED
     .reduce((sum, bonus) => sum + (bonus.amount || 0), 0);
     
   this.paidBonusAmount = this.myBonuses
@@ -245,25 +244,23 @@ calculateBonusStats(): void {
 }
 
 
-  getBonusStatusClass(status: BonusStatus): string {
-    switch (status) {
-      case BonusStatus.PENDING: return 'status-pending';
-      case BonusStatus.APPROVED: return 'status-approved';
-      case BonusStatus.PAID: return 'status-paid';
-      case BonusStatus.REJECTED: return 'status-rejected';
-      default: return 'status-unknown';
-    }
+getBonusStatusClass(status: BonusStatus): string {
+  switch (status) {
+    case BonusStatus.CREATED: return 'status-created';    // Changed from status-pending
+    case BonusStatus.PAID: return 'status-paid';          // Changed from status-approved
+    case BonusStatus.REJECTED: return 'status-rejected';
+    default: return 'status-unknown';
   }
+}
 
-  getBonusStatusIcon(status: BonusStatus): string {
-    switch (status) {
-      case BonusStatus.PENDING: return 'hourglass_empty';
-      case BonusStatus.APPROVED: return 'check_circle';
-      case BonusStatus.PAID: return 'payments';
-      case BonusStatus.REJECTED: return 'cancel';
-      default: return 'help';
-    }
+getBonusStatusIcon(status: BonusStatus): string {
+  switch (status) {
+    case BonusStatus.CREATED: return 'hourglass_empty';   // Changed from PENDING
+    case BonusStatus.PAID: return 'payments';             // Changed from APPROVED
+    case BonusStatus.REJECTED: return 'cancel';
+    default: return 'help';
   }
+}
 
   getBonusTypeIcon(type: string): string {
     switch (type) {
@@ -708,9 +705,11 @@ getEstimatedDeliveryTime(delivery: DeliveryRequest): Date | null {
 
 
 
-  getPendingBonusCount(): number {
-  return this.myBonuses.filter(b => b.status === BonusStatus.PENDING || b.status === BonusStatus.APPROVED).length;
+getPendingBonusCount(): number {
+  // Use CREATED status instead of PENDING/APPROVED
+  return this.myBonuses.filter(b => b.status === BonusStatus.CREATED).length;
 }
+
 getPaidBonusCount(): number {
   return this.myBonuses.filter(b => b.status === BonusStatus.PAID).length;
 }

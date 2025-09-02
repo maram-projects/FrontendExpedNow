@@ -15,8 +15,7 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
-        .status-pending { border-left-color: #ffc107; }
-        .status-approved { border-left-color: #17a2b8; }
+        .status-created { border-left-color: #17a2b8; }
         .status-paid { border-left-color: #28a745; }
         .status-rejected { border-left-color: #dc3545; }
         
@@ -61,7 +60,7 @@
         
         .pagination-container {
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             align-items: center;
             margin-top: 20px;
         }
@@ -91,6 +90,15 @@
         .form-floating>.form-select {
             padding-top: 1.625rem;
             padding-bottom: 0.625rem;
+        }
+        
+        .sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .sortable:hover {
+            background-color: rgba(255, 255, 255, 0.1);
         }
     </style>
 </head>
@@ -139,16 +147,16 @@
                 </div>
             </div>
             <div class="col-lg-3 col-md-6 mb-3">
-                <div class="card bg-warning text-dark h-100">
+                <div class="card bg-info text-white h-100">
                     <div class="card-body text-center">
                         <i class="fas fa-clock fa-2x mb-2"></i>
-                        <h4 class="mb-1">{{ getStatusBreakdownValue('PENDING') | number }}</h4>
-                        <p class="mb-0">Pending</p>
+                        <h4 class="mb-1">{{ getStatusBreakdownValue('CREATED') | number }}</h4>
+                        <p class="mb-0">Ready to Pay</p>
                     </div>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6 mb-3">
-                <div class="card bg-info text-white h-100">
+                <div class="card bg-success text-white h-100">
                     <div class="card-body text-center">
                         <i class="fas fa-check fa-2x mb-2"></i>
                         <h4 class="mb-1">{{ getStatusBreakdownValue('PAID') | number }}</h4>
@@ -191,12 +199,26 @@
                             [(ngModel)]="selectedStatus" 
                             (change)="onStatusFilterChange()">
                             <option value="ALL">All Statuses</option>
-                            <option value="PENDING">Pending</option>
-                            <option value="APPROVED">Approved</option>
+                            <option value="CREATED">Ready to Pay</option>
                             <option value="PAID">Paid</option>
                             <option value="REJECTED">Rejected</option>
                         </select>
                         <label for="statusFilter">Status Filter</label>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-floating">
+                        <select 
+                            class="form-select" 
+                            id="deliveryPersonFilter"
+                            [(ngModel)]="selectedDeliveryPerson" 
+                            (change)="onStatusFilterChange()">
+                            <option value="">All Delivery Persons</option>
+                            <option *ngFor="let person of deliveryPersons" [value]="person.id">
+                                {{ person.fullName || person.firstName || person.email }}
+                            </option>
+                        </select>
+                        <label for="deliveryPersonFilter">Delivery Person</label>
                     </div>
                 </div>
                 <div class="col-md-2">
@@ -221,6 +243,15 @@
                         <label for="endDate">End Date</label>
                     </div>
                 </div>
+                <div class="col-md-1">
+                    <button class="btn btn-outline-secondary h-100" (click)="clearFilters()" title="Clear Filters">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Page Size Selection (moved below main filters) -->
+            <div class="row g-3 mt-2">
                 <div class="col-md-2">
                     <div class="form-floating">
                         <select 
@@ -236,11 +267,6 @@
                         <label for="pageSizeSelect">Page Size</label>
                     </div>
                 </div>
-                <div class="col-md-1">
-                    <button class="btn btn-outline-secondary h-100" (click)="clearFilters()" title="Clear Filters">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
             </div>
         </div>
 
@@ -252,10 +278,6 @@
                     {{ selectedBonuses.size }} bonuses selected
                 </span>
                 <div class="btn-group">
-                    <button class="btn btn-success btn-sm" (click)="bulkApprove()">
-                        <i class="fas fa-check me-1"></i>
-                        Bulk Approve
-                    </button>
                     <button class="btn btn-info btn-sm" (click)="bulkPay()">
                         <i class="fas fa-dollar-sign me-1"></i>
                         Bulk Pay
@@ -299,6 +321,7 @@
                             Amount
                             <i [class]="getSortIcon('amount')"></i>
                         </th>
+                        <th>Type</th>
                         <th class="sortable" (click)="sortBonuses('status')">
                             Status
                             <i [class]="getSortIcon('status')"></i>
@@ -337,14 +360,20 @@
                             <span class="fw-bold text-success">${{ bonus.amount | number:'1.2-2' }}</span>
                         </td>
                         <td>
+                            <span class="badge bg-light text-dark">{{ bonus.type || 'N/A' }}</span>
+                        </td>
+                        <td>
                             <span [class]="getStatusClass(bonus.status)">
                                 {{ getStatusText(bonus.status) }}
                             </span>
                         </td>
                         <td>
-                            <small class="text-muted">
+                            <small class="text-muted" *ngIf="bonus.startDate && bonus.endDate">
                                 {{ bonus.startDate | date:'short' }} - 
                                 {{ bonus.endDate | date:'short' }}
+                            </small>
+                            <small class="text-muted" *ngIf="!bonus.startDate || !bonus.endDate">
+                                N/A
                             </small>
                         </td>
                         <td>
@@ -352,13 +381,6 @@
                         </td>
                         <td>
                             <div class="action-buttons">
-                                <button 
-                                    *ngIf="canApprove(bonus)"
-                                    class="btn btn-success btn-sm"
-                                    (click)="approveBonus(bonus.id)"
-                                    title="Approve Bonus">
-                                    <i class="fas fa-check"></i>
-                                </button>
                                 <button 
                                     *ngIf="canPay(bonus)"
                                     class="btn btn-info btn-sm"
@@ -417,36 +439,42 @@
             <nav aria-label="Bonuses pagination">
                 <ul class="pagination mb-0">
                     <li class="page-item" [class.disabled]="!hasPrevious">
-                        <button class="page-link" (click)="previousPage()">
+                        <button class="page-link" (click)="previousPage()" [disabled]="!hasPrevious">
                             <i class="fas fa-chevron-left"></i>
                         </button>
                     </li>
                     
+                    <!-- Show first page -->
                     <li class="page-item" [class.active]="currentPage === 1" *ngIf="shouldShowPage(1)">
                         <button class="page-link" (click)="goToPage(1)">1</button>
                     </li>
                     
+                    <!-- Show ellipsis if needed -->
                     <li class="page-item disabled" *ngIf="currentPage > 4">
                         <span class="page-link">...</span>
                     </li>
                     
-                    <li class="page-item" 
-                        [class.active]="currentPage === pageNum"
-                        *ngFor="let pageNum of [].constructor(totalPages); let i = index; trackBy: trackByBonusId"
-                        [hidden]="!shouldShowPage(i + 1)">
-                        <button class="page-link" (click)="goToPage(i + 1)">{{ i + 1 }}</button>
-                    </li>
+                    <!-- Show pages around current page -->
+                    <ng-container *ngFor="let pageNum of [].constructor(totalPages); let i = index">
+                        <li class="page-item" 
+                            [class.active]="currentPage === (i + 1)"
+                            *ngIf="shouldShowPage(i + 1) && (i + 1) !== 1 && (i + 1) !== totalPages">
+                            <button class="page-link" (click)="goToPage(i + 1)">{{ i + 1 }}</button>
+                        </li>
+                    </ng-container>
                     
+                    <!-- Show ellipsis if needed -->
                     <li class="page-item disabled" *ngIf="currentPage < totalPages - 3">
                         <span class="page-link">...</span>
                     </li>
                     
+                    <!-- Show last page -->
                     <li class="page-item" [class.active]="currentPage === totalPages" *ngIf="shouldShowPage(totalPages) && totalPages > 1">
                         <button class="page-link" (click)="goToPage(totalPages)">{{ totalPages }}</button>
                     </li>
                     
                     <li class="page-item" [class.disabled]="!hasNext">
-                        <button class="page-link" (click)="nextPage()">
+                        <button class="page-link" (click)="nextPage()" [disabled]="!hasNext">
                             <i class="fas fa-chevron-right"></i>
                         </button>
                     </li>
@@ -481,7 +509,7 @@
                                         required>
                                         <option value="">Select Delivery Person</option>
                                         <option *ngFor="let person of deliveryPersons" [value]="person.id">
-                                            {{ person.fullName }} ({{ person.id }})
+                                            {{ person.fullName || person.firstName || person.email }} ({{ person.id | slice:0:8 }})
                                         </option>
                                     </select>
                                     <label for="deliveryPersonId">Delivery Person *</label>
@@ -517,11 +545,9 @@
                                         class="form-control" 
                                         id="startDate"
                                         name="startDate"
-                                        #startDate="ngModel"
                                         [(ngModel)]="newBonus.startDate"
-                                        required
                                         placeholder="Start Date">
-                                    <label for="startDate">Start Date *</label>
+                                    <label for="startDate">Start Date</label>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -531,11 +557,9 @@
                                         class="form-control" 
                                         id="endDate"
                                         name="endDate"
-                                        #endDate="ngModel"
                                         [(ngModel)]="newBonus.endDate"
-                                        required
                                         placeholder="End Date">
-                                    <label for="endDate">End Date *</label>
+                                    <label for="endDate">End Date</label>
                                 </div>
                             </div>
                             <div class="col-12">

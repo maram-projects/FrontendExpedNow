@@ -47,9 +47,8 @@ export class DeliveryBonusComponent implements OnInit {
 
   getStatusClass(status: BonusStatus): string {
     switch (status) {
-      case BonusStatus.PENDING: return 'badge bg-warning';
-      case BonusStatus.APPROVED: return 'badge bg-info';
-      case BonusStatus.PAID: return 'badge bg-success';
+      case BonusStatus.CREATED: return 'badge bg-warning';    // Changed from PENDING
+      case BonusStatus.PAID: return 'badge bg-success';       // Changed from APPROVED
       case BonusStatus.REJECTED: return 'badge bg-danger';
       default: return 'badge bg-secondary';
     }

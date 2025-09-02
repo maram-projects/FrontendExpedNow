@@ -26,6 +26,8 @@ import { ForgetPasswordComponent } from './components/forget-password/forget-pas
 import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
 import { UserDetailsComponent } from './components/profile/user-details/user-details.component';
 import { DeliveryScheduleComponent } from './components/delivery/delivery-schedule/delivery-schedule.component';
+// ADD THIS IMPORT
+import { DeliveryManagementComponent } from './components/admin-dashboard/delivery-management/delivery-management.component';
 
 export const routes: Routes = [
   // Public routes
@@ -92,13 +94,14 @@ export const routes: Routes = [
       { path: 'users/edit/:id', component: EditProfileComponent },
       { path: 'availability', component: ScheduleComponent },
       { path: 'DeliveryPersonnel', component: DeliveryPersonnelManagementComponent },
+      // ADD THIS LINE - This is what was missing!
+      { path: 'delivery-management', component: DeliveryManagementComponent },
       { path: 'vehicles', component: VehicleListComponent },
       { path: 'vehicles/create', component: VehicleFormComponent },
       { path: 'vehicles/edit/:id', component: VehicleFormComponent },
       { path: 'vehicles/:id', component: VehicleDetailComponent },
       { path: 'users/view/:id', component: UserDetailsComponent },
       
-      // FIXED: Remove the duplicate and keep only the loadComponent version
       { 
         path: 'payments', 
         loadComponent: () => import('./components/admin-dashboard/admin-payment/admin-payment.component').then(m => m.AdminPaymentComponent) 
@@ -115,7 +118,7 @@ export const routes: Routes = [
       { 
         path: 'delivery-personnel/register', 
         component: ProfessionalRegisterComponent,
-        data: { adminMode: true }  // Add admin mode flag
+        data: { adminMode: true }
       },
       { 
         path: 'bonuses', 
@@ -137,6 +140,5 @@ export const routes: Routes = [
 
   // Redirects
   { path: 'home', redirectTo: '', pathMatch: 'full' },
-  { path: 'home', redirectTo: '', pathMatch: 'full' }, // Remove this duplicate line too
   { path: '**', redirectTo: '' }
 ];

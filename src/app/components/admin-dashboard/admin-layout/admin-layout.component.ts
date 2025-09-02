@@ -1,12 +1,11 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { ChatbotComponent } from '../../../shared/chatbot/chatbot.component';
 
 @Component({
   selector: 'app-admin-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule], // إضافة ChatbotComponent
+  imports: [CommonModule, RouterModule],
   template: `
     <div class="container-fluid">
       <div class="row">
@@ -30,8 +29,15 @@ import { ChatbotComponent } from '../../../shared/chatbot/chatbot.component';
             </li>
             <li class="nav-item">
               <a class="nav-link" routerLink="/admin/DeliveryPersonnel" routerLinkActive="active">
-                <i class="fas fa-users"></i>
-                <span>Delivery Personnel Management</span>
+                <i class="fas fa-users-cog"></i>
+                <span>Delivery Personnel</span>
+              </a>
+            </li>
+            <!-- NEW: Delivery Management Link -->
+            <li class="nav-item">
+              <a class="nav-link" routerLink="/admin/delivery-management" routerLinkActive="active">
+                <i class="fas fa-truck-moving"></i>
+                <span>Delivery Management</span>
               </a>
             </li>
             <li class="nav-item">
@@ -85,8 +91,6 @@ import { ChatbotComponent } from '../../../shared/chatbot/chatbot.component';
         </main>
       </div>
     </div>
-
-
   `,
   styles: [`
     .sidebar {
@@ -100,7 +104,6 @@ import { ChatbotComponent } from '../../../shared/chatbot/chatbot.component';
       box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
     }
 
-    /* Colorful gradient background */
     .sidebar::before {
       content: "";
       position: absolute;
@@ -175,7 +178,6 @@ import { ChatbotComponent } from '../../../shared/chatbot/chatbot.component';
       color: #4a6dff;
     }
 
-    /* Fun animation for active link */
     @keyframes pulse {
       0% { transform: scale(1); }
       50% { transform: scale(1.05); }
@@ -187,13 +189,6 @@ import { ChatbotComponent } from '../../../shared/chatbot/chatbot.component';
       animation: pulse 1.5s infinite ease-in-out;
     }
 
-    
-
-   
-
-  
-
-    /* Mobile responsiveness */
     @media (max-width: 768px) {
       .sidebar {
         min-height: auto;
@@ -209,9 +204,6 @@ import { ChatbotComponent } from '../../../shared/chatbot/chatbot.component';
       .main-content {
         padding-bottom: 120px;
       }
-
-   
-      
     }
 
     @media (max-width: 480px) {

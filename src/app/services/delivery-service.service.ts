@@ -596,6 +596,34 @@ private mapImageAnalysisResponse(backendResponse: any): ImageAnalysisResponse {
     });
   }
 
+
+assignDelivery(deliveryId: string): Observable<any> {
+  return this.http.post<any>(
+    `${this.apiUrl}/${deliveryId}/assign`,
+    {}, // Empty body since backend handles assignment automatically
+    { headers: this.getAuthHeaders() }
+  ).pipe(
+    catchError(error => {
+      console.error('Error assigning delivery:', error);
+      return throwError(() => new Error('Failed to assign delivery: ' + 
+        (error.error?.message || error.message)));
+    })
+  );
+}
+
+// Also add this helper method if you need to get available delivery persons for assignment
+getAvailableDeliveryPersons(): Observable<any[]> {
+  return this.http.get<any[]>(
+    `${environment.apiUrl}/api/deliveriesperson/available`,
+    { headers: this.getAuthHeaders() }
+  ).pipe(
+    catchError(error => {
+      console.error('Error fetching available delivery persons:', error);
+      return throwError(() => new Error('Failed to fetch available delivery persons'));
+    })
+  );
+}
+
   // Download receipt
   downloadReceipt(deliveryId: string): Observable<Blob> {
     return this.http.get(`${this.apiUrl}/${deliveryId}/receipt`, {
@@ -691,4 +719,7 @@ export interface DeliveryWithDetails extends DeliveryRequest {
       licensePlate: string;
     };
   };
+
+
+  
 }

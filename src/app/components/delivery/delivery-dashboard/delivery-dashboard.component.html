@@ -132,10 +132,10 @@
                 <mat-icon>payments</mat-icon>
                 {{ bonusSummary.paidAmount | currency:'TND':'symbol':'1.0-0' }} Paid
               </span>
-              <span class="breakdown-item pending">
-                <mat-icon>hourglass_empty</mat-icon>
-                {{ bonusSummary.pendingAmount | currency:'TND':'symbol':'1.0-0' }} Pending
-              </span>
+             <span class="breakdown-item created">
+  <mat-icon>hourglass_empty</mat-icon>
+  {{ bonusSummary.createdAmount | currency:'TND':'symbol':'1.0-0' }} Created
+</span>
             </div>
           </mat-card-content>
         </mat-card>
@@ -518,14 +518,14 @@
                 <mat-icon>all_inclusive</mat-icon>
                 All Bonuses
               </mat-option>
-              <mat-option [value]="BonusStatus.PENDING">
-                <mat-icon>hourglass_empty</mat-icon>
-                Pending
-              </mat-option>
-              <mat-option [value]="BonusStatus.APPROVED">
-                <mat-icon>check_circle</mat-icon>
-                Approved
-              </mat-option>
+            <mat-option [value]="BonusStatus.CREATED">
+  <mat-icon>hourglass_empty</mat-icon>
+  Created
+</mat-option>
+<mat-option [value]="BonusStatus.PAID">
+  <mat-icon>payments</mat-icon>
+  Paid
+</mat-option>
               <mat-option [value]="BonusStatus.PAID">
                 <mat-icon>payments</mat-icon>
                 Paid
@@ -685,7 +685,7 @@
         <div class="bonus-cards">
           <mat-card *ngFor="let bonus of filteredBonuses; trackBy: trackByBonusId" 
                     class="bonus-card"
-                    [ngClass]="'bonus-' + bonus.status.toLowerCase()">
+                   [ngClass]="'bonus-' + (bonus.status === 'CREATED' ? 'created' : bonus.status.toLowerCase())">
             <div class="bonus-header">
               <div class="bonus-type">
                 <div class="type-icon">
@@ -744,11 +744,11 @@
               </div>
             </mat-card-content>
 
-            <mat-card-actions *ngIf="bonus.status === BonusStatus.PENDING">
-              <div class="pending-actions">
-                <mat-icon>info</mat-icon>
-                <span>Awaiting approval from management</span>
-              </div>
+<mat-card-actions *ngIf="bonus.status === BonusStatus.CREATED">
+             <div class="created-actions">
+  <mat-icon>info</mat-icon>
+  <span>Ready for payment processing</span>
+</div>
             </mat-card-actions>
           </mat-card>
         </div>

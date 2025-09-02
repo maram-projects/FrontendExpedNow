@@ -16,11 +16,9 @@ export interface Bonus {
   createdAt?: Date;
   updatedAt?: Date; // Add this for tracking updates
   paidAt?: Date;
-  approvedAt?: Date;
   rejectedAt?: Date; // Add this for tracking rejection time
   
   // Additional tracking fields
-  approvedBy?: string;
   paidBy?: string; // Add this to track who processed payment
   rejectedBy?: string; // Add this to track who rejected
   rejectionReason?: string;
@@ -40,11 +38,9 @@ export interface Bonus {
 }
 
 export enum BonusStatus {
-  PENDING = 'PENDING',
-  APPROVED = 'APPROVED',
-  PAID = 'PAID',
-  REJECTED = 'REJECTED',
-  CANCELLED = 'CANCELLED' // Add this for cancelled bonuses
+  CREATED = 'CREATED',    // Bonus created by admin, ready for payment
+  PAID = 'PAID',          // Bonus has been paid to delivery person
+  REJECTED = 'REJECTED'   // Bonus has been rejected/cancelled
 }
 
 // Additional interfaces for bonus operations
@@ -62,7 +58,6 @@ export interface CreateBonusRequest {
   description?: string;
   criteria?: string;
 }
-
 
 export interface UpdateBonusRequest {
   amount?: number;
@@ -83,40 +78,33 @@ export interface BonusFilter {
   bonusType?: string;
 }
 
+// bonus.model.ts
 export interface BonusSummary {
   totalBonuses: number;
   totalAmount: number;
-  pendingCount: number;
-  approvedCount: number;
-  paidCount: number;
+  createdCount: number;    // Changed from pendingCount
+  paidCount: number;       // Changed from approvedCount
   rejectedCount: number;
-  pendingAmount: number;
-  approvedAmount: number;
-  paidAmount: number;
+  // Update these amount properties if needed
+  createdAmount?: number;  // Changed from pendingAmount
+  paidAmount?: number;     // Changed from approvedAmount
+  rejectedAmount?: number;
 }
-
 // Utility functions for bonus operations
 export class BonusUtils {
-  
-  /**
-   * Check if bonus can be approved
-   */
-  static canApprove(bonus: Bonus): boolean {
-    return bonus.status === BonusStatus.PENDING;
-  }
   
   /**
    * Check if bonus can be paid
    */
   static canPay(bonus: Bonus): boolean {
-    return bonus.status === BonusStatus.APPROVED;
+    return bonus.status === BonusStatus.CREATED;
   }
   
   /**
    * Check if bonus can be rejected
    */
   static canReject(bonus: Bonus): boolean {
-    return bonus.status === BonusStatus.PENDING || bonus.status === BonusStatus.APPROVED;
+    return bonus.status === BonusStatus.CREATED;
   }
   
   /**
@@ -131,16 +119,12 @@ export class BonusUtils {
    */
   static getStatusText(status: BonusStatus): string {
     switch (status) {
-      case BonusStatus.PENDING:
-        return 'في الانتظار / Pending';
-      case BonusStatus.APPROVED:
-        return 'معتمد / Approved';
+      case BonusStatus.CREATED:
+        return 'مُنشأ / Created';
       case BonusStatus.PAID:
         return 'مدفوع / Paid';
       case BonusStatus.REJECTED:
         return 'مرفوض / Rejected';
-      case BonusStatus.CANCELLED:
-        return 'ملغي / Cancelled';
       default:
         return 'غير معروف / Unknown';
     }
@@ -151,16 +135,12 @@ export class BonusUtils {
    */
   static getStatusColorClass(status: BonusStatus): string {
     switch (status) {
-      case BonusStatus.PENDING:
+      case BonusStatus.CREATED:
         return 'text-warning bg-warning-light';
-      case BonusStatus.APPROVED:
-        return 'text-info bg-info-light';
       case BonusStatus.PAID:
         return 'text-success bg-success-light';
       case BonusStatus.REJECTED:
         return 'text-danger bg-danger-light';
-      case BonusStatus.CANCELLED:
-        return 'text-secondary bg-secondary-light';
       default:
         return 'text-muted bg-light';
     }
@@ -189,10 +169,10 @@ export class BonusUtils {
   }
   
   /**
-   * Check if bonus is overdue (pending for more than X days)
+   * Check if bonus is overdue (created for more than X days)
    */
   static isOverdue(bonus: Bonus, maxDays: number = 7): boolean {
-    if (bonus.status !== BonusStatus.PENDING) return false;
+    if (bonus.status !== BonusStatus.CREATED) return false;
     return this.getDaysSinceCreation(bonus) > maxDays;
   }
 }

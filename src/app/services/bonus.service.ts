@@ -44,10 +44,9 @@ interface DeliveryStatsResponse {
     weeklyDeliveries: number;
     monthlyDeliveries: number;
     totalEarnings: number;
-    pendingBonuses: number;
+    createdBonuses: number;  // Changed from pendingBonuses
     totalBonuses?: number;
     paidBonuses?: number;
-    approvedBonuses?: number;
     rejectedBonuses?: number;
   };
 }
@@ -137,7 +136,6 @@ export class BonusService {
       endDate: bonus.endDate ? new Date(bonus.endDate.toString()) : bonus.endDate,
       createdAt: bonus.createdAt ? new Date(bonus.createdAt.toString()) : undefined,
       updatedAt: bonus.updatedAt ? new Date(bonus.updatedAt.toString()) : undefined,
-      approvedAt: bonus.approvedAt ? new Date(bonus.approvedAt.toString()) : undefined,
       paidAt: bonus.paidAt ? new Date(bonus.paidAt.toString()) : undefined,
       rejectedAt: bonus.rejectedAt ? new Date(bonus.rejectedAt.toString()) : undefined
     };
@@ -212,22 +210,21 @@ export class BonusService {
   /**
    * Create a new bonus
    */
-// In your bonus.service.ts
-createBonus(bonusData: CreateBonusRequest): Observable<Bonus> {
+  createBonus(bonusData: CreateBonusRequest): Observable<Bonus> {
     // Convert dates to ISO string format
     const payload = {
-        ...bonusData,
-        startDate: bonusData.startDate ? new Date(bonusData.startDate).toISOString() : null,
-        endDate: bonusData.endDate ? new Date(bonusData.endDate).toISOString() : null
+      ...bonusData,
+      startDate: bonusData.startDate ? new Date(bonusData.startDate).toISOString() : null,
+      endDate: bonusData.endDate ? new Date(bonusData.endDate).toISOString() : null
     };
     
     return this.http.post<BonusResponse>(this.apiUrl, payload, {
-        headers: this.createHeaders(),
-        withCredentials: true
+      headers: this.createHeaders(),
+      withCredentials: true
     }).pipe(
-        map(response => this.parseBonusDates(response.data))
+      map(response => this.parseBonusDates(response.data))
     );
-}
+  }
 
   /**
    * Update bonus
@@ -249,27 +246,8 @@ createBonus(bonusData: CreateBonusRequest): Observable<Bonus> {
   }
 
   // =============================================================================
-  // BONUS STATUS OPERATIONS
+  // BONUS STATUS OPERATIONS - UPDATED FOR NEW ENUM
   // =============================================================================
-
-  /**
-   * Approve bonus (for admin)
-   */
-  approveBonus(bonusId: string): Observable<Bonus> {
-    return this.http.patch<BonusResponse>(`${this.apiUrl}/${bonusId}/approve`, {}, {
-      headers: this.createHeaders(),
-      withCredentials: true
-    }).pipe(
-      map(response => {
-        if (response.success && response.data) {
-          return this.parseBonusDates(response.data);
-        }
-        throw new Error(response.message || 'Failed to approve bonus');
-      }),
-      tap(bonus => console.log('Approve bonus response:', bonus)),
-      catchError(this.handleError)
-    );
-  }
 
   /**
    * Reject bonus (for admin)
@@ -294,7 +272,7 @@ createBonus(bonusData: CreateBonusRequest): Observable<Bonus> {
   }
 
   /**
-   * Pay bonus (for admin)
+   * Pay bonus (for admin) - can pay directly from CREATED status
    */
   payBonus(bonusId: string): Observable<Bonus> {
     return this.http.patch<BonusResponse>(`${this.apiUrl}/${bonusId}/pay`, {}, {
@@ -360,18 +338,18 @@ createBonus(bonusData: CreateBonusRequest): Observable<Bonus> {
   /**
    * Get delivery person bonuses
    */
-getDeliveryPersonBonuses(userId: string): Observable<Bonus[]> {
-  return this.http.get<BonusListResponse>(
-    `${this.apiUrl}/delivery-person/${userId}`,
-    {
-      headers: this.createHeaders(),
-      withCredentials: true
-    }
-  ).pipe(
-    map(response => (response.data || []).map(bonus => this.parseBonusDates(bonus))),
-    catchError(this.handleError)
-  );
-}
+  getDeliveryPersonBonuses(userId: string): Observable<Bonus[]> {
+    return this.http.get<BonusListResponse>(
+      `${this.apiUrl}/delivery-person/${userId}`,
+      {
+        headers: this.createHeaders(),
+        withCredentials: true
+      }
+    ).pipe(
+      map(response => (response.data || []).map(bonus => this.parseBonusDates(bonus))),
+      catchError(this.handleError)
+    );
+  }
 
   /**
    * Get bonus history for a delivery person
@@ -413,7 +391,7 @@ getDeliveryPersonBonuses(userId: string): Observable<Bonus[]> {
   }
 
   // =============================================================================
-  // FILTERING AND SEARCHING
+  // FILTERING AND SEARCHING - UPDATED FOR NEW ENUM
   // =============================================================================
 
   /**
@@ -435,17 +413,10 @@ getDeliveryPersonBonuses(userId: string): Observable<Bonus[]> {
   }
 
   /**
-   * Get pending bonuses
+   * Get created bonuses (replaces getPendingBonuses)
    */
-  getPendingBonuses(): Observable<Bonus[]> {
-    return this.getBonusesByStatus(BonusStatus.PENDING);
-  }
-
-  /**
-   * Get approved bonuses
-   */
-  getApprovedBonuses(): Observable<Bonus[]> {
-    return this.getBonusesByStatus(BonusStatus.APPROVED);
+  getCreatedBonuses(): Observable<Bonus[]> {
+    return this.getBonusesByStatus(BonusStatus.CREATED);
   }
 
   /**
@@ -481,28 +452,11 @@ getDeliveryPersonBonuses(userId: string): Observable<Bonus[]> {
   }
 
   // =============================================================================
-  // BULK OPERATIONS
+  // BULK OPERATIONS - UPDATED FOR NEW ENUM
   // =============================================================================
 
   /**
-   * Bulk approve bonuses
-   */
-  bulkApproveBonuses(bonusIds: string[]): Observable<BulkOperationResponse> {
-    return this.http.post<BulkOperationResponse>(
-      `${this.apiUrl}/bulk/approve`,
-      { bonusIds },
-      {
-        headers: this.createHeaders(),
-        withCredentials: true
-      }
-    ).pipe(
-      tap(response => console.log('Bulk approve bonuses response:', response)),
-      catchError(this.handleError)
-    );
-  }
-
-  /**
-   * Bulk pay bonuses
+   * Bulk pay bonuses (replaces bulkApproveBonuses)
    */
   bulkPayBonuses(bonusIds: string[]): Observable<BulkOperationResponse> {
     return this.http.post<BulkOperationResponse>(
@@ -536,7 +490,7 @@ getDeliveryPersonBonuses(userId: string): Observable<Bonus[]> {
   }
 
   // =============================================================================
-  // STATISTICS AND SUMMARY
+  // STATISTICS AND SUMMARY - UPDATED FOR NEW ENUM
   // =============================================================================
 
   /**
@@ -546,10 +500,9 @@ getDeliveryPersonBonuses(userId: string): Observable<Bonus[]> {
     weeklyDeliveries: number;
     monthlyDeliveries: number;
     totalEarnings: number;
-    pendingBonuses: number;
+    createdBonuses: number;  // Changed from pendingBonuses
     totalBonuses?: number;
     paidBonuses?: number;
-    approvedBonuses?: number;
     rejectedBonuses?: number;
   }> {
     const params = new HttpParams().set('deliveryPersonId', deliveryPersonId);
@@ -590,30 +543,31 @@ getDeliveryPersonBonuses(userId: string): Observable<Bonus[]> {
   /**
    * Get bonus summary
    */
-getBonusSummary(): Observable<BonusSummary> {
-  return this.http.get<{ success: boolean; data: BonusSummary }>(`${this.apiUrl}/summary`, {
-    headers: this.createHeaders(),
-    withCredentials: true
-  }).pipe(
-    retry(2),
-    map(response => response.data),
-    tap(summary => console.log('Bonus summary:', summary)),
-    catchError(this.handleError)
-  );
-}
-
-getDeliveryPersonBonusSummary(userId: string): Observable<any> {
-  return this.http.get<{ success: boolean; data: any }>(
-    `${this.apiUrl}/delivery-person/${userId}/stats`,
-    {
+  getBonusSummary(): Observable<BonusSummary> {
+    return this.http.get<{ success: boolean; data: BonusSummary }>(`${this.apiUrl}/summary`, {
       headers: this.createHeaders(),
       withCredentials: true
-    }
-  ).pipe(
-    map(response => response.data),
-    catchError(this.handleError)
-  );
-}
+    }).pipe(
+      retry(2),
+      map(response => response.data),
+      tap(summary => console.log('Bonus summary:', summary)),
+      catchError(this.handleError)
+    );
+  }
+
+  getDeliveryPersonBonusSummary(userId: string): Observable<any> {
+    return this.http.get<{ success: boolean; data: any }>(
+      `${this.apiUrl}/delivery-person/${userId}/stats`,
+      {
+        headers: this.createHeaders(),
+        withCredentials: true
+      }
+    ).pipe(
+      map(response => response.data),
+      catchError(this.handleError)
+    );
+  }
+
   // =============================================================================
   // UTILITY METHODS
   // =============================================================================
@@ -683,73 +637,148 @@ getDeliveryPersonBonusSummary(userId: string): Observable<any> {
     return throwError(() => new Error(errorMessage));
   };
 
-
   getBonusSummaryForUser(userId: string): Observable<BonusSummary> {
-  const params = new HttpParams().set('userId', userId);
-  return this.http.get<{ success: boolean; data: BonusSummary }>(
-    `${this.apiUrl}/summary/user`,
-    { params, headers: this.createHeaders(), withCredentials: true }
-  ).pipe(
-    map(response => response.data),
-    catchError(this.handleError)
-  );
-}
-getDeliveryPersonSummary(userId: string): Observable<any> {
-  return this.http.get<BonusSummary>(`${this.apiUrl}/delivery-person/${userId}/summary`, {
+    const params = new HttpParams().set('userId', userId);
+    return this.http.get<{ success: boolean; data: BonusSummary }>(
+      `${this.apiUrl}/summary/user`,
+      { params, headers: this.createHeaders(), withCredentials: true }
+    ).pipe(
+      map(response => response.data),
+      catchError(this.handleError)
+    );
+  }
+
+  getDeliveryPersonSummary(userId: string): Observable<any> {
+    return this.http.get<BonusSummary>(`${this.apiUrl}/delivery-person/${userId}/summary`, {
+      headers: this.createHeaders(),
+      withCredentials: true
+    }).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  getDeliveryPersons(): Observable<any[]> {
+    console.log('Service: Fetching delivery persons from:', `${this.apiUrl}/delivery-persons`);
+    
+    return this.http.get<any>(`${this.apiUrl}/delivery-persons`, {
+      headers: this.createHeaders(),
+      withCredentials: true
+    }).pipe(
+      tap(response => {
+        console.log('Service: Raw HTTP response:', response);
+        console.log('Service: Response structure:', {
+          success: response?.success,
+          message: response?.message,
+          data: response?.data,
+          dataType: typeof response?.data,
+          dataIsArray: Array.isArray(response?.data),
+          count: response?.count
+        });
+      }),
+      map(response => {
+        // Check if the response indicates failure
+        if (response.success === false) {
+          console.error('Service: API returned failure:', response.message);
+          throw new Error(response.message || 'Failed to fetch delivery persons');
+        }
+        
+        // Extract data from response
+        let data = response.data || response.bonuses || response || [];
+        
+        // Ensure data is an array
+        if (!Array.isArray(data)) {
+          console.warn('Service: Data is not an array, converting:', data);
+          data = data ? [data] : [];
+        }
+        
+        console.log('Service: Processed delivery persons:', data);
+        console.log('Service: First person example:', data[0]);
+        
+        return data;
+      }),
+      catchError(error => {
+        console.error('Service: Error fetching delivery persons:', error);
+        // Return empty array instead of throwing error to prevent component crash
+        return of([]);
+      })
+    );
+  }
+
+
+  // Add these methods to your existing bonus.service.ts
+
+/**
+ * Get mission progress toward bonus milestones
+ */
+getMissionProgress(deliveryPersonId: string): Observable<{
+  completedMissions: number;
+  progressToNextBonus: number;
+  nextBonusTarget: number;
+  totalEarningsPotential: number;
+}> {
+  return this.http.get<any>(`${this.apiUrl}/delivery-person/${deliveryPersonId}/mission-progress`, {
     headers: this.createHeaders(),
     withCredentials: true
   }).pipe(
+    map(response => response.data || response),
     catchError(this.handleError)
   );
 }
 
-// Replace the getDeliveryPersons method in your bonus.service.ts - FIXED VERSION
+/**
+ * Check if delivery person is eligible for milestone bonus
+ */
+checkMilestoneEligibility(deliveryPersonId: string): Observable<{
+  isEligible: boolean;
+  completedMissions: number;
+  milestoneReached: number;
+  bonusAmount: number;
+}> {
+  return this.http.get<any>(`${this.apiUrl}/delivery-person/${deliveryPersonId}/milestone-check`, {
+    headers: this.createHeaders(),
+    withCredentials: true
+  }).pipe(
+    map(response => response.data || response),
+    catchError(this.handleError)
+  );
+}
 
-getDeliveryPersons(): Observable<any[]> {
-  console.log('Service: Fetching delivery persons from:', `${this.apiUrl}/delivery-persons`);
+/**
+ * Get milestone bonus history for delivery person
+ */
+getMilestoneBonusHistory(deliveryPersonId: string): Observable<Bonus[]> {
+  const params = new HttpParams().set('bonusType', 'MILESTONE');
   
-  return this.http.get<any>(`${this.apiUrl}/delivery-persons`, {
+  return this.http.get<BonusListResponse>(`${this.apiUrl}/delivery-person/${deliveryPersonId}`, {
+    params,
     headers: this.createHeaders(),
     withCredentials: true
   }).pipe(
-    tap(response => {
-      console.log('Service: Raw HTTP response:', response);
-      console.log('Service: Response structure:', {
-        success: response?.success,
-        message: response?.message,
-        data: response?.data,
-        dataType: typeof response?.data,
-        dataIsArray: Array.isArray(response?.data),
-        count: response?.count
-      });
-    }),
-    map(response => {
-      // Check if the response indicates failure
-      if (response.success === false) {
-        console.error('Service: API returned failure:', response.message);
-        throw new Error(response.message || 'Failed to fetch delivery persons');
-      }
-      
-      // Extract data from response
-      let data = response.data || response.bonuses || response || [];
-      
-      // Ensure data is an array
-      if (!Array.isArray(data)) {
-        console.warn('Service: Data is not an array, converting:', data);
-        data = data ? [data] : [];
-      }
-      
-      console.log('Service: Processed delivery persons:', data);
-      console.log('Service: First person example:', data[0]);
-      
-      return data;
-    }),
-    catchError(error => {
-      console.error('Service: Error fetching delivery persons:', error);
-      // Return empty array instead of throwing error to prevent component crash
-      return of([]);
-    })
+    map(response => (response.data || response.bonuses || [])
+      .filter(bonus => bonus.bonusType === 'MILESTONE')
+      .map(bonus => this.parseBonusDates(bonus))
+    ),
+    catchError(this.handleError)
   );
 }
 
+/**
+ * Get delivery person statistics including mission count
+ */
+getDeliveryPersonStatistics(deliveryPersonId: string): Observable<{
+  totalMissions: number;
+  completedMissions: number;
+  totalBonuses: number;
+  totalEarnings: number;
+  milestonesReached: number;
+  nextMilestoneProgress: number;
+}> {
+  return this.http.get<any>(`${this.apiUrl}/delivery-person/${deliveryPersonId}/statistics`, {
+    headers: this.createHeaders(),
+    withCredentials: true
+  }).pipe(
+    map(response => response.data || response),
+    catchError(this.handleError)
+  );
+}
 }

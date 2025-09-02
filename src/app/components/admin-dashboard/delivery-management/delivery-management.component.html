@@ -1,0 +1,283 @@
+<!-- delivery-management.component.html -->
+<div class="delivery-management-container">
+  <div class="header">
+    <h2><i class="fas fa-truck"></i> Gestion des Livraisons</h2>
+    <p>Gérez toutes les livraisons et missions du système</p>
+  </div>
+
+  <!-- Statistiques -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon total">
+        <i class="fas fa-box"></i>
+      </div>
+      <div class="stat-info">
+        <h3>{{deliveryStats.total || 0}}</h3>
+        <p>Total Livraisons</p>
+      </div>
+    </div>
+    
+    <div class="stat-card">
+      <div class="stat-icon pending">
+        <i class="fas fa-clock"></i>
+      </div>
+      <div class="stat-info">
+        <h3>{{deliveryStats.pending || 0}}</h3>
+        <p>En Attente</p>
+      </div>
+    </div>
+    
+    <div class="stat-card">
+      <div class="stat-icon assigned">
+        <i class="fas fa-user-check"></i>
+      </div>
+      <div class="stat-info">
+        <h3>{{deliveryStats.assigned || 0}}</h3>
+        <p>Assignées</p>
+      </div>
+    </div>
+    
+    <div class="stat-card">
+      <div class="stat-icon in-transit">
+        <i class="fas fa-shipping-fast"></i>
+      </div>
+      <div class="stat-info">
+        <h3>{{deliveryStats.inTransit || 0}}</h3>
+        <p>En Transit</p>
+      </div>
+    </div>
+    
+    <div class="stat-card">
+      <div class="stat-icon delivered">
+        <i class="fas fa-check-circle"></i>
+      </div>
+      <div class="stat-info">
+        <h3>{{deliveryStats.delivered || 0}}</h3>
+        <p>Livrées</p>
+      </div>
+    </div>
+    
+    <div class="stat-card">
+      <div class="stat-icon cancelled">
+        <i class="fas fa-times-circle"></i>
+      </div>
+      <div class="stat-info">
+        <h3>{{deliveryStats.cancelled || 0}}</h3>
+        <p>Annulées</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtres et Actions -->
+  <div class="controls-row">
+    <div class="filters">
+      <div class="filter-group">
+        <label for="statusFilter">Statut:</label>
+        <select id="statusFilter" [(ngModel)]="statusFilter" (change)="applyFilters()">
+          <option value="all">Tous les statuts</option>
+          <option value="PENDING">En attente</option>
+          <option value="ASSIGNED">Assignée</option>
+          <option value="APPROVED">Approuvée</option>
+          <option value="IN_TRANSIT">En transit</option>
+          <option value="DELIVERED">Livrée</option>
+          <option value="CANCELLED">Annulée</option>
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="searchTerm">Recherche:</label>
+        <input 
+          id="searchTerm" 
+          type="text" 
+          placeholder="Adresse, colis, client..." 
+          [(ngModel)]="searchTerm"
+          (input)="applyFilters()">
+      </div>
+      
+      <div class="filter-group">
+        <label for="dateFilter">Date:</label>
+        <input 
+          id="dateFilter" 
+          type="date" 
+          [(ngModel)]="dateFilter"
+          (change)="applyFilters()">
+      </div>
+    </div>
+    
+    <div class="actions">
+      <button class="btn btn-primary" (click)="loadDeliveries()">
+        <i class="fas fa-sync-alt"></i> Actualiser
+      </button>
+      <button class="btn btn-warning" (click)="expireOldDeliveries()">
+        <i class="fas fa-clock"></i> Expirer anciennes
+      </button>
+    </div>
+  </div>
+
+  <!-- Message d'erreur -->
+  <div class="error-message" *ngIf="errorMessage">
+    <div class="alert alert-danger">
+      <i class="fas fa-exclamation-triangle"></i> {{errorMessage}}
+      <button class="close-btn" (click)="errorMessage = ''">&times;</button>
+    </div>
+  </div>
+
+  <!-- Tableau des livraisons -->
+  <div class="deliveries-table-container">
+    <div class="table-responsive">
+      <table class="deliveries-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Adresse de Ramassage</th>
+            <th>Adresse de Livraison</th>
+            <th>Description</th>
+            <th>Statut</th>
+            <th>Date de Création</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="isLoading">
+            <td colspan="7" class="loading-row">
+              <div class="spinner"></div>
+              <span>Chargement des livraisons...</span>
+            </td>
+          </tr>
+          
+          <tr *ngIf="!isLoading && filteredDeliveries.length === 0">
+            <td colspan="7" class="no-data">
+              <i class="fas fa-inbox"></i>
+              <p>Aucune livraison trouvée</p>
+            </td>
+          </tr>
+          
+          <tr *ngFor="let delivery of paginatedDeliveries" 
+              [class.selected]="selectedDelivery?.id === delivery.id"
+              (click)="selectDelivery(delivery)">
+            <td class="delivery-id">{{delivery.id.substring(0, 8)}}...</td>
+            <td class="pickup-address">{{delivery.pickupAddress}}</td>
+            <td class="delivery-address">{{delivery.deliveryAddress}}</td>
+            <td class="package-description">{{delivery.packageDescription}}</td>
+            <td>
+              <span class="status-badge" [ngClass]="getStatusClass(delivery.status)">
+                {{delivery.status}}
+              </span>
+            </td>
+            <td class="created-at">{{delivery.createdAt | date:'short'}}</td>
+            <td class="actions-cell">
+              <button class="btn btn-sm btn-info" (click)="selectDelivery(delivery); $event.stopPropagation()">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button *ngIf="delivery.status === 'PENDING'" 
+                      class="btn btn-sm btn-primary" 
+                      (click)="assignDelivery(delivery.id); $event.stopPropagation()">
+                <i class="fas fa-user-check"></i>
+              </button>
+              <button *ngIf="delivery.status !== 'CANCELLED' && delivery.status !== 'DELIVERED'" 
+                      class="btn btn-sm btn-danger" 
+                      (click)="cancelDelivery(delivery.id); $event.stopPropagation()">
+                <i class="fas fa-times"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- Pagination -->
+    <div class="pagination" *ngIf="filteredDeliveries.length > 0">
+      <button (click)="previousPage()" [disabled]="currentPage === 1">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      
+      <span class="page-info">
+        Page {{currentPage}} sur {{totalPages}}
+      </span>
+      
+      <button (click)="nextPage()" [disabled]="currentPage === totalPages">
+        <i class="fas fa-chevron-right"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Détails de la livraison sélectionnée -->
+  <div class="delivery-details" *ngIf="selectedDelivery">
+    <div class="details-header">
+      <h3>Détails de la Livraison #{{selectedDelivery.id.substring(0, 8)}}...</h3>
+      <button class="close-btn" (click)="clearSelection()">&times;</button>
+    </div>
+    
+   <!-- Overlay et modal pour les détails de la livraison -->
+<div class="modal-overlay" *ngIf="selectedDelivery" (click)="clearSelection()">
+  <div class="delivery-details" (click)="$event.stopPropagation()">
+    <div class="details-header">
+      <h3><i class="fas fa-box-open"></i> Détails de la Livraison #{{selectedDelivery.id.substring(0, 8)}}...</h3>
+      <button class="close-btn" (click)="clearSelection()">&times;</button>
+    </div>
+    
+    <div class="details-content">
+      <div class="detail-section">
+        <h4><i class="fas fa-info-circle"></i> Informations de base</h4>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <label>Statut:</label>
+            <span class="status-badge" [ngClass]="getStatusClass(selectedDelivery.status)">
+              {{selectedDelivery.status}}
+            </span>
+          </div>
+          <div class="detail-item">
+            <label>Date de création:</label>
+            <span>{{selectedDelivery.createdAt | date:'medium'}}</span>
+          </div>
+          <div class="detail-item">
+            <label>Client ID:</label>
+            <span>{{selectedDelivery.clientId}}</span>
+          </div>
+          <div class="detail-item">
+            <label>Colis:</label>
+            <span>{{selectedDelivery.packageDescription}} ({{selectedDelivery.packageWeight}} kg)</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="detail-section">
+        <h4><i class="fas fa-map-marker-alt"></i> Adresses</h4>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <label>Ramassage:</label>
+            <span>{{selectedDelivery.pickupAddress}}</span>
+          </div>
+          <div class="detail-item">
+            <label>Livraison:</label>
+            <span>{{selectedDelivery.deliveryAddress}}</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="detail-section">
+        <h4><i class="fas fa-clipboard-list"></i> Instructions supplémentaires</h4>
+        <p>{{selectedDelivery.additionalInstructions || 'Aucune instruction supplémentaire'}}</p>
+      </div>
+      
+      <div class="detail-section">
+        <h4><i class="fas fa-sync-alt"></i> Changer le statut</h4>
+        <div class="status-actions">
+          <select #statusSelect>
+            <option value="PENDING" [selected]="selectedDelivery.status === 'PENDING'">En attente</option>
+            <option value="ASSIGNED" [selected]="selectedDelivery.status === 'ASSIGNED'">Assignée</option>
+            <option value="APPROVED" [selected]="selectedDelivery.status === 'APPROVED'">Approuvée</option>
+            <option value="IN_TRANSIT" [selected]="selectedDelivery.status === 'IN_TRANSIT'">En transit</option>
+            <option value="DELIVERED" [selected]="selectedDelivery.status === 'DELIVERED'">Livrée</option>
+            <option value="CANCELLED" [selected]="selectedDelivery.status === 'CANCELLED'">Annulée</option>
+          </select>
+          <button class="btn btn-primary" (click)="changeDeliveryStatus(selectedDelivery.id, statusSelect.value)">
+            Appliquer
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+  </div>
+</div>
