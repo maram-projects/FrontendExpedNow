@@ -26,7 +26,7 @@ interface DeliveryData {
   amount: number;
   originalAmount?: number;
   finalAmountAfterDiscount: number;
-  pricingDetails: PricingDetails | null;
+  pricingDetails: PricingModel | null; // Changed to use PricingModel
   pickupAddress: string;
   deliveryAddress: string;
   packageDescription: string;
@@ -48,18 +48,20 @@ interface DeliveryData {
   paymentDate?: string | number | Date;
   discountAmount?: number;
   discountCode?: string;
-  paymentMethod?: PaymentMethod; // Add this line
+  paymentMethod?: PaymentMethod;
 }
-interface PricingDetails {
-  distance: number;
-  basePrice: number;
-  distanceCost: number;
-  weightCost: number;
-  urgencyFee: number;
-  peakSurcharge: number;
-  holidaySurcharge: number;
-  discountAmount: number;
-  totalAmount: number;
+
+// Use the same interface as PricingDetailsComponent
+interface PricingModel {
+  distance?: number;
+  basePrice?: number;
+  distanceCost?: number;
+  weightCost?: number;
+  urgencyFee?: number;
+  peakSurcharge?: number;
+  holidaySurcharge?: number;
+  discountAmount?: number;
+  totalAmount?: number;
   appliedRules?: Array<{
     description: string;
     amount: number;
@@ -215,7 +217,6 @@ private loadDeliveryDetails(deliveryId: string): void {
         finalAmountAfterDiscount: deliveryAmount - discountAmount,
         pricingDetails: null,
         paymentStatus: delivery.paymentStatus as PaymentStatus,
-        // Fix: Cast paymentMethod from string to PaymentMethod enum
         paymentMethod: delivery.paymentMethod as PaymentMethod
       };
       
@@ -333,6 +334,7 @@ private loadDeliveryDetails(deliveryId: string): void {
       calculatedAt = new Date().toISOString();
     }
     
+    // Map to PricingModel interface that matches PricingDetailsComponent
     this.delivery.pricingDetails = {
       distance: pricingData.distance || 0,
       basePrice: pricingData.basePrice || 0,
@@ -340,12 +342,12 @@ private loadDeliveryDetails(deliveryId: string): void {
       weightCost: pricingData.weightCost || 0,
       urgencyFee: pricingData.urgencyFee || 0,
       peakSurcharge: pricingData.peakSurcharge || 0,
-      calculatedAt: calculatedAt,
       holidaySurcharge: pricingData.holidaySurcharge || 0,
       discountAmount: pricingData.discountAmount || 0,
       totalAmount: pricingData.totalAmount || 0,
       appliedRules: pricingData.appliedRules || [],
       currency: pricingData.currency || 'TND',
+      calculatedAt: calculatedAt
     };
 
     this.delivery.amount = pricingData.totalAmount;

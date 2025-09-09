@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, CurrencyPipe, CommonModule } from '@angular/common';
 import { Subject, takeUntil, finalize, catchError, of, retry, delay } from 'rxjs';
 import { DeliveryRequest, DeliveryService, DeliveryWithAssignedPersonResponse, PaymentStatus } from '../../../services/delivery-service.service';
-import { PaymentService, PaymentResponse } from '../../../services/payment.service'; // Add this import
+import { PaymentService, PaymentResponse, PaymentListResponse } from '../../../services/payment.service'; // Add this import
 import { environment } from '../../../../environments/environment';
 import { MapService } from '../../../services/map.service';
 import { latLng } from 'leaflet';
@@ -130,7 +130,7 @@ readonly paymentStatusConfig: Record<string, StatusConfig> = {
     this.loadDeliveryDetails();
   }
 
- loadDeliveryDetails(): void {
+loadDeliveryDetails(): void {
   if (this.retryCount >= this.maxRetryAttempts) {
     this.handleError('Maximum retry attempts reached. Please refresh the page.');
     return;
@@ -147,7 +147,6 @@ readonly paymentStatusConfig: Record<string, StatusConfig> = {
       takeUntil(this.destroy$),
       catchError((error) => {
         console.error('Error loading delivery details:', error);
-        // Check for specific error cases
         if (error.status === 404) {
           this.handleError('Delivery not found');
         } else if (error.status === 403) {
@@ -168,10 +167,8 @@ readonly paymentStatusConfig: Record<string, StatusConfig> = {
           this.processDeliveryResponse(response);
           this.retryCount = 0;
           
-          // If we have a payment ID but no status, force load payment
-          if (response.delivery.paymentId && !response.delivery.paymentStatus) {
-            this.loadPaymentStatus(response.delivery.paymentId);
-          }
+          // Load payment details regardless of whether paymentId exists
+          this.loadPaymentDetails(response.delivery);
         } else {
           this.handleError('Failed to load delivery details. Please try again.');
         }
@@ -181,6 +178,70 @@ readonly paymentStatusConfig: Record<string, StatusConfig> = {
         this.handleError('An unexpected error occurred while loading delivery details');
       }
     });
+}
+
+private loadPaymentDetails(delivery: DeliveryRequest): void {
+  // If we have a payment ID, load payment details
+  if (delivery.paymentId) {
+    this.loadPaymentStatus(delivery.paymentId);
+  } 
+  // If no payment ID but we have financial information, ensure it's displayed
+  else if (delivery.amount || delivery.paymentStatus) {
+    // Payment info might be embedded in the delivery object
+    this.delivery = {
+      ...delivery,
+      paymentStatus: delivery.paymentStatus || PaymentStatus.PENDING,
+      paymentMethod: delivery.paymentMethod || 'UNKNOWN'
+    };
+    this.cdr.detectChanges();
+  }
+  // If no payment information at all, try to find payment by delivery ID
+  else {
+    this.findPaymentByDeliveryId(delivery.id);
+  }
+}
+
+private findPaymentByDeliveryId(deliveryId: string): void {
+  this.paymentService.getPaymentsByDelivery(deliveryId)
+    .pipe(
+      takeUntil(this.destroy$),
+      catchError(err => {
+        console.error('Error finding payment by delivery ID:', err);
+        return of({ success: false, data: [] } as unknown as PaymentListResponse);
+      })
+    )
+    .subscribe({
+      next: (response: PaymentListResponse) => {
+        if (response.success && response.data && response.data.length > 0) {
+          const payment = response.data[0];
+          this.updateDeliveryWithPaymentInfo(payment);
+        } else {
+          // Set default payment status if no payment found
+          if (this.delivery) {
+            this.delivery.paymentStatus = PaymentStatus.PENDING;
+            this.cdr.detectChanges();
+          }
+        }
+      }
+    });
+}
+
+private updateDeliveryWithPaymentInfo(payment: any): void {
+  if (!this.delivery) return;
+
+  this.delivery = {
+    ...this.delivery,
+    paymentId: payment.id,
+    paymentStatus: payment.status as PaymentStatus,
+    paymentMethod: payment.method,
+    paymentDate: payment.paymentDate,
+    amount: payment.amount,
+    discountAmount: payment.discountAmount || 0,
+    discountCode: payment.discountCode,
+    finalAmountAfterDiscount: payment.finalAmountAfterDiscount || payment.amount
+  };
+  
+  this.cdr.detectChanges();
 }
   
 private processDeliveryResponse(response: DeliveryWithAssignedPersonResponse): void {
@@ -219,44 +280,72 @@ private processDeliveryResponse(response: DeliveryWithAssignedPersonResponse): v
 }
 
 private loadPaymentStatus(paymentId: string): void {
+  console.log('Loading payment status for ID:', paymentId);
+  
   this.paymentService.getPayment(paymentId)
-    .pipe(takeUntil(this.destroy$))
+    .pipe(
+      takeUntil(this.destroy$),
+      retry(1), // Retry once on failure
+      catchError(err => {
+        console.error('Payment service error:', err);
+        // Return a default payment object instead of throwing
+        return of({
+          success: false,
+          data: {
+            id: paymentId,
+            status: 'PENDING',
+            method: 'UNKNOWN',
+            amount: 0
+          }
+        } as PaymentResponse);
+      })
+    )
     .subscribe({
       next: (response: PaymentResponse) => {
-        if (response.success && response.data) {
+        console.log('Payment service response:', response);
+        
+        if (response.success && response.data && this.delivery) {
           const payment = response.data;
           
-          // Update delivery with comprehensive payment info
+          // Update delivery with payment info - be more explicit
+          this.delivery = {
+            ...this.delivery,
+            paymentStatus: payment.status as PaymentStatus,
+            paymentMethod: payment.method,
+            paymentDate: payment.paymentDate ? 
+              (payment.paymentDate instanceof Date ? 
+                payment.paymentDate.toISOString() : 
+                new Date(payment.paymentDate).toISOString()) : undefined,
+            paymentId: payment.id,
+            amount: payment.amount,
+            originalAmount: payment.amount,
+            discountAmount: payment.discountAmount || 0,
+            discountCode: payment.discountCode,
+            finalAmountAfterDiscount: payment.finalAmountAfterDiscount || payment.amount
+          };
+          
+          console.log('Updated delivery with payment data:', {
+            paymentStatus: this.delivery.paymentStatus,
+            paymentMethod: this.delivery.paymentMethod,
+            amount: this.delivery.amount
+          });
+          
+        } else {
+          console.warn('Invalid payment response or no delivery object');
+          // Set fallback status if response is invalid
           if (this.delivery) {
-            this.delivery = {
-              ...this.delivery,
-              // Fix 1: Convert enum to string for paymentStatus
-paymentStatus: payment.status as PaymentStatus,
-              paymentMethod: payment.method.toString(),
-              // Fix 2: Handle Date type for paymentDate - convert to string if it's a Date
-              paymentDate: payment.paymentDate instanceof Date 
-                ? payment.paymentDate.toISOString() 
-                : payment.paymentDate,
-              paymentId: payment.id,
-              amount: payment.amount,
-              // Fix 3: Use finalAmountAfterDiscount instead of originalAmount
-              originalAmount: payment.amount, // Use amount as originalAmount fallback
-              discountAmount: payment.discountAmount,
-              discountCode: payment.discountCode,
-              // Add the finalAmountAfterDiscount property
-              finalAmountAfterDiscount: payment.finalAmountAfterDiscount
-            };
-            
-            console.log('Updated payment data:', this.delivery);
+            this.delivery.paymentStatus = PaymentStatus.PENDING;
+            this.delivery.paymentMethod = 'UNKNOWN';
           }
-          this.cdr.detectChanges();
         }
+        
+        this.cdr.detectChanges();
       },
       error: (err: any) => {
-        console.error('Error fetching payment status:', err);
-        // Fix 4: Use string literal instead of enum
+        console.error('Error in payment status subscription:', err);
         if (this.delivery) {
-this.delivery.paymentStatus = PaymentStatus.PENDING;
+          this.delivery.paymentStatus = PaymentStatus.PENDING;
+          this.delivery.paymentMethod = 'UNKNOWN';
           this.cdr.detectChanges();
         }
       }
@@ -321,35 +410,49 @@ this.delivery.paymentStatus = PaymentStatus.PENDING;
          { icon: 'question', label: method || 'Unknown' };
 }
 
-getPaymentStatusConfig(status?: string | null): StatusConfig {
-    if (!status) return {
+// FIXED: Improved type handling for getPaymentStatusConfig
+getPaymentStatusConfig(status?: string | PaymentStatus | null): StatusConfig {
+  if (!status) {
+    return {
       class: 'payment-unknown', 
       icon: 'question', 
-      label: 'Unknown', 
-      color: '#6b7280' 
-    };
-
-    const normalizedStatus = status.toUpperCase().trim();
-    
-    const statusMap: Record<string, StatusConfig> = {
-      'COMPLETED': { class: 'payment-completed', icon: 'check-circle', label: 'Completed', color: '#10b981' },
-      'PAID': { class: 'payment-completed', icon: 'check-circle', label: 'Paid', color: '#10b981' },
-      'SUCCESS': { class: 'payment-completed', icon: 'check-circle', label: 'Success', color: '#10b981' },
-      'PENDING': { class: 'payment-pending', icon: 'clock', label: 'Pending', color: '#fbbf24' },
-      'FAILED': { class: 'payment-failed', icon: 'times-circle', label: 'Failed', color: '#ef4444' },
-      'REFUNDED': { class: 'payment-refunded', icon: 'undo', label: 'Refunded', color: '#6b7280' },
-      'APPROVED': { class: 'payment-approved', icon: 'check-double', label: 'Approved', color: '#059669' },
-      'PROCESSING': { class: 'payment-processing', icon: 'sync', label: 'Processing', color: '#3b82f6' },
-      'CANCELLED': { class: 'payment-cancelled', icon: 'ban', label: 'Cancelled', color: '#6b7280' }
-    };
-
-    return statusMap[normalizedStatus] || { 
-      class: 'payment-unknown', 
-      icon: 'question', 
-      label: normalizedStatus,  // Show actual status value
-      color: '#6b7280' 
+      label: 'Not Available', 
+      color: '#9ca3af' 
     };
   }
+
+  // Convert enum or unknown type to string safely
+  let normalizedStatus: string;
+  
+  // Handle different types of status values
+  if (typeof status === 'string') {
+    normalizedStatus = status.toUpperCase().trim();
+  } else if (typeof status === 'object' && status !== null) {
+    // For enum values or objects with toString method
+    normalizedStatus = String(status).toUpperCase().trim();
+  } else {
+    // Fallback for any other type
+    normalizedStatus = String(status).toUpperCase().trim();
+  }
+  
+  const statusMap: Record<string, StatusConfig> = {
+    'COMPLETED': { class: 'payment-completed', icon: 'check-circle', label: 'Paid', color: '#10b981' },
+    'SUCCESS': { class: 'payment-completed', icon: 'check-circle', label: 'Paid', color: '#10b981' },
+    'PENDING': { class: 'payment-pending', icon: 'clock', label: 'Pending', color: '#fbbf24' },
+    'PROCESSING': { class: 'payment-processing', icon: 'spinner fa-spin', label: 'Processing', color: '#3b82f6' },
+    'FAILED': { class: 'payment-failed', icon: 'times-circle', label: 'Failed', color: '#ef4444' },
+    'CANCELLED': { class: 'payment-cancelled', icon: 'ban', label: 'Cancelled', color: '#6b7280' },
+    'REFUNDED': { class: 'payment-refunded', icon: 'undo', label: 'Refunded', color: '#6b7280' },
+    'APPROVED': { class: 'payment-approved', icon: 'check-double', label: 'Approved', color: '#059669' }
+  };
+
+  return statusMap[normalizedStatus] || { 
+    class: 'payment-unknown', 
+    icon: 'question', 
+    label: normalizedStatus || 'Unknown',
+    color: '#6b7280' 
+  };
+}
 
 getSafeProperty<T>(obj: any, prop: string, defaultValue: T): T {
   return obj && obj[prop] !== undefined ? obj[prop] : defaultValue;
@@ -703,7 +806,7 @@ hasPaymentMethod(): boolean {
 
 hasPaymentStatus(): boolean {
   return !!(this.delivery?.paymentStatus && 
-           this.delivery.paymentStatus.trim() !== '');
+           String(this.delivery.paymentStatus).trim() !== '');
 }
 
 hasPaymentDate(): boolean {

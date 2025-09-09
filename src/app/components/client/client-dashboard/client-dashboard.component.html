@@ -1099,72 +1099,125 @@
                                                 </span>
                                                 <span *ngIf="!delivery.paymentMethod" class="payment-method-na">-</span>
                                             </td>
-                                            <td class="rating-cell">
-                                                <ng-container *ngIf="delivery?.status === 'DELIVERED' || delivery?.status === 'RATED'; else noRating">
-                                                    <div *ngIf="delivery?.rated" class="rated-stars">
-                                                        <span *ngFor="let star of [1,2,3,4,5]">
-                                                            <i class="fas fa-star" [class.text-warning]="star <= (delivery?.rating || 0)"></i>
-                                                        </span>
-                                                    </div>
-                                                    <div *ngIf="!delivery?.rated" class="rating-stars">
-                                                        <span *ngFor="let star of [1,2,3,4,5]" 
-                                                              (click)="rateDelivery(delivery, star)"
-                                                              title="Rate {{star}} star">
-                                                            <i class="far fa-star" [class.text-warning]="hoverRating >= star" 
-                                                               (mouseover)="hoverRating = star"
-                                                               (mouseout)="hoverRating = 0"></i>
-                                                        </span>
-                                                    </div>
-                                                    <div *ngIf="!delivery?.rated && delivery?.processing" class="rating-loading">
-                                                        <i class="fas fa-spinner fa-spin"></i>
-                                                    </div>
-                                                </ng-container>
-                                                <ng-template #noRating>
-                                                    <span>-</span>
-                                                </ng-template>
-                                            </td>
+<td class="rating-cell">
+  <ng-container *ngIf="delivery.status === 'DELIVERED' || delivery.status === 'RATED'; else noRating">
+    <!-- Affichage des étoiles pour une livraison évaluée -->
+    <div *ngIf="delivery.rated" class="rated-stars-display">
+      <div class="stars-container">
+        <span *ngFor="let star of [1,2,3,4,5]" class="rating-star">
+          <i class="fas fa-star" 
+             [class.text-warning]="star <= (delivery.rating || 0)"
+             [class.text-muted]="star > (delivery.rating || 0)"></i>
+        </span>
+      </div>
+      <div class="rating-value">{{ delivery.rating }}/5</div>
+    </div>
+    
+    <!-- Interface d'évaluation rapide pour une livraison non évaluée -->
+    <div *ngIf="!delivery.rated && !delivery.processing" class="quick-rating-interface">
+      <div class="rating-prompt">
+        <small class="text-muted">Cliquez pour évaluer</small>
+      </div>
+      <div class="rating-stars-interactive">
+        <span *ngFor="let star of [1,2,3,4,5]" 
+              class="interactive-star"
+              (click)="openRatingDialog(delivery)"
+              [title]="'Noter ' + star + ' étoile' + (star > 1 ? 's' : '')">
+          <i class="far fa-star"></i>
+        </span>
+      </div>
+    </div>
+    
+    <!-- Indicateur de traitement -->
+    <div *ngIf="delivery.processing" class="rating-loading">
+      <i class="fas fa-spinner fa-spin text-primary"></i>
+      <small class="text-muted">Traitement...</small>
+    </div>
+  </ng-container>
+  
+  <!-- Pas d'évaluation possible -->
+  <ng-template #noRating>
+    <div class="no-rating">
+      <i class="fas fa-minus text-muted"></i>
+      <small class="text-muted d-block">Non applicable</small>
+    </div>
+  </ng-template>
+</td>
+
                                             <td>
-                                                <div class="action-buttons">
-                                                    <button (click)="viewDeliveryDetails(delivery.id)" 
-                                                            class="btn btn-action btn-view" 
-                                                            title="View Details">
-                                                        <i class="fas fa-eye"></i>
-                                                    </button>
-                                                    
-                                                    <!-- Payment buttons -->
-                                                    <ng-container *ngIf="delivery.status === 'DELIVERED' && delivery.paymentStatus !== 'COMPLETED'">
-                                                        <button *ngIf="delivery.paymentStatus === 'FAILED'"
-                                                                class="btn btn-action btn-retry"
-                                                                (click)="retryFailedPayment(delivery)"
-                                                                title="Retry Payment">
-                                                            <i class="fas fa-sync-alt"></i>
-                                                        </button>
-                                                        <button class="btn btn-action btn-pay"
-                                                                (click)="openPaymentDialog(delivery)"
-                                                                [disabled]="delivery.processingPayment"
-                                                                title="Make Payment">
-                                                            <i *ngIf="!delivery.processingPayment" class="fas fa-credit-card"></i>
-                                                            <i *ngIf="delivery.processingPayment" class="fas fa-spinner fa-spin"></i>
-                                                        </button>
-                                                    </ng-container>
-                                                    
-                                                    <button *ngIf="delivery.paymentStatus === 'COMPLETED'"
-                                                            class="btn btn-action btn-receipt"
-                                                            (click)="downloadReceipt(delivery)"
-                                                            title="Download Receipt">
-                                                        <i class="fas fa-receipt"></i>
-                                                    </button>
-                                                    
-                                                    <button *ngIf="delivery.status && ['PENDING', 'ASSIGNED'].includes(delivery.status)"
-                                                            class="btn btn-action btn-cancel"
-                                                            (click)="cancelDelivery(delivery.id)"
-                                                            [disabled]="delivery.processing"
-                                                            title="Cancel Order">
-                                                        <i *ngIf="!delivery.processing" class="fas fa-times"></i>
-                                                        <i *ngIf="delivery.processing" class="fas fa-spinner fa-spin"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
+                                              <td>
+    <div class="action-buttons">
+
+         <!-- Bouton pour évaluer une livraison non notée -->
+  <button *ngIf="!delivery.rated && delivery.status === 'DELIVERED'" 
+          class="btn btn-action btn-rate"
+          (click)="openRatingDialog(delivery)"
+          [disabled]="delivery.processing"
+          [title]="getRatingTooltip(delivery)">
+    <i *ngIf="!delivery.processing" class="fas fa-star"></i>
+    <i *ngIf="delivery.processing" class="fas fa-spinner fa-spin"></i>
+  </button>
+  
+  <!-- Bouton pour voir les détails d'une évaluation existante -->
+  <button *ngIf="delivery.rated" 
+          class="btn btn-action btn-rated"
+          (click)="viewRatingDetails(delivery)"
+          [disabled]="delivery.processing"
+          [title]="getRatingTooltip(delivery)">
+    <i *ngIf="!delivery.processing" class="fas fa-star text-warning"></i>
+    <i *ngIf="delivery.processing" class="fas fa-spinner fa-spin"></i>
+    <span class="rating-score" *ngIf="delivery.rating">{{ delivery.rating }}</span>
+  </button>
+
+    <!-- Bouton Voir Détails -->
+    <button (click)="viewDeliveryDetails(delivery.id)" 
+            class="btn btn-action btn-view" 
+            title="Voir les détails">
+      <i class="fas fa-eye"></i>
+    </button>
+    
+  
+    
+    <!-- Section Paiement -->
+    <ng-container *ngIf="delivery.status === 'DELIVERED' && delivery.paymentStatus !== 'COMPLETED'">
+      <!-- Bouton Réessayer Paiement -->
+      <button *ngIf="delivery.paymentStatus === 'FAILED'"
+              class="btn btn-action btn-retry"
+              (click)="retryFailedPayment(delivery)"
+              title="Réessayer le paiement">
+        <i class="fas fa-sync-alt"></i>
+      </button>
+      
+      <!-- Bouton Payer -->
+      <button class="btn btn-action btn-pay"
+              (click)="openPaymentDialog(delivery)"
+              [disabled]="delivery.processingPayment"
+              title="Effectuer le paiement">
+        <i *ngIf="!delivery.processingPayment" class="fas fa-credit-card"></i>
+        <i *ngIf="delivery.processingPayment" class="fas fa-spinner fa-spin"></i>
+      </button>
+    </ng-container>
+    
+    <!-- Bouton Télécharger Reçu -->
+    <button *ngIf="delivery.paymentStatus === 'COMPLETED'"
+            class="btn btn-action btn-receipt"
+            (click)="downloadReceipt(delivery)"
+            title="Télécharger le reçu">
+      <i class="fas fa-receipt"></i>
+    </button>
+    
+    <!-- Bouton Annuler -->
+    <button *ngIf="delivery.status && ['PENDING', 'ASSIGNED'].includes(delivery.status)"
+            class="btn btn-action btn-cancel"
+            (click)="cancelDelivery(delivery.id)"
+            [disabled]="delivery.processing"
+            title="Annuler la commande">
+      <i *ngIf="!delivery.processing" class="fas fa-times"></i>
+      <i *ngIf="delivery.processing" class="fas fa-spinner fa-spin"></i>
+    </button>
+  </div>
+</td>
+
                                         </tr>
                                     </tbody>
                                 </table>
@@ -1706,7 +1759,7 @@
         function getPaymentMethodLabel(method) {
             const labels = {
                 'CREDIT_CARD': 'Credit Card',
-                'CASH': 'Cash',
+                //'CASH': 'Cash',
                 'WALLET': 'Digital Wallet',
                 'BANK_TRANSFER': 'Bank Transfer'
             };
@@ -1879,6 +1932,88 @@
     </script>
 
     <style>
+
+
+ .rating-cell {
+    min-width: 120px;
+    padding: 12px 8px;
+  }
+
+  .rated-stars-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .stars-container {
+    display: flex;
+    gap: 2px;
+  }
+
+  .rating-star {
+    font-size: 14px;
+  }
+
+  .rating-value {
+    font-size: 12px;
+    font-weight: 600;
+    color: #667eea;
+  }
+
+  .quick-rating-interface {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .rating-prompt {
+    font-size: 10px;
+    text-align: center;
+  }
+
+  .rating-stars-interactive {
+    display: flex;
+    gap: 2px;
+  }
+
+  .interactive-star {
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    padding: 2px;
+  }
+
+  .interactive-star:hover {
+    transform: scale(1.2);
+  }
+
+  .rating-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .no-rating {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.6;
+  }
+
+  /* Animation pour les étoiles interactives */
+  .interactive-star .fas {
+    animation: starGlow 0.3s ease;
+  }
+
+  @keyframes starGlow {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+  }
         /* Additional styles for chat messages and notifications */
         .messages-list {
             display: flex;
@@ -1955,6 +2090,96 @@
             opacity: 0.8;
         }
 
+         .btn-rate { 
+    background: #ffc107; 
+    color: white; 
+    border: 2px solid #ffc107;
+    position: relative;
+  }
+
+  .btn-rate:hover {
+    background: #e0a800;
+    border-color: #d39e00;
+    transform: scale(1.2) rotate(5deg);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+  }
+
+  .btn-rated { 
+    background: #28a745; 
+    color: white; 
+    border: 2px solid #28a745;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .btn-rated:hover {
+    background: #218838;
+    border-color: #1e7e34;
+    transform: scale(1.2);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+  }
+
+  .rating-score {
+    font-size: 10px;
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: -4px;
+    right: -4px;
+  }
+
+  /* Animation pour attirer l'attention sur les livraisons non évaluées */
+  .btn-rate.rating-pending-badge {
+    animation: pulseRating 2s infinite;
+  }
+
+  @keyframes pulseRating {
+    0%, 100% { 
+      transform: scale(1); 
+      box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+    }
+    70% { 
+      transform: scale(1.05); 
+      box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
+    }
+  }
+
+  /* Badge pour indiquer les évaluations en attente */
+  .rating-pending-badge::after {
+    content: '!';
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+  }
+
+  /* Styles pour les lignes du tableau selon l'état d'évaluation */
+  .table-row-animated.rating-pending {
+    background-color: rgba(255, 193, 7, 0.05);
+    border-left: 3px solid #ffc107;
+  }
+
+  .table-row-animated.rating-completed {
+    background-color: rgba(40, 167, 69, 0.05);
+    border-left: 3px solid #28a745;
+  }
         .typing-avatar {
             width: 32px;
             height: 32px;
@@ -2159,6 +2384,70 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        .btn-rate { 
+    background: #ffc107; 
+    color: white; 
+    border: 2px solid #ffc107;
+}
+
+.btn-rate:hover {
+    background: #e0a800;
+    border-color: #d39e00;
+    transform: scale(1.2) rotate(5deg);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+}
+
+.btn-rated { 
+    background: #28a745; 
+    color: white; 
+    border: 2px solid #28a745;
+}
+
+.btn-rated:hover {
+    background: #218838;
+    border-color: #1e7e34;
+    transform: scale(1.2);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+}
+
+/* Animation pour attirer l'attention sur les livraisons non évaluées */
+.btn-rate {
+    animation: pulseRating 2s infinite;
+}
+
+@keyframes pulseRating {
+    0%, 100% { 
+        transform: scale(1); 
+        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+    }
+    70% { 
+        transform: scale(1.05); 
+        box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
+    }
+}
+
+/* Badge pour indiquer les évaluations en attente */
+.rating-pending-badge {
+    position: relative;
+}
+
+.rating-pending-badge::after {
+    content: '!';
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
     </style>
 </body>
 </html>

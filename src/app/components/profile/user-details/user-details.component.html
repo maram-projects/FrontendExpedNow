@@ -1,379 +1,1130 @@
-<div class="user-details-container">
-    @if (loading) {
-      <div class="loading-spinner">
-        <mat-spinner diameter="50"></mat-spinner>
-        <p>Loading user details...</p>
-      </div>
-    } @else if (error) {
-      <div class="error-message mat-elevation-z1" role="alert">
-        <mat-icon>error_outline</mat-icon>
-        <span>{{ error }}</span>
-      </div>
-    } @else if (user) {
-      <div class="user-header mat-elevation-z1">
-        <div class="user-avatar">
-          <mat-icon class="avatar-icon" aria-hidden="true">account_circle</mat-icon>
-        </div>
-        <div class="user-info">
-          <h1 class="mat-headline-5">{{ user.firstName }} {{ user.lastName }}</h1>
-          <div class="user-meta">
-            <mat-chip class="user-type">{{ getUserTypeDisplay() }}</mat-chip>
-            <mat-chip-option class="user-status" [color]="getUserStatusColor()" [selected]="true">
-                {{ getUserStatus() | titlecase }}
-              </mat-chip-option>              {{ getUserStatus() | titlecase }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Details</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5a6fd8;
+            --primary-light: #764ba2;
+            --accent: #f093fb;
+            --success: #4ade80;
+            --warning: #fbbf24;
+            --error: #ef4444;
+            --background: #0f172a;
+            --surface: #1e293b;
+            --surface-light: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border: #374151;
+            --shadow: rgba(0, 0, 0, 0.3);
+            --gradient-1: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            --gradient-2: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-3: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #f5576c);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 3rem;
+            animation: slideInFromTop 0.8s ease-out;
+        }
+
+        .back-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+            animation: fadeInUp 1s ease-out 0.2s both;
+        }
+
+        .profile-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            padding: 2rem;
+            height: fit-content;
+            position: sticky;
+            top: 2rem;
+            transition: transform 0.3s ease;
+        }
+
+        .profile-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: var(--gradient-1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 3rem;
+            color: white;
+            font-weight: 600;
+            position: relative;
+            animation: bounceIn 1.2s ease-out 0.5s both;
+        }
+
+        .profile-avatar::before {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            background: var(--gradient-2);
+            border-radius: 50%;
+            z-index: -1;
+            animation: rotate 3s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .profile-info {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .profile-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: var(--gradient-2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .profile-type {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+            animation: pulse 2s infinite;
+        }
+
+        .status-badge.active {
+            background: rgba(74, 222, 128, 0.2);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .status-badge.pending {
+            background: rgba(251, 191, 36, 0.2);
+            color: var(--warning);
+            border: 1px solid var(--warning);
+        }
+
+        .status-badge.disabled {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--error);
+            border: 1px solid var(--error);
+        }
+
+        .profile-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .stat-item:hover {
+            transform: scale(1.05);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .details-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            overflow: hidden;
+        }
+
+        .tabs-container {
+            display: flex;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 0.5rem;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 1rem 2rem;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-weight: 500;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tab-button.active {
+            background: var(--gradient-1);
+            color: white;
+            transform: scale(1.02);
+        }
+
+        .tab-button::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--gradient-2);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .tab-button:hover::before {
+            opacity: 0.1;
+        }
+
+        .tab-content {
+            padding: 2rem;
+            min-height: 500px;
+            animation: slideInFromRight 0.5s ease-out;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .info-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .info-card h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            color: var(--accent);
+            font-size: 1.1rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .location-section {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .map-container {
+            width: 100%;
+            height: 300px;
+            border-radius: 16px;
+            overflow: hidden;
+            margin: 2rem 0;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .map-placeholder {
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .location-info {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+
+        .btn:hover::before {
+            transform: translateX(100%);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-primary {
+            background: var(--gradient-1);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #22c55e);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, var(--warning), #f59e0b);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--error), #dc2626);
+            color: white;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--accent);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--gradient-2);
+            border-radius: 4px;
+            transition: width 1s ease;
+            animation: shimmer 2s infinite;
+        }
+
+        .floating-elements {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .floating-element {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .floating-element:nth-child(1) {
+            top: 20%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .floating-element:nth-child(2) {
+            top: 60%;
+            right: 15%;
+            animation-delay: -2s;
+        }
+
+        .floating-element:nth-child(3) {
+            bottom: 30%;
+            left: 70%;
+            animation-delay: -4s;
+        }
+
+        @keyframes slideInFromTop {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInFromRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes bounceIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.3);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.1);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0px) rotate(0deg);
+                opacity: 1;
+            }
+            50% {
+                transform: translateY(-20px) rotate(180deg);
+                opacity: 0.7;
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200px 0;
+            }
+            100% {
+                background-position: calc(200px + 100%) 0;
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
             
-            <div class="contact-info">
-              <span class="user-email">
-                <mat-icon aria-hidden="true">email</mat-icon>
-                <a href="mailto:{{ user.email }}">{{ user.email }}</a>
-              </span>
-              @if (user.phone) {
-                <span class="user-phone">
-                  <mat-icon aria-hidden="true">phone</mat-icon>
-                  <a href="tel:{{ user.phone }}">{{ user.phone }}</a>
-                </span>
-              }
+            .profile-card {
+                position: static;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .header {
+                margin-bottom: 2rem;
+            }
+            
+            .tabs-container {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .tab-button {
+                text-align: center;
+            }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+
+        /* Hidden class for Angular ngIf */
+        .hidden {
+            display: none;
+        }
+
+        /* Error states */
+        .error-message {
+            color: var(--error);
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--error);
+            padding: 1rem;
+            border-radius: 12px;
+            margin: 1rem 0;
+        }
+
+        /* Permission request */
+        .permission-request {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            margin: 2rem 0;
+        }
+
+        .location-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            justify-content: center;
+            margin: 1rem 0;
+        }
+
+        .location-status.granted {
+            color: var(--success);
+        }
+
+        .location-status.denied {
+            color: var(--error);
+        }
+
+        .location-status.prompt {
+            color: var(--warning);
+        }
+
+        .loading-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 60vh;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .loading-card {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            padding: 3rem;
+            max-width: 400px;
+        }
+
+        .loading-card h2 {
+            margin: 1rem 0;
+            background: var(--gradient-2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .loading-card p {
+            color: var(--text-secondary);
+        }
+
+        /* Additional animations for enhanced user experience */
+        .info-card {
+            animation: slideInFromBottom 0.6s ease-out;
+            animation-fill-mode: both;
+        }
+
+        .info-card:nth-child(1) { animation-delay: 0.1s; }
+        .info-card:nth-child(2) { animation-delay: 0.2s; }
+        .info-card:nth-child(3) { animation-delay: 0.3s; }
+        .info-card:nth-child(4) { animation-delay: 0.4s; }
+
+        @keyframes slideInFromBottom {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Enhanced hover effects */
+        .tab-button:hover {
+            transform: translateY(-2px);
+            color: var(--text-primary);
+        }
+
+        .btn:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        /* Glassmorphism effects */
+        .profile-card::before,
+        .details-section::before,
+        .info-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+            border-radius: inherit;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .profile-card:hover::before,
+        .details-section:hover::before,
+        .info-card:hover::before {
+            opacity: 1;
+        }
+
+        /* Micro-interactions */
+        .material-icons {
+            transition: all 0.3s ease;
+        }
+
+        .info-row:hover .material-icons {
+            transform: scale(1.1);
+        }
+
+        /* Success/Error state animations */
+        .error-message {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        /* Additional responsive improvements */
+        @media (max-width: 480px) {
+            .profile-avatar {
+                width: 80px;
+                height: 80px;
+                font-size: 2rem;
+            }
+            
+            .profile-name {
+                font-size: 1.25rem;
+            }
+            
+            .tab-button {
+                padding: 0.75rem 1rem;
+                font-size: 0.875rem;
+            }
+            
+            .btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg"></div>
+    
+    <!-- Floating Elements -->
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <a href="#" class="back-button" (click)="goBack()">
+                <i class="material-icons">arrow_back</i>
+                <span>Back</span>
+            </a>
+            
+            <div *ngIf="loading" class="loading-spinner"></div>
+        </header>
+
+        <!-- Error State -->
+        <div *ngIf="error" class="error-message">
+            <i class="material-icons">error</i>
+            {{ error }}
+        </div>
+
+        <!-- Main Content -->
+        <div *ngIf="user && !loading" class="main-content">
+            <!-- Profile Card -->
+            <aside class="profile-card">
+                <div class="profile-avatar">
+                    {{ user.firstName.charAt(0) }}{{ user.lastName.charAt(0) }}
+                </div>
+                
+                <div class="profile-info">
+                    <h1 class="profile-name">{{ user.firstName }} {{ user.lastName }}</h1>
+                    <p class="profile-type">{{ getUserTypeDisplay() }}</p>
+                    
+                    <div class="status-badge" [ngClass]="getUserStatus()">
+                        <i class="material-icons">{{ getUserStatusIcon() }}</i>
+                        <span>{{ getUserStatus() | titlecase }}</span>
+                    </div>
+                </div>
+                
+                <!-- Stats -->
+                <div class="profile-stats" *ngIf="isDriverType()">
+                    <div class="stat-item">
+                        <div class="stat-value">{{ user.totalDeliveries || 0 }}</div>
+                        <div class="stat-label">Total Deliveries</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ getCompletionRate() }}%</div>
+                        <div class="stat-label">Success Rate</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" [style.width.%]="getCompletionRate()"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons" *ngIf="isAdmin()">
+                    <button *ngIf="user.approved && !user.rejected" 
+                            class="btn" 
+                            [ngClass]="user.enabled ? 'btn-warning' : 'btn-success'"
+                            (click)="toggleUserStatus()">
+                        <i class="material-icons">{{ user.enabled ? 'block' : 'check_circle' }}</i>
+                        {{ user.enabled ? 'Disable' : 'Enable' }}
+                    </button>
+                    
+                    <button *ngIf="!user.approved && !user.rejected" 
+                            class="btn btn-success" 
+                            (click)="approveUser()">
+                        <i class="material-icons">thumb_up</i>
+                        Approve
+                    </button>
+                    
+                    <button *ngIf="!user.approved && !user.rejected" 
+                            class="btn btn-danger" 
+                            (click)="rejectUser()">
+                        <i class="material-icons">thumb_down</i>
+                        Reject
+                    </button>
+                </div>
+
+                <div class="action-buttons" *ngIf="canEdit">
+                    <button class="btn btn-primary" (click)="editUser()">
+                        <i class="material-icons">edit</i>
+                        Edit Profile
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Details Section -->
+            <main class="details-section">
+                <!-- Tabs -->
+                <nav class="tabs-container">
+                    <button class="tab-button" 
+                            [class.active]="activeTabIndex === 0" 
+                            (click)="changeTab(0)">
+                        <i class="material-icons">person</i>
+                        Personal Info
+                    </button>
+                    <button class="tab-button" 
+                            [class.active]="activeTabIndex === 1" 
+                            (click)="changeTab(1)">
+                        <i class="material-icons">business</i>
+                        Professional
+                    </button>
+                    <button class="tab-button" 
+                            [class.active]="activeTabIndex === 2" 
+                            (click)="changeTab(2)">
+                        <i class="material-icons">location_on</i>
+                        Location
+                    </button>
+                </nav>
+
+                <!-- Tab Content -->
+                <div class="tab-content">
+                    <!-- Personal Info Tab -->
+                    <div *ngIf="activeTabIndex === 0">
+                        <div class="info-grid">
+                            <div class="info-card">
+                                <h3>
+                                    <i class="material-icons">person</i>
+                                    Basic Information
+                                </h3>
+                                <div class="info-row">
+                                    <span class="info-label">Full Name</span>
+                                    <span class="info-value">{{ user.firstName }} {{ user.lastName }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Email</span>
+                                    <span class="info-value">{{ user.email }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Phone</span>
+                                    <span class="info-value">{{ user.phone || 'Not provided' }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Date of Registration</span>
+                                    <span class="info-value">{{ getFormattedDate(user.dateOfRegistration) }}</span>
+                                </div>
+                            </div>
+
+                            <div class="info-card">
+                                <h3>
+                                    <i class="material-icons">location_city</i>
+                                    Address Details
+                                </h3>
+                                <div class="info-row">
+                                    <span class="info-label">Address</span>
+                                    <span class="info-value">{{ user.address || 'Not provided' }}</span>
+                                </div>
+                            </div>
+
+                            <div class="info-card">
+                                <h3>
+                                    <i class="material-icons">admin_panel_settings</i>
+                                    Account Status
+                                </h3>
+                                <div class="info-row">
+                                    <span class="info-label">Account Type</span>
+                                    <span class="info-value">{{ getUserTypeDisplay() }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Status</span>
+                                    <span class="info-value">
+                                        <span class="status-badge" [ngClass]="getUserStatus()">
+                                            <i class="material-icons">{{ getUserStatusIcon() }}</i>
+                                            {{ getUserStatus() | titlecase }}
+                                        </span>
+                                    </span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Created Date</span>
+                                    <span class="info-value">{{ getFormattedDate(user.dateOfRegistration) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Professional Tab -->
+                    <div *ngIf="activeTabIndex === 1">
+                        <div class="info-grid">
+                            <div class="info-card" *ngIf="isDriverType()">
+                                <h3>
+                                    <i class="material-icons">local_shipping</i>
+                                    Driver Statistics
+                                </h3>
+                                <div class="info-row">
+                                    <span class="info-label">Total Deliveries</span>
+                                    <span class="info-value">{{ user.totalDeliveries || 0 }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Completed Deliveries</span>
+                                    <span class="info-value">{{ user.completedDeliveries || 0 }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Success Rate</span>
+                                    <span class="info-value">{{ getCompletionRate() }}%</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">Average Rating</span>
+                                    <span class="info-value">{{ user.rating || 'N/A' }}</span>
+                                </div>
+                            </div>
+
+                            <div class="info-card">
+                                <h3>
+                                    <i class="material-icons">verified</i>
+                                    Verification Status
+                                </h3>
+                                <div class="info-row">
+                                    <span class="info-label">Email Verified</span>
+                                    <span class="info-value">
+                                        <i class="material-icons" [style.color]="user.verified ? 'var(--success)' : 'var(--error)'">
+                                            {{ user.verified ? 'check_circle' : 'cancel' }}
+                                        </i>
+                                        {{ user.verified ? 'Yes' : 'No' }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="info-card">
+                                <h3>
+                                    <i class="material-icons">description</i>
+                                    Documents & Licenses
+                                </h3>
+                                <div class="info-row">
+                                    <span class="info-label">Driver's License</span>
+                                    <span class="info-value">{{ user.driverLicenseNumber || 'Not provided' }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="info-label">License Expiry</span>
+                                    <span class="info-value">{{ getFormattedDate(user.driverLicenseExpiryDate) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Location Tab -->
+                    <div *ngIf="activeTabIndex === 2" class="location-section">
+                        <h2>Location Tracking</h2>
+                        
+                        <!-- Location Permission Status -->
+                        <div class="location-status" [ngClass]="locationPermissionStatus">
+                            <i class="material-icons">
+                                {{ locationPermissionStatus === 'granted' ? 'location_on' : 
+                                   locationPermissionStatus === 'denied' ? 'location_off' : 'location_searching' }}
+                            </i>
+                            <span>
+                                Location Permission: {{ locationPermissionStatus | titlecase }}
+                            </span>
+                        </div>
+
+                        <!-- Permission Request -->
+                        <div *ngIf="locationPermissionStatus === 'denied' || locationPermissionStatus === 'prompt'" 
+                             class="permission-request">
+                            <i class="material-icons" style="font-size: 3rem; color: var(--warning);">location_off</i>
+                            <h3>Location Access Required</h3>
+                            <p>To provide location-based services, we need access to your location.</p>
+                            <button class="btn btn-primary" (click)="requestLocationPermission()">
+                                <i class="material-icons">location_on</i>
+                                Enable Location
+                            </button>
+                        </div>
+
+                        <!-- Location Loading -->
+                        <div *ngIf="locationLoading" class="permission-request">
+                            <div class="loading-spinner"></div>
+                            <p>Getting your location...</p>
+                        </div>
+
+                        <!-- Location Error -->
+                        <div *ngIf="locationError" class="error-message">
+                            <i class="material-icons">error</i>
+                            {{ locationError }}
+                        </div>
+
+                        <!-- Map Container -->
+                        <div #mapContainer class="map-container" *ngIf="userLocation">
+                            <div class="map-placeholder">
+                                <i class="material-icons" style="font-size: 4rem; color: var(--accent);">map</i>
+                                <h3>Interactive Map</h3>
+                                <p>Latitude: {{ userLocation.latitude | number:'1.6-6' }}</p>
+                                <p>Longitude: {{ userLocation.longitude | number:'1.6-6' }}</p>
+                                <p><small>In a real implementation, this would show an interactive map</small></p>
+                            </div>
+                        </div>
+
+                        <!-- Location Information -->
+                        <div *ngIf="userLocation" class="location-info">
+                            <h3>
+                                <i class="material-icons">my_location</i>
+                                Current Location Details
+                            </h3>
+                            <div class="info-grid">
+                                <div class="info-card">
+                                    <div class="info-row">
+                                        <span class="info-label">Latitude</span>
+                                        <span class="info-value">{{ userLocation.latitude | number:'1.6-6' }}</span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">Longitude</span>
+                                        <span class="info-value">{{ userLocation.longitude | number:'1.6-6' }}</span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">Address</span>
+                                        <span class="info-value">{{ userLocation.address || 'Address not available' }}</span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">Last Updated</span>
+                                        <span class="info-value">{{ userLocation.lastUpdated | date:'medium' }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Location Actions -->
+                        <div class="action-buttons" *ngIf="isCurrentUser">
+                            <button class="btn btn-primary" 
+                                    (click)="requestLocationPermission()" 
+                                    [disabled]="locationLoading">
+                                <i class="material-icons">refresh</i>
+                                Update Location
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Loading State -->
+        <div *ngIf="loading" class="loading-container">
+            <div class="loading-card">
+                <div class="loading-spinner"></div>
+                <h2>Loading user details...</h2>
+                <p>Please wait while we fetch the information.</p>
             </div>
-          </div>
         </div>
-        <div class="user-actions">
-          @if (getUserStatus() === 'pending') {
-            <button mat-raised-button color="primary" (click)="approveUser()" aria-label="Approve user">
-              <mat-icon>check_circle</mat-icon>
-              Approve
-            </button>
-            <button mat-raised-button color="warn" (click)="rejectUser()" aria-label="Reject user">
-              <mat-icon>cancel</mat-icon>
-              Reject
-            </button>
-          }
-          @if (getUserStatus() === 'active' || getUserStatus() === 'disabled') {
-            <button mat-raised-button 
-                    [color]="user.enabled ? 'warn' : 'primary'" 
-                    (click)="toggleUserStatus()"
-                    [attr.aria-label]="user.enabled ? 'Disable user' : 'Enable user'">
-              <mat-icon>{{ user.enabled ? 'lock' : 'lock_open' }}</mat-icon>
-              {{ user.enabled ? 'Disable' : 'Enable' }}
-            </button>
-          }
-        </div>
-      </div>
-  
-      <mat-tab-group [(selectedIndex)]="activeTab" animationDuration="0ms">
-        <mat-tab label="Profile">
-          <div class="tab-content">
-            <section class="profile-section">
-              <h2 class="mat-subtitle-1">Basic Information</h2>
-              <div class="profile-grid">
-                <div class="profile-item">
-                  <span class="label mat-body-2">First Name</span>
-                  <span class="value mat-body-1">{{ user.firstName }}</span>
-                </div>
-                <div class="profile-item">
-                  <span class="label mat-body-2">Last Name</span>
-                  <span class="value mat-body-1">{{ user.lastName }}</span>
-                </div>
-                <div class="profile-item">
-                  <span class="label mat-body-2">Email</span>
-                  <span class="value mat-body-1">{{ user.email }}</span>
-                </div>
-                <div class="profile-item">
-                  <span class="label mat-body-2">Phone</span>
-                  <span class="value mat-body-1">{{ user.phone || 'Not provided' }}</span>
-                </div>
-                <div class="profile-item">
-                  <span class="label mat-body-2">Address</span>
-                  <span class="value mat-body-1">{{ user.address || 'Not provided' }}</span>
-                </div>
-                <div class="profile-item">
-                  <span class="label mat-body-2">Registration Date</span>
-                  <span class="value mat-body-1">{{ user.dateOfRegistration | date:'mediumDate' }}</span>
-                </div>
-              </div>
-            </section>
-  
-            <!-- Enterprise User Details -->
-            @if (user.userType === USER_TYPES.ENTERPRISE) {
-              <section class="profile-section">
-                <h2 class="mat-subtitle-1">Enterprise Information</h2>
-                <div class="profile-grid">
-                  <div class="profile-item">
-                    <span class="label mat-body-2">Company Name</span>
-                    <span class="value mat-body-1">{{ user.companyName || 'Not provided' }}</span>
-                  </div>
-                  <div class="profile-item">
-                    <span class="label mat-body-2">Business Type</span>
-                    <span class="value mat-body-1">{{ user.businessType || 'Not provided' }}</span>
-                  </div>
-                  <div class="profile-item">
-                    <span class="label mat-body-2">VAT Number</span>
-                    <span class="value mat-body-1">{{ user.vatNumber || 'Not provided' }}</span>
-                  </div>
-                  <div class="profile-item">
-                    <span class="label mat-body-2">Business Phone</span>
-                    <span class="value mat-body-1">{{ user.businessPhone || 'Not provided' }}</span>
-                  </div>
-                  <div class="profile-item">
-                    <span class="label mat-body-2">Business Address</span>
-                    <span class="value mat-body-1">{{ user.businessAddress || 'Not provided' }}</span>
-                  </div>
-                  <div class="profile-item">
-                    <span class="label mat-body-2">Delivery Radius</span>
-                    <span class="value mat-body-1">{{ user.deliveryRadius ? user.deliveryRadius + ' km' : 'Not provided' }}</span>
-                  </div>
-                </div>
-              </section>
-            }
-  
-            <!-- Professional/Temporary Driver Details -->
-            @if (user.userType === USER_TYPES.PROFESSIONAL || user.userType === USER_TYPES.TEMPORARY) {
-              <section class="profile-section">
-                <h2 class="mat-subtitle-1">Driver Information</h2>
-                <div class="profile-grid">
-                  <div class="profile-item">
-                    <span class="label mat-body-2">License Number</span>
-                    <span class="value mat-body-1">{{ user.driverLicenseNumber || 'Not provided' }}</span>
-                  </div>
-                  <div class="profile-item">
-                    <span class="label mat-body-2">License Category</span>
-                    <span class="value mat-body-1">{{ user.driverLicenseCategory || 'Not provided' }}</span>
-                  </div>
-                  <div class="profile-item">
-                    <span class="label mat-body-2">License Issue Date</span>
-                    <span class="value mat-body-1">{{ user.driverLicenseIssueDate ? (user.driverLicenseIssueDate | date:'mediumDate') : 'Not provided' }}</span>
-                  </div>
-                  <div class="profile-item">
-                    <span class="label mat-body-2">License Expiry Date</span>
-                    <span class="value mat-body-1">{{ user.driverLicenseExpiryDate ? (user.driverLicenseExpiryDate | date:'mediumDate') : 'Not provided' }}</span>
-                  </div>
-                  <div class="profile-item">
-                    <span class="label mat-body-2">Preferred Zones</span>
-                    <span class="value mat-body-1">{{ user.preferredZones || 'Not provided' }}</span>
-                  </div>
-                  <div class="profile-item">
-                    <span class="label mat-body-2">Availability</span>
-                    <span class="value mat-body-1">{{ user.availabilitySchedule || 'Not provided' }}</span>
-                  </div>
-                </div>
-              </section>
-  
-              <section class="profile-section">
-                <h2 class="mat-subtitle-1">Vehicle Information</h2>
-                <div class="profile-grid">
-                  <div class="profile-item">
-                    <span class="label mat-body-2">Vehicle Type</span>
-                    <span class="value mat-body-1">{{ user.vehicleType || 'Not provided' }}</span>
-                  </div>
-                  <div class="profile-item">
-                    <span class="label mat-body-2">Vehicle Brand</span>
-                    <span class="value mat-body-1">{{ user.vehicleBrand || 'Not provided' }}</span>
-                  </div>
-                  <div class="profile-item">
-                    <span class="label mat-body-2">Vehicle Model</span>
-                    <span class="value mat-body-1">{{ user.vehicleModel || 'Not provided' }}</span>
-                  </div>
-                  <div class="profile-item">
-                    <span class="label mat-body-2">License Plate</span>
-                    <span class="value mat-body-1">{{ user.vehiclePlateNumber || 'Not provided' }}</span>
-                  </div>
-                  <div class="profile-item">
-                    <span class="label mat-body-2">Vehicle Year</span>
-                    <span class="value mat-body-1">{{ user.vehicleYear || 'Not provided' }}</span>
-                  </div>
-                  <div class="profile-item">
-                    <span class="label mat-body-2">Capacity (kg)</span>
-                    <span class="value mat-body-1">{{ user.vehicleCapacityKg || 'Not provided' }}</span>
-                  </div>
-                  <div class="profile-item">
-                    <span class="label mat-body-2">Volume (m³)</span>
-                    <span class="value mat-body-1">{{ user.vehicleVolumeM3 || 'Not provided' }}</span>
-                  </div>
-                  <div class="profile-item">
-                    <span class="label mat-body-2">Has Fridge</span>
-                    <span class="value mat-body-1">{{ user.vehicleHasFridge ? 'Yes' : 'No' }}</span>
-                  </div>
-                </div>
-              </section>
-            }
-          </div>
-        </mat-tab>
-  
-        <mat-tab label="Activity">
-          <div class="tab-content">
-            <section class="activity-section">
-              <h2 class="mat-subtitle-1">Performance Metrics</h2>
-              <div class="metrics-grid">
-                <mat-card class="metric-card">
-                  <div class="metric-value">{{ user.rating || 0 }}</div>
-                  <div class="metric-label mat-caption">Rating</div>
-                </mat-card>
-                <mat-card class="metric-card">
-                  <div class="metric-value">{{ user.completedDeliveries || 0 }}</div>
-                  <div class="metric-label mat-caption">Completed Deliveries</div>
-                </mat-card>
-                <mat-card class="metric-card">
-                  <div class="metric-value">{{ user.totalDeliveries || 0 }}</div>
-                  <div class="metric-label mat-caption">Total Deliveries</div>
-                </mat-card>
-                <mat-card class="metric-card">
-                  <div class="metric-value">{{ user.successScore || 0 }}%</div>
-                  <div class="metric-label mat-caption">Success Score</div>
-                </mat-card>
-                <mat-card class="metric-card">
-                  <div class="metric-value">{{ user.averageDeliveryTime || 0 }} min</div>
-                  <div class="metric-label mat-caption">Avg. Delivery Time</div>
-                </mat-card>
-                <mat-card class="metric-card">
-                  <div class="metric-value">{{ user.lastActive ? (user.lastActive | date:'medium') : 'Never' }}</div>
-                  <div class="metric-label mat-caption">Last Active</div>
-                </mat-card>
-              </div>
-            </section>
-  
-            @if (user.userType === USER_TYPES.PROFESSIONAL || user.userType === USER_TYPES.TEMPORARY) {
-              <section class="activity-section">
-                <h2 class="mat-subtitle-1">Assigned Vehicle</h2>
-                @if (user.assignedVehicle) {
-                  <mat-card class="vehicle-card">
-                    <div class="vehicle-image">
-                      <img [src]="user.assignedVehicle.photoPath || 'assets/default-vehicle.png'" 
-                           alt="{{ user.assignedVehicle.make }} {{ user.assignedVehicle.model }}">
-                    </div>
-                    <div class="vehicle-details">
-                      <h3 class="mat-subtitle-1">{{ user.assignedVehicle.make }} {{ user.assignedVehicle.model }}</h3>
-                      <p class="mat-body-1">Type: {{ user.assignedVehicle.vehicleType }}</p>
-                      <p class="mat-body-1">Year: {{ user.assignedVehicle.year }}</p>
-                      <p class="mat-body-1">Plate: {{ user.assignedVehicle.licensePlate }}</p>
-                      <p class="mat-body-1">Capacity: {{ user.assignedVehicle.maxLoad }} kg</p>
-                    </div>
-                  </mat-card>
-                } @else {
-                  <p class="mat-body-1">No vehicle currently assigned</p>
-                }
-              </section>
-            }
-          </div>
-        </mat-tab>
-  
-        <mat-tab label="Documents">
-          <div class="tab-content">
-            <section class="documents-section">
-              <h2 class="mat-subtitle-1">User Documents</h2>
-              <div class="documents-grid">
-                <!-- Identity Document -->
-                <mat-card class="document-card">
-                  <div class="document-icon">
-                    <mat-icon>badge</mat-icon>
-                  </div>
-                  <div class="document-info">
-                    <h3 class="mat-subtitle-1">Identity Document</h3>
-                    @if (user.identityPhotoUrl) {
-                      <a [href]="user.identityPhotoUrl" target="_blank" mat-button color="primary" aria-label="View identity document">
-                        <mat-icon>visibility</mat-icon>
-                        View Document
-                      </a>
-                    } @else {
-                      <p class="mat-body-1">Not provided</p>
-                    }
-                  </div>
-                </mat-card>
-  
-                <!-- Driver License -->
-                @if (user.userType === USER_TYPES.PROFESSIONAL || user.userType === USER_TYPES.TEMPORARY) {
-                  <mat-card class="document-card">
-                    <div class="document-icon">
-                      <mat-icon>directions_car</mat-icon>
-                    </div>
-                    <div class="document-info">
-                      <h3 class="mat-subtitle-1">Driver License</h3>
-                      @if (user.driverLicenseNumber) {
-                        <p class="mat-body-1">Number: {{ user.driverLicenseNumber }}</p>
-                        <p class="mat-body-1">Category: {{ user.driverLicenseCategory }}</p>
-                        <p class="mat-body-1">Expires: {{ user.driverLicenseExpiryDate ? (user.driverLicenseExpiryDate | date:'mediumDate') : 'Not provided' }}</p>
-                      } @else {
-                        <p class="mat-body-1">Not provided</p>
-                      }
-                    </div>
-                  </mat-card>
-                }
-  
-                <!-- Criminal Record -->
-                @if (user.userType === USER_TYPES.PROFESSIONAL || user.userType === USER_TYPES.TEMPORARY) {
-                  <mat-card class="document-card">
-                    <div class="document-icon">
-                      <mat-icon>gavel</mat-icon>
-                    </div>
-                    <div class="document-info">
-                      <h3 class="mat-subtitle-1">Criminal Record</h3>
-                      @if (user.criminalRecordDocumentUrl) {
-                        <a [href]="user.criminalRecordDocumentUrl" target="_blank" mat-button color="primary" aria-label="View criminal record">
-                          <mat-icon>visibility</mat-icon>
-                          View Document
-                        </a>
-                      } @else {
-                        <p class="mat-body-1">Not provided</p>
-                      }
-                    </div>
-                  </mat-card>
-                }
-  
-                <!-- Medical Certificate -->
-                @if (user.userType === USER_TYPES.PROFESSIONAL || user.userType === USER_TYPES.TEMPORARY) {
-                  <mat-card class="document-card">
-                    <div class="document-icon">
-                      <mat-icon>medical_services</mat-icon>
-                    </div>
-                    <div class="document-info">
-                      <h3 class="mat-subtitle-1">Medical Certificate</h3>
-                      @if (user.medicalCertificateUrl) {
-                        <a [href]="user.medicalCertificateUrl" target="_blank" mat-button color="primary" aria-label="View medical certificate">
-                          <mat-icon>visibility</mat-icon>
-                          View Document
-                        </a>
-                      } @else {
-                        <p class="mat-body-1">Not provided</p>
-                      }
-                    </div>
-                  </mat-card>
-                }
-  
-                <!-- Vehicle Insurance -->
-                @if (user.userType === USER_TYPES.PROFESSIONAL || user.userType === USER_TYPES.TEMPORARY) {
-                  <mat-card class="document-card">
-                    <div class="document-icon">
-                      <mat-icon>assignment</mat-icon>
-                    </div>
-                    <div class="document-info">
-                      <h3 class="mat-subtitle-1">Vehicle Insurance</h3>
-                      @if (user.vehicleInsuranceExpiry) {
-                        <p class="mat-body-1">Expires: {{ user.vehicleInsuranceExpiry | date:'mediumDate' }}</p>
-                      } @else {
-                        <p class="mat-body-1">Not provided</p>
-                      }
-                    </div>
-                  </mat-card>
-                }
-  
-                <!-- Vehicle Inspection -->
-                @if (user.userType === USER_TYPES.PROFESSIONAL || user.userType === USER_TYPES.TEMPORARY) {
-                  <mat-card class="document-card">
-                    <div class="document-icon">
-                      <mat-icon>car_repair</mat-icon>
-                    </div>
-                    <div class="document-info">
-                      <h3 class="mat-subtitle-1">Vehicle Inspection</h3>
-                      @if (user.vehicleInspectionExpiry) {
-                        <p class="mat-body-1">Expires: {{ user.vehicleInspectionExpiry | date:'mediumDate' }}</p>
-                      } @else {
-                        <p class="mat-body-1">Not provided</p>
-                      }
-                    </div>
-                  </mat-card>
-                }
-              </div>
-            </section>
-          </div>
-        </mat-tab>
-      </mat-tab-group>
-    }
-  </div>
+    </div>
+</body>
+</html>

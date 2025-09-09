@@ -1,62 +1,99 @@
-// toast.service.ts
+// toast.service.ts - Updated to support action notifications
+
 import { Injectable } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
 
-@Injectable({ providedIn: 'root' })
+export interface NotificationAction {
+  label: string;
+  callback: () => void;
+}
+
+export interface CustomNotification {
+  id: number;
+  type: 'success' | 'error' | 'warning' | 'info';
+  title: string;
+  message: string;
+  action?: NotificationAction;
+  duration?: number;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
 export class ToastService {
-  constructor(private snackBar: MatSnackBar) {}
+  private notifications: CustomNotification[] = [];
 
-  // FIXED: Better parameter usage with meaningful names and optional parameters
-  showSuccess(
-    message: string, 
-    action: string = 'Close', 
-    additionalClass: string = '', 
-    duration: number = 3000
-  ): void {
-    const panelClasses = ['success-snackbar'];
-    if (additionalClass) {
-      panelClasses.push(additionalClass);
+  constructor() { }
+
+  showSuccess(message: string, title: string = 'Succès'): void {
+    this.showToast('success', title, message);
+  }
+
+  showError(message: string, title: string = 'Erreur'): void {
+    this.showToast('error', title, message);
+  }
+
+  showWarning(message: string, title: string = 'Attention'): void {
+    this.showToast('warning', title, message);
+  }
+
+  showInfo(message: string, title: string = 'Information'): void {
+    this.showToast('info', title, message);
+  }
+
+  showNotification(notification: Omit<CustomNotification, 'id'>): void {
+    const customNotification: CustomNotification = {
+      ...notification,
+      id: Date.now() + Math.random()
+    };
+    
+    this.notifications.push(customNotification);
+    
+    // Auto-dismiss after duration (default 5 seconds)
+    const duration = notification.duration || 5000;
+    setTimeout(() => {
+      this.dismissNotification(customNotification.id);
+    }, duration);
+  }
+
+  private showToast(type: 'success' | 'error' | 'warning' | 'info', title: string, message: string): void {
+    const notification: CustomNotification = {
+      id: Date.now() + Math.random(),
+      type,
+      title,
+      message
+    };
+    
+    this.notifications.push(notification);
+    
+    // Auto-dismiss success and info messages after 3 seconds
+    if (type === 'success' || type === 'info') {
+      setTimeout(() => {
+        this.dismissNotification(notification.id);
+      }, 3000);
     }
     
-    this.snackBar.open(message, action, {
-      duration: duration,
-      panelClass: panelClasses
-    });
+    // Auto-dismiss warnings after 5 seconds
+    if (type === 'warning') {
+      setTimeout(() => {
+        this.dismissNotification(notification.id);
+      }, 5000);
+    }
+    
+    // Errors stay until manually dismissed
   }
 
-  showError(message: string, action: string = 'Close', duration: number = 5000): void {
-    this.snackBar.open(message, action, {
-      duration: duration,
-      panelClass: ['error-snackbar']
-    });
+  dismissNotification(id: number): void {
+    const index = this.notifications.findIndex(n => n.id === id);
+    if (index > -1) {
+      this.notifications.splice(index, 1);
+    }
   }
 
-  showWarning(message: string, action: string = 'Close', duration: number = 4000): void {
-    this.snackBar.open(message, action, {
-      duration: duration,
-      panelClass: ['warning-snackbar']
-    });
+  getNotifications(): CustomNotification[] {
+    return this.notifications;
   }
 
-  showInfo(message: string, action: string = 'Close', duration: number = 3000): void {
-    this.snackBar.open(message, action, {
-      duration: duration,
-      panelClass: ['info-snackbar']
-    });
-  }
-
-  // ALTERNATIVE: If you want to support rich object format
-  showSuccessRich(config: {
-    title?: string;
-    message: string;
-    icon?: string;
-    duration?: number;
-    action?: string;
-  }): void {
-    const displayMessage = config.title ? `${config.title}: ${config.message}` : config.message;
-    this.snackBar.open(displayMessage, config.action || 'Close', {
-      duration: config.duration || 3000,
-      panelClass: ['success-snackbar']
-    });
+  clearAll(): void {
+    this.notifications = [];
   }
 }

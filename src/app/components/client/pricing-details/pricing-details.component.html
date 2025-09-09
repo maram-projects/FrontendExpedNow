@@ -1,20 +1,28 @@
 <!-- pricing-details.component.html -->
-<div class="pricing-breakdown-container" @fadeInOut *ngIf="pricing">
+<div class="pricing-container" *ngIf="isPricingValid()" [@fadeInOut]>
   <div class="pricing-card">
+    <!-- Header -->
     <div class="card-header">
-      <h3 class="card-title">
-        <i class="fas fa-calculator"></i>
-        Pricing Breakdown
+      <h3 class="header-title">
+        <div class="header-icon">
+          <i class="fas fa-calculator"></i>
+        </div>
+      Complete delivery cost analysis
       </h3>
-      <div class="card-subtitle">Delivery Cost Details</div>
+      <div class="header-subtitle"></div>
     </div>
     
+    <!-- Content -->
     <div class="pricing-content">
-      <!-- Basic Pricing Information -->
-      <div class="pricing-section">
+      <!-- Base Costs Section -->
+      <div class="pricing-section" *ngIf="pricing">
         <h4 class="section-title">Base Costs</h4>
         <div class="pricing-grid">
-          <div class="pricing-item" @slideIn>
+          <!-- Distance -->
+          <div class="pricing-item" 
+               *ngIf="hasValue(pricing.distance)"
+               [@slideIn]
+               [style.animation-delay]="getAnimationDelay(0)">
             <div class="item-icon">
               <i class="fas fa-route"></i>
             </div>
@@ -24,7 +32,11 @@
             </div>
           </div>
           
-          <div class="pricing-item" @slideIn>
+          <!-- Base Price -->
+          <div class="pricing-item" 
+               *ngIf="hasValue(pricing.basePrice)"
+               [@slideIn]
+               [style.animation-delay]="getAnimationDelay(1)">
             <div class="item-icon">
               <i class="fas fa-tag"></i>
             </div>
@@ -34,7 +46,11 @@
             </div>
           </div>
           
-          <div class="pricing-item" @slideIn>
+          <!-- Distance Cost -->
+          <div class="pricing-item" 
+               *ngIf="hasValue(pricing.distanceCost)"
+               [@slideIn]
+               [style.animation-delay]="getAnimationDelay(2)">
             <div class="item-icon">
               <i class="fas fa-road"></i>
             </div>
@@ -44,8 +60,12 @@
             </div>
           </div>
           
-          <div class="pricing-item" @slideIn>
-            <div class="item-icon">
+          <!-- Weight Cost -->
+          <div class="pricing-item" 
+               *ngIf="hasValue(pricing.weightCost)"
+               [@slideIn]
+               [style.animation-delay]="getAnimationDelay(3)">
+            <div class="item-icon premium">
               <i class="fas fa-weight-hanging"></i>
             </div>
             <div class="item-details">
@@ -60,114 +80,132 @@
       <div class="pricing-section" *ngIf="hasAdditionalFees()">
         <h4 class="section-title">Additional Fees</h4>
         <div class="pricing-grid">
+          <!-- Urgency Fee -->
           <div class="pricing-item highlight" 
-               *ngIf="hasValue(pricing.urgencyFee)" 
-               @slideIn>
+               *ngIf="hasValue(pricing?.urgencyFee)"
+               [@slideIn]
+               [style.animation-delay]="getAnimationDelay(4)">
             <div class="item-icon urgent">
-              <i class="fas fa-clock"></i>
+              <i class="fas fa-bolt"></i>
             </div>
             <div class="item-details">
               <span class="item-label">Urgency Fee</span>
-              <span class="item-value">{{ formatCurrency(pricing.urgencyFee) }}</span>
+              <span class="item-value">{{ formatCurrency(pricing?.urgencyFee) }}</span>
             </div>
           </div>
           
+          <!-- Peak Hours Surcharge -->
           <div class="pricing-item highlight" 
-               *ngIf="hasValue(pricing.peakSurcharge)" 
-               @slideIn>
+               *ngIf="hasValue(pricing?.peakSurcharge)"
+               [@slideIn]
+               [style.animation-delay]="getAnimationDelay(5)">
             <div class="item-icon peak">
               <i class="fas fa-chart-line"></i>
             </div>
             <div class="item-details">
-              <span class="item-label">Peak Hours Surcharge</span>
-              <span class="item-value">{{ formatCurrency(pricing.peakSurcharge) }}</span>
+              <span class="item-label">Peak Hours</span>
+              <span class="item-value">{{ formatCurrency(pricing?.peakSurcharge) }}</span>
             </div>
           </div>
           
+          <!-- Holiday Surcharge -->
           <div class="pricing-item highlight" 
-               *ngIf="hasValue(pricing.holidaySurcharge)" 
-               @slideIn>
-            <div class="item-icon holiday">
-              <i class="fas fa-calendar-day"></i>
+               *ngIf="hasValue(pricing?.holidaySurcharge)"
+               [@slideIn]
+               [style.animation-delay]="getAnimationDelay(6)">
+            <div class="item-icon premium">
+              <i class="fas fa-calendar-alt"></i>
             </div>
             <div class="item-details">
               <span class="item-label">Holiday Surcharge</span>
-              <span class="item-value">{{ formatCurrency(pricing.holidaySurcharge) }}</span>
+              <span class="item-value">{{ formatCurrency(pricing?.holidaySurcharge) }}</span>
             </div>
           </div>
         </div>
       </div>
       
       <!-- Discount Section -->
-      <div class="pricing-section" *ngIf="hasValue(pricing.discountAmount)">
-        <div class="pricing-item discount" @slideIn>
-          <div class="item-icon discount-icon">
+      <div class="pricing-section" *ngIf="hasValue(pricing?.discountAmount)">
+        <div class="pricing-item discount" [@slideIn]>
+          <div class="item-icon discount">
             <i class="fas fa-percentage"></i>
           </div>
           <div class="item-details">
             <span class="item-label">Applied Discount</span>
-            <span class="item-value">-{{ formatCurrency(pricing.discountAmount) }}</span>
+            <span class="item-value">-{{ formatCurrency(pricing?.discountAmount) }}</span>
           </div>
         </div>
       </div>
-    </div>
-    
-    <!-- Total Amount -->
-    <div class="total-section">
-      <div class="divider"></div>
-      <div class="total-wrapper" @fadeInOut>
-        <div class="total-content">
-          <div class="total-icon">
-            <i class="fas fa-receipt"></i>
-          </div>
-          <div class="total-details">
-            <span class="total-label">Total Amount</span>
-            <span class="total-sublabel">Final Price</span>
-          </div>
-          <div class="total-amount">
-            <span class="total-value">{{ formatCurrency(pricing.totalAmount) }}</span>
+
+      <!-- Total Section -->
+      <div class="total-section" *ngIf="pricing && pricing.totalAmount !== undefined">
+        <div class="total-divider"></div>
+        <div class="total-card" [@fadeInOut]>
+          <div class="total-content">
+            <div class="total-icon">
+              <i class="fas fa-receipt"></i>
+            </div>
+            <div class="total-info">
+              <div class="total-label">Total Amount</div>
+              <div class="total-sublabel">Final delivery cost</div>
+              <small class="total-sublabel" *ngIf="pricing?.calculatedAt">
+                Calculated: {{ pricing?.calculatedAt | date:'short' }}
+              </small>
+            </div>
+            <div class="total-amount">
+              <div class="total-value">{{ formatCurrency(pricing.totalAmount) }}</div>
+            </div>
           </div>
         </div>
       </div>
     </div>
     
     <!-- Applied Rules Section -->
-    <div class="applied-rules-section" *ngIf="getAppliedRules().length > 0">
+    <div class="rules-section" *ngIf="getAppliedRules().length > 0">
       <div class="rules-header" 
            (click)="toggleRules()" 
-           [class.active]="showRules"
-           role="button"
-           tabindex="0"
            (keydown.enter)="toggleRules()"
-           (keydown.space)="toggleRules()">
+           (keydown.space)="toggleRules(); $event.preventDefault()"
+           tabindex="0"
+           [attr.aria-expanded]="showRules"
+           [attr.aria-controls]="'rules-content'"
+           role="button">
         <div class="rules-title">
           <i class="fas fa-list-check"></i>
           <h4>Applied Pricing Rules ({{ getAppliedRules().length }})</h4>
         </div>
-        <div class="rules-toggle">
-          <i class="fas fa-chevron-down" 
-             [class.rotated]="showRules"></i>
+        <div class="rules-toggle" 
+             [class.expanded]="showRules">
+          <i class="fas fa-chevron-down"></i>
         </div>
       </div>
       
-      <div [@expandCollapse]="animationState" class="rules-content">
-        <div *ngIf="getAppliedRules().length > 0" class="rules-list">
-          <div *ngFor="let rule of getAppliedRules(); let i = index; trackBy: trackByRule"
-               class="rule-item"
-               @slideIn
+      <div class="rules-content" 
+           [class.expanded]="showRules"
+           [@expandCollapse]="animationState"
+           id="rules-content"
+           [attr.aria-hidden]="!showRules">
+        <div class="rules-list">
+          <div class="rule-item" 
+               *ngFor="let rule of getAppliedRules(); trackBy: trackByRule; let i = index"
+               [@slideIn]
                [style.animation-delay]="getAnimationDelay(i)">
             <div class="rule-content">
-              <div class="rule-icon">
+              <div class="rule-icon"
+                   [class.negative]="rule.amount < 0">
                 <i class="fas" 
                    [class.fa-check-circle]="rule.amount >= 0"
-                   [class.fa-minus-circle]="rule.amount < 0"></i>
+                   [class.fa-gift]="rule.amount < 0 && rule.type === 'discount'"
+                   [class.fa-exclamation-circle]="rule.amount < 0 && rule.type !== 'discount'"
+                   [class.fa-clock]="rule.type === 'surcharge'"
+                   [class.fa-plus-circle]="rule.type === 'fee'"></i>
               </div>
               <div class="rule-details">
                 <span class="rule-description">{{ rule.description }}</span>
                 <span class="rule-amount" 
-                      [class.positive]="rule.amount > 0"
+                      [class.positive]="rule.amount >= 0"
                       [class.negative]="rule.amount < 0">
-                  {{ rule.amount > 0 ? '+' : '' }}{{ formatCurrency(Math.abs(rule.amount)) }}
+                  {{ rule.amount >= 0 ? '+' : '' }}{{ formatCurrency(rule.amount) }}
                 </span>
               </div>
             </div>
@@ -178,11 +216,56 @@
   </div>
 </div>
 
-<!-- Error State -->
-<div class="error-state" *ngIf="!pricing" @fadeInOut>
-  <div class="error-content">
-    <i class="fas fa-exclamation-triangle"></i>
-    <h4>No Pricing Data Available</h4>
-    <p>Please try again later or contact support</p>
+<!-- Error/Loading State -->
+<div class="pricing-container" *ngIf="!isPricingValid() && pricing !== null">
+  <div class="pricing-card">
+    <div class="card-header">
+      <h3 class="header-title">
+        <div class="header-icon">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        Pricing Error
+      </h3>
+      <div class="header-subtitle">Unable to calculate pricing details</div>
+    </div>
+    
+    <div class="pricing-content">
+      <div class="pricing-item">
+        <div class="item-icon">
+          <i class="fas fa-info-circle"></i>
+        </div>
+        <div class="item-details">
+          <span class="item-label">Status</span>
+          <span class="item-value">Invalid pricing data</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- No Data State -->
+<div class="pricing-container" *ngIf="pricing === null">
+  <div class="pricing-card">
+    <div class="card-header">
+      <h3 class="header-title">
+        <div class="header-icon">
+          <i class="fas fa-spinner fa-spin"></i>
+        </div>
+        Loading Pricing
+      </h3>
+      <div class="header-subtitle">Calculating delivery costs...</div>
+    </div>
+    
+    <div class="pricing-content">
+      <div class="pricing-item">
+        <div class="item-icon">
+          <i class="fas fa-clock"></i>
+        </div>
+        <div class="item-details">
+          <span class="item-label">Status</span>
+          <span class="item-value">Please wait...</span>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

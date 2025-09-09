@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, filter, map, tap } from 'rxjs/operators';
 import { Router } from '@angular/router';
@@ -7,6 +7,57 @@ import { environment } from '../../environments/environment';
 import { AuthService } from './auth.service';
 import { Mission } from '../models/mission.model';
 import { PaymentMethod } from '../models/Payment.model';
+
+export interface DetailedRatingRequest {
+  rating: number;
+  comment?: string;
+  categories: string[];
+  ratingType: 'overall' | 'delivery_person' | 'service';
+  punctualityRating?: number;
+  professionalismRating?: number;
+  packageConditionRating?: number;
+  communicationRating?: number;
+  deliveryPersonFeedback?: string;
+  wouldRecommend?: boolean;
+  improvements?: string[];
+}
+
+export interface DetailedRatingResponse {
+  id: string;
+  deliveryId: string;
+  clientId: string;
+  overallRating: number;
+  comment?: string;
+  categories: string[];
+  ratingType: string;
+  punctualityRating?: number;
+  professionalismRating?: number;
+  packageConditionRating?: number;
+  communicationRating?: number;
+  deliveryPersonFeedback?: string;
+  wouldRecommend?: boolean;
+  improvements?: string[];
+  ratedAt: string;
+  deliveryPersonName?: string;
+  deliveryAddress?: string;
+  deliveryCompletedAt?: string;
+}
+
+export interface RatingStatistics {
+  averageRating: number;
+  totalRatings: number;
+  fiveStarCount: number;
+  fourStarCount: number;
+  threeStarCount: number;
+  twoStarCount: number;
+  oneStarCount: number;
+  punctualityAverage: number;
+  professionalismAverage: number;
+  packageConditionAverage: number;
+  communicationAverage: number;
+  recommendationRate: number;
+}
+
 
 export enum DeliveryStatus {
   PENDING = 'PENDING',
@@ -35,7 +86,7 @@ export interface DeliveryRequest {
   packageWeight: number;
   vehicleId?: string;
   paymentId?: string;
-  paymentStatus?: PaymentStatus;
+  paymentStatus?: PaymentStatus | string; // Allow both types during transition
   discountCode?: string;
   discountAmount?: number;
   preferredPaymentMethod?: string;
@@ -607,6 +658,79 @@ assignDelivery(deliveryId: string): Observable<any> {
       console.error('Error assigning delivery:', error);
       return throwError(() => new Error('Failed to assign delivery: ' + 
         (error.error?.message || error.message)));
+    })
+  );
+}
+
+
+
+// Soumettre une évaluation détaillée
+submitDetailedRating(deliveryId: string, ratingData: DetailedRatingRequest): Observable<any> {
+  if (!deliveryId || !ratingData.rating) {
+    return throwError(() => new Error('Invalid rating data'));
+  }
+
+  return this.http.post(
+    `${this.apiUrl}/${deliveryId}/detailed-rating`,
+    ratingData,
+    { headers: this.getAuthHeaders() }
+  ).pipe(
+    catchError((error: HttpErrorResponse) => {
+      console.error('Detailed rating error:', error);
+      let errorMsg = error.error?.error || 
+                    error.error?.message || 
+                    error.message || 
+                    'Failed to submit rating';
+      return throwError(() => new Error(errorMsg));
+    })
+  );
+}
+
+// Obtenir une évaluation détaillée
+getDetailedRating(deliveryId: string): Observable<DetailedRatingResponse> {
+  return this.http.get<DetailedRatingResponse>(
+    `${this.apiUrl}/${deliveryId}/detailed-rating`,
+    { headers: this.getAuthHeaders() }
+  ).pipe(
+    catchError(error => {
+      console.error('Error getting detailed rating:', error);
+      return throwError(() => new Error('Failed to get detailed rating'));
+    })
+  );
+}
+
+// Obtenir les statistiques d'évaluation
+getRatingStatistics(deliveryPersonId?: string, days: number = 30): Observable<RatingStatistics> {
+  let params = new HttpParams().set('days', days.toString());
+  if (deliveryPersonId) {
+    params = params.set('deliveryPersonId', deliveryPersonId);
+  }
+
+  return this.http.get<RatingStatistics>(
+    `${this.apiUrl}/rating-statistics`,
+    { 
+      headers: this.getAuthHeaders(),
+      params: params 
+    }
+  ).pipe(
+    catchError(error => {
+      console.error('Error getting rating statistics:', error);
+      return throwError(() => new Error('Failed to get rating statistics'));
+    })
+  );
+}
+
+// Obtenir l'historique des évaluations d'un client
+getClientRatingHistory(clientId?: string): Observable<DetailedRatingResponse[]> {
+  const userId = clientId || this.authService.getCurrentUser()?.userId;
+  
+  return this.http.get<DetailedRatingResponse[]>(
+    `${this.apiUrl}/client/${userId}/rating-history`,
+    { headers: this.getAuthHeaders() }
+  ).pipe(
+    catchError(error => {
+      console.error('Error getting client rating history:', error);
+      return throwError(() => new Error('Failed to get rating history'));
     })
   );
 }

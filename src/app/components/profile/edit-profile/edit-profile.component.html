@@ -1,168 +1,544 @@
-<div class="edit-profile-container">
-  <div class="header">
-    <h2>
-      <mat-icon>{{ isAdminMode ? 'admin_panel_settings' : 'person' }}</mat-icon>
-      {{ isAdminMode ? 'Edit User' : 'Edit Profile' }}
-    </h2>
-    <p>{{ isAdminMode ? 'Manage user account details' : 'Update your personal information' }}</p>
+<!-- edit-profile.component.html -->
+<div class="profile-edit-container">
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" *ngIf="isLoading">
+    <div class="loading-spinner">
+      <div class="spinner"></div>
+      <p>Loading your profile...</p>
+    </div>
   </div>
 
-  @if (error) {
-    <div class="error-message">
-      <mat-icon>error</mat-icon>
-      {{ error }}
+  <!-- Success/Error Notifications -->
+  <div class="notification-container" [class.show]="showNotification">
+    <div class="notification success" *ngIf="successMessage" [@slideDown]>
+      <i class="fas fa-check-circle"></i>
+      <span>{{ successMessage }}</span>
     </div>
-  }
-
-  @if (loading) {
-    <div class="loading-container">
-      <mat-spinner diameter="50"></mat-spinner>
-      <p>Loading user data...</p>
+    <div class="notification error" *ngIf="errorMessage" [@slideDown]>
+      <i class="fas fa-exclamation-triangle"></i>
+      <span>{{ errorMessage }}</span>
     </div>
-  } @else {
-    <mat-card class="profile-card">
-      <mat-card-header>
-        <mat-card-title>
-          {{ isAdminMode ? 'User Information' : 'Personal Information' }}
-        </mat-card-title>
-        <mat-card-subtitle>
-          {{ isAdminMode ? 'Edit user account details and permissions' : 'Keep your information up to date' }}
-        </mat-card-subtitle>
-      </mat-card-header>
+  </div>
 
-      <mat-card-content>
-        <form [formGroup]="editProfileForm" (ngSubmit)="onSubmit()" class="profile-form">
+  <!-- Main Content -->
+  <div class="profile-edit-wrapper animate-in">
+    <!-- Header -->
+    <div class="profile-header animate-in">
+      <div class="header-background"></div>
+      <div class="header-content">
+        <div class="profile-avatar">
+          <img [src]="profilePhotoUrl" alt="Profile Photo" class="avatar-img">
+          <button class="avatar-edit-btn" type="button">
+            <i class="fas fa-camera"></i>
+          </button>
+        </div>
+        <div class="profile-info">
+          <h1 class="profile-title">Edit Your Profile</h1>
+          <p class="profile-subtitle">Update your information and preferences</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress Indicator -->
+    <div class="progress-container animate-in">
+      <div class="progress-bar">
+        <div 
+          class="progress-fill" 
+          [style.width.%]="((currentStep + 1) / steps.length) * 100"
+        ></div>
+      </div>
+      <div class="step-indicators">
+        <div 
+          *ngFor="let step of steps; let i = index"
+          class="step-indicator"
+          [class.active]="i === currentStep"
+          [class.completed]="i < currentStep"
+        >
+          <div class="step-circle">
+            <i 
+              class="fas"
+              [class.fa-check]="i < currentStep"
+              [class.fa-user]="i === 0 && i >= currentStep"
+              [class.fa-phone]="i === 1 && i >= currentStep"
+              [class.fa-cog]="i === 2 && i >= currentStep"
+              [class.fa-save]="i === 3 && i >= currentStep"
+            ></i>
+          </div>
+          <span class="step-label">{{ getStepLabel(i) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form Content -->
+    <div class="form-container">
+      <form [formGroup]="profileForm" (ngSubmit)="onSubmit()" class="profile-form">
+        
+        <!-- Step 1: Basic Information -->
+        <div class="form-step" *ngIf="currentStep === 0" [@stepAnimation]>
+          <div class="step-header">
+            <h2><i class="fas fa-user"></i> Basic Information</h2>
+            <p>Let's start with your basic details</p>
+          </div>
           
-          <!-- Basic Information Section -->
-          <div class="form-section">
-            <h3>Basic Information</h3>
-            
-            <div class="form-row">
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>First Name</mat-label>
-                <input matInput formControlName="firstName" placeholder="Enter first name">
-                <mat-icon matSuffix>person</mat-icon>
-                @if (isFieldInvalid('firstName')) {
-                  <mat-error>{{ getFieldError('firstName') }}</mat-error>
-                }
-              </mat-form-field>
-
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Last Name</mat-label>
-                <input matInput formControlName="lastName" placeholder="Enter last name">
-                <mat-icon matSuffix>person</mat-icon>
-                @if (isFieldInvalid('lastName')) {
-                  <mat-error>{{ getFieldError('lastName') }}</mat-error>
-                }
-              </mat-form-field>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="firstName">
+                First Name <span class="required">*</span>
+              </label>
+              <div class="input-wrapper">
+                <i class="fas fa-user input-icon"></i>
+                <input
+                  type="text"
+                  id="firstName"
+                  formControlName="firstName"
+                  class="form-input"
+                  [class.error]="hasError('firstName', 'required') || hasError('firstName', 'minlength')"
+                  placeholder="Enter your first name"
+                >
+              </div>
+              <div class="error-message" *ngIf="getErrorMessage('firstName')">
+                {{ getErrorMessage('firstName') }}
+              </div>
             </div>
 
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Email Address</mat-label>
-              <input matInput type="email" formControlName="email" placeholder="Enter email address">
-              <mat-icon matSuffix>email</mat-icon>
-              @if (isFieldInvalid('email')) {
-                <mat-error>{{ getFieldError('email') }}</mat-error>
-              }
-            </mat-form-field>
+            <div class="form-group">
+              <label for="lastName">
+                Last Name <span class="required">*</span>
+              </label>
+              <div class="input-wrapper">
+                <i class="fas fa-user input-icon"></i>
+                <input
+                  type="text"
+                  id="lastName"
+                  formControlName="lastName"
+                  class="form-input"
+                  [class.error]="hasError('lastName', 'required') || hasError('lastName', 'minlength')"
+                  placeholder="Enter your last name"
+                >
+              </div>
+              <div class="error-message" *ngIf="getErrorMessage('lastName')">
+                {{ getErrorMessage('lastName') }}
+              </div>
+            </div>
 
-            <div class="form-row">
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Phone Number</mat-label>
-                <input matInput formControlName="phone" placeholder="Enter phone number">
-                <mat-icon matSuffix>phone</mat-icon>
-              </mat-form-field>
-
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Address</mat-label>
-                <input matInput formControlName="address" placeholder="Enter address">
-                <mat-icon matSuffix>location_on</mat-icon>
-              </mat-form-field>
+            <div class="form-group full-width">
+              <label for="email">
+                Email Address <span class="required">*</span>
+              </label>
+              <div class="input-wrapper">
+                <i class="fas fa-envelope input-icon"></i>
+                <input
+                  type="email"
+                  id="email"
+                  formControlName="email"
+                  class="form-input"
+                  [class.error]="hasError('email', 'required') || hasError('email', 'email')"
+                  placeholder="Enter your email address"
+                >
+              </div>
+              <div class="error-message" *ngIf="getErrorMessage('email')">
+                {{ getErrorMessage('email') }}
+              </div>
             </div>
           </div>
+        </div>
 
-          <!-- Admin Only Section -->
-          @if (isAdminMode) {
-            <div class="form-section admin-section">
-              <h3>
-                <mat-icon>admin_panel_settings</mat-icon>
-                User Management
-              </h3>
+        <!-- Step 2: Contact Information -->
+        <div class="form-step" *ngIf="currentStep === 1" [@stepAnimation]>
+          <div class="step-header">
+            <h2><i class="fas fa-phone"></i> Contact Information</h2>
+            <p>How can we reach you?</p>
+          </div>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="phone">
+                Phone Number <span class="required">*</span>
+              </label>
+              <div class="input-wrapper">
+                <i class="fas fa-phone input-icon"></i>
+                <input
+                  type="tel"
+                  id="phone"
+                  formControlName="phone"
+                  class="form-input"
+                  [class.error]="hasError('phone', 'required') || hasError('phone', 'pattern')"
+                  placeholder="+1234567890"
+                >
+              </div>
+              <div class="error-message" *ngIf="getErrorMessage('phone')">
+                {{ getErrorMessage('phone') }}
+              </div>
+            </div>
 
-              <!-- User Type Selection (Required) -->
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>User Type</mat-label>
-                <mat-select formControlName="userType" required>
-                  <mat-option *ngFor="let type of userTypes" [value]="type.value">
-                    {{ type.label }}
-                  </mat-option>
-                </mat-select>
-                <mat-icon matSuffix>category</mat-icon>
-                @if (isFieldInvalid('userType')) {
-                  <mat-error>{{ getFieldError('userType') }}</mat-error>
-                }
-              </mat-form-field>
+            <div class="form-group full-width">
+              <label for="address">
+                Address <span class="required">*</span>
+              </label>
+              <div class="input-wrapper">
+                <i class="fas fa-map-marker-alt input-icon"></i>
+                <input
+                  type="text"
+                  id="address"
+                  formControlName="address"
+                  class="form-input"
+                  [class.error]="hasError('address', 'required') || hasError('address', 'minlength')"
+                  placeholder="Enter your full address"
+                >
+              </div>
+              <div class="error-message" *ngIf="getErrorMessage('address')">
+                {{ getErrorMessage('address') }}
+              </div>
+            </div>
+          </div>
+        </div>
 
-              <!-- Simplified Roles Selection -->
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>User Roles</mat-label>
-                <mat-select formControlName="roles" multiple>
-                  <mat-option *ngFor="let role of availableRoles" [value]="role.value">
-                    {{ role.display }}
-                  </mat-option>
-                </mat-select>
-                <mat-icon matSuffix>security</mat-icon>
-                <mat-hint>Select the appropriate role(s) for this user</mat-hint>
-              </mat-form-field>
+        <!-- Step 3: Specific Information (based on user type) -->
+        <div class="form-step" *ngIf="currentStep === 2" [@stepAnimation]>
+          <div class="step-header">
+    <h2><i class="fas fa-cog"></i> Specific Information</h2>
+    <p>Additional details for your account type: {{userType}}</p>
+  </div>
 
-              <!-- Role Description Help Text -->
-              <div class="role-descriptions">
-                <p><strong>Role Descriptions:</strong></p>
-                <ul>
-                  <li><strong>Client:</strong> Can access client services for both Individual and Enterprise users</li>
-                  <li><strong>Driver:</strong> Can access driver features for both Professional and Temporary drivers</li>
-                </ul>
+          <!-- Enterprise Fields -->
+           <div class="form-section" *ngIf="isEnterprise()">
+    <h3><i class="fas fa-building"></i> Business Information</h3>
+    <div class="form-grid">
+              <div class="form-group">
+                <label for="companyName">Company Name <span class="required">*</span></label>
+                <div class="input-wrapper">
+                  <i class="fas fa-building input-icon"></i>
+                  <input
+                    type="text"
+                    id="companyName"
+                    formControlName="companyName"
+                    class="form-input"
+                    placeholder="Your company name"
+                  >
+                </div>
               </div>
 
-              <!-- Account Status Controls -->
-              <div class="form-section">
-                <h4>Account Status</h4>
-                <div class="checkbox-group">
-                  <mat-checkbox formControlName="enabled">
-                    <mat-icon>toggle_on</mat-icon>
-                    Account Enabled
-                  </mat-checkbox>
-                  
-                  <mat-checkbox formControlName="approved">
-                    <mat-icon>check_circle</mat-icon>
-                    Account Approved
-                  </mat-checkbox>
+              <div class="form-group">
+                <label for="businessType">Business Type <span class="required">*</span></label>
+                <div class="input-wrapper">
+                  <i class="fas fa-industry input-icon"></i>
+                  <select id="businessType" formControlName="businessType" class="form-select">
+                    <option value="">Select business type</option>
+                    <option 
+                      *ngFor="let type of BUSINESS_TYPES" 
+                      [value]="type.value"
+                    >
+                      {{ type.display }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="vatNumber">VAT Number</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-hashtag input-icon"></i>
+                  <input
+                    type="text"
+                    id="vatNumber"
+                    formControlName="vatNumber"
+                    class="form-input"
+                    placeholder="VAT registration number"
+                  >
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="businessPhone">Business Phone</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-phone-office input-icon"></i>
+                  <input
+                    type="tel"
+                    id="businessPhone"
+                    formControlName="businessPhone"
+                    class="form-input"
+                    placeholder="Business phone number"
+                  >
+                </div>
+              </div>
+
+              <div class="form-group full-width">
+                <label for="businessAddress">Business Address</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-map-marker-alt input-icon"></i>
+                  <input
+                    type="text"
+                    id="businessAddress"
+                    formControlName="businessAddress"
+                    class="form-input"
+                    placeholder="Business address"
+                  >
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="deliveryRadius">Delivery Radius (km)</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-circle input-icon"></i>
+                  <input
+                    type="number"
+                    id="deliveryRadius"
+                    formControlName="deliveryRadius"
+                    class="form-input"
+                    min="0"
+                    placeholder="50"
+                  >
                 </div>
               </div>
             </div>
-          }
-        </form>
-      </mat-card-content>
+          </div>
 
-      <mat-card-actions class="action-buttons">
-        <button 
-          mat-raised-button 
-          color="primary" 
-          type="submit" 
-          [disabled]="editProfileForm.invalid"
-          (click)="onSubmit()">
-          <mat-icon>save</mat-icon>
-          Save Changes
-        </button>
-        
-        <button 
-          mat-stroked-button 
-          type="button"
-          (click)="onCancel()">
-          <mat-icon>cancel</mat-icon>
-          Cancel
-        </button>
-      </mat-card-actions>
-    </mat-card>
-  }
+          <!-- Delivery Person Fields -->
+           <div class="form-section" *ngIf="isDeliveryPerson()">
+    <h3><i class="fas fa-truck"></i> Vehicle Information</h3>
+    <div class="form-grid">
+              <div class="form-group">
+                <label for="vehicleType">Vehicle Type <span class="required">*</span></label>
+                <div class="input-wrapper">
+                  <i class="fas fa-car input-icon"></i>
+                  <select id="vehicleType" formControlName="vehicleType" class="form-select">
+                    <option value="">Select vehicle type</option>
+                    <option 
+                      *ngFor="let vehicle of VEHICLE_TYPES" 
+                      [value]="vehicle.value"
+                    >
+                      {{ vehicle.display }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="vehicleBrand">Vehicle Brand</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-tag input-icon"></i>
+                  <input
+                    type="text"
+                    id="vehicleBrand"
+                    formControlName="vehicleBrand"
+                    class="form-input"
+                    placeholder="Toyota, BMW, etc."
+                  >
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="vehicleModel">Vehicle Model</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-car input-icon"></i>
+                  <input
+                    type="text"
+                    id="vehicleModel"
+                    formControlName="vehicleModel"
+                    class="form-input"
+                    placeholder="Corolla, X5, etc."
+                  >
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="vehiclePlateNumber">License Plate</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-hashtag input-icon"></i>
+                  <input
+                    type="text"
+                    id="vehiclePlateNumber"
+                    formControlName="vehiclePlateNumber"
+                    class="form-input"
+                    placeholder="ABC-1234"
+                  >
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="vehicleYear">Vehicle Year</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-calendar input-icon"></i>
+                  <input
+                    type="number"
+                    id="vehicleYear"
+                    formControlName="vehicleYear"
+                    class="form-input"
+                    min="1990"
+                    max="2024"
+                    placeholder="2020"
+                  >
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="vehicleColor">Vehicle Color</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-palette input-icon"></i>
+                  <input
+                    type="text"
+                    id="vehicleColor"
+                    formControlName="vehicleColor"
+                    class="form-input"
+                    placeholder="Red, Blue, etc."
+                  >
+                </div>
+              </div>
+            </div>
+
+          <h3><i class="fas fa-id-card"></i> Professional Information</h3>
+    <div class="form-grid">
+              <div class="form-group">
+                <label for="driverLicenseNumber">Driver License Number <span class="required">*</span></label>
+                <div class="input-wrapper">
+                  <i class="fas fa-id-card input-icon"></i>
+                  <input
+                    type="text"
+                    id="driverLicenseNumber"
+                    formControlName="driverLicenseNumber"
+                    class="form-input"
+                    placeholder="License number"
+                  >
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="driverLicenseCategory">License Category</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-certificate input-icon"></i>
+                  <input
+                    type="text"
+                    id="driverLicenseCategory"
+                    formControlName="driverLicenseCategory"
+                    class="form-input"
+                    placeholder="B, C, D, etc."
+                  >
+                </div>
+              </div>
+
+              <div class="form-group full-width">
+                <label for="preferredZones">Preferred Zones</label>
+                <div class="input-wrapper">
+                  <i class="fas fa-map input-icon"></i>
+                  <input
+                    type="text"
+                    id="preferredZones"
+                    formControlName="preferredZones"
+                    class="form-input"
+                    placeholder="Downtown, Suburbs, etc."
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Individual Fields (if any specific fields needed) -->
+         <div class="form-section" *ngIf="isIndividual()">
+    <div class="info-card">
+      <i class="fas fa-user-circle"></i>
+      <h3>Individual Account</h3>
+      <p>Your basic information is all we need for your individual account.</p>
+    </div>
+  </div>
+
+  <div class="form-section" *ngIf="!isEnterprise() && !isDeliveryPerson() && !isIndividual()">
+    <div class="info-card">
+      <i class="fas fa-question-circle"></i>
+      <h3>Unknown Account Type</h3>
+      <p>Unable to determine account type: {{userType}}</p>
+    </div>
+  </div>
+</div>
+
+        <!-- Step 4: Confirmation -->
+        <div class="form-step" *ngIf="currentStep === 3" [@stepAnimation]>
+          <div class="step-header">
+            <h2><i class="fas fa-check-circle"></i> Review & Save</h2>
+            <p>Review your information before saving</p>
+          </div>
+
+          <div class="review-card">
+            <h3>Profile Summary</h3>
+            <div class="review-grid">
+              <div class="review-item">
+                <strong>Name:</strong>
+                <span>{{ profileForm.get('firstName')?.value }} {{ profileForm.get('lastName')?.value }}</span>
+              </div>
+              <div class="review-item">
+                <strong>Email:</strong>
+                <span>{{ profileForm.get('email')?.value }}</span>
+              </div>
+              <div class="review-item">
+                <strong>Phone:</strong>
+                <span>{{ profileForm.get('phone')?.value }}</span>
+              </div>
+              <div class="review-item">
+                <strong>Address:</strong>
+                <span>{{ profileForm.get('address')?.value }}</span>
+              </div>
+              
+              <div class="review-item" *ngIf="isEnterprise() && profileForm.get('companyName')?.value">
+                <strong>Company:</strong>
+                <span>{{ profileForm.get('companyName')?.value }}</span>
+              </div>
+              
+              <div class="review-item" *ngIf="isDeliveryPerson() && profileForm.get('vehicleType')?.value">
+                <strong>Vehicle:</strong>
+                <span>{{ profileForm.get('vehicleType')?.value }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button 
+            type="button" 
+            class="btn btn-secondary"
+            *ngIf="currentStep > 0"
+            (click)="previousStep()"
+            [disabled]="isAnimating"
+          >
+            <i class="fas fa-arrow-left"></i>
+            Previous
+          </button>
+
+          <button 
+            type="button" 
+            class="btn btn-primary"
+            *ngIf="currentStep < steps.length - 1"
+            (click)="nextStep()"
+            [disabled]="isAnimating"
+          >
+            Next
+            <i class="fas fa-arrow-right"></i>
+          </button>
+
+          <button 
+            type="submit" 
+            class="btn btn-success"
+            *ngIf="currentStep === steps.length - 1"
+            [disabled]="!profileForm.valid || isSaving"
+          >
+            <span *ngIf="!isSaving">
+              <i class="fas fa-save"></i>
+              Save Profile
+            </span>
+            <span *ngIf="isSaving">
+              <i class="fas fa-spinner fa-spin"></i>
+              Saving...
+            </span>
+          </button>
+
+          <button 
+            type="button" 
+            class="btn btn-outline"
+            (click)="onCancel()"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>

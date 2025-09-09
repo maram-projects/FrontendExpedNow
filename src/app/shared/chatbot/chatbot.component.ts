@@ -18,7 +18,7 @@ interface ChatMessage {
   standalone: true,
   imports: [FormsModule, CommonModule],
   templateUrl: './chatbot.component.html',
-  styleUrls: ['./chatbot.component.scss'],
+  styleUrls: ['./chatbot.component.css'],
 })
 export class ChatbotComponent implements OnInit, OnDestroy {
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;

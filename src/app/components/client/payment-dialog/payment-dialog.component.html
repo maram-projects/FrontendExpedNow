@@ -42,7 +42,11 @@
             </div>
             <div class="section-body">
               <ng-container *ngIf="delivery && delivery.pricingDetails; else loadingPricing">
-                <app-pricing-details [pricing]="delivery.pricingDetails"></app-pricing-details>
+                <app-pricing-details 
+                  [pricing]="delivery.pricingDetails"
+                  [currency]="'TND'"
+                  [showAnimations]="true">
+                </app-pricing-details>
               </ng-container>
               
               <ng-template #loadingPricing>
@@ -116,12 +120,11 @@
                      (click)="selectPaymentMethod(method.id)">
                   <div class="payment-method-content">
                     <div class="payment-method-icon">
-                      <i class="fas" 
-                         [class.fa-credit-card]="method.id === 'CREDIT_CARD'"
-                         [class.fa-university]="method.id === 'BANK_TRANSFER'"
-                         [class.fa-wallet]="method.id === 'WALLET'"
-                         [class.fa-money-bill-wave]="method.id === 'CASH'"></i>
-                    </div>
+  <i class="fas" 
+     [class.fa-credit-card]="method.id === 'CREDIT_CARD'"
+     [class.fa-university]="method.id === 'BANK_TRANSFER'"
+     [class.fa-wallet]="method.id === 'WALLET'"></i>
+</div>
                     <div class="payment-method-info">
                       <h6>{{ method.name }}</h6>
                       <small>{{ method.description }}</small>

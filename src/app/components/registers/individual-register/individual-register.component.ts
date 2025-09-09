@@ -73,20 +73,23 @@ export class IndividualRegisterComponent implements OnInit {
     this.showConfirmPassword = !this.showConfirmPassword;
   }
 
-  calculatePasswordStrength(password: string): number {
-    if (!password) return 0;
-    
-    let strength = 0;
-    strength += Math.min(50, (password.length / 12) * 50);
-    
-    if (/[a-z]/.test(password)) strength += 10;
-    if (/[A-Z]/.test(password)) strength += 10;
-    if (/\d/.test(password)) strength += 15;
-    if (/[^a-zA-Z0-9]/.test(password)) strength += 15;
-    
-    this.passwordStrength = Math.max(0, Math.min(100, strength));
-    return this.passwordStrength;
-  }
+calculatePasswordStrength(event: Event): number {
+  const input = event.target as HTMLInputElement | null;
+  if (!input) return 0;
+  const password = input.value;
+  
+  let strength = 0;
+  strength += Math.min(50, (password.length / 12) * 50);
+
+  if (/[a-z]/.test(password)) strength += 10;
+  if (/[A-Z]/.test(password)) strength += 10;
+  if (/\d/.test(password)) strength += 15;
+  if (/[^a-zA-Z0-9]/.test(password)) strength += 15;
+
+  this.passwordStrength = Math.max(0, Math.min(100, strength));
+  return this.passwordStrength;
+}
+
 
   getPasswordStrengthText(): string {
     if (this.passwordStrength < 40) return 'Weak';

@@ -1,9 +1,9 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule, DatePipe, CurrencyPipe } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
-import { FormsModule } from '@angular/forms'; // Add this import
+import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
-import { DeliveryRequest, DeliveryService } from '../../../services/delivery-service.service';
+import { DeliveryRequest, DeliveryService, DetailedRatingResponse } from '../../../services/delivery-service.service';
 import { DiscountService } from '../../../services/discount.service';
 import { Discount } from '../../../models/discount.model';
 import { MatDialog } from '@angular/material/dialog';
@@ -17,7 +17,8 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { ToastService } from '../../../services/toast.service';
-
+import { DeliveryRatingModalComponent } from '../delivery-rating-modal/delivery-rating-modal.component';
+import { RatingDetailsModalComponent } from '../rating-details-modal/rating-details-modal.component';
 interface DashboardStats {
   totalOrders: number;
   pendingOrders: number;
@@ -43,8 +44,15 @@ interface DashboardStats {
   statusDistribution: {
     [status: string]: number;
   };
+  // Add this property
+  ratingStats?: {
+    totalDelivered: number;
+    totalRated: number;
+    pendingRatings: number;
+    averageRating: number;
+    ratingRate: number;
+  };
 }
-
 interface PaymentTransaction {
   id: string;
   deliveryId: string;
@@ -87,7 +95,7 @@ interface PaymentSummary {
     MatProgressBarModule,
     MatCardModule,
     MatButtonModule,
-    FormsModule // Move FormsModule here and remove AIAssistantComponent since it's not used in template
+    FormsModule
   ]
 })
 export class ClientDashboardComponent implements OnInit, OnDestroy {
@@ -102,9 +110,9 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
   globalActionMessage = '';
   hoverRating: number = 0;
 
-  // Status filters
-  statusFilters: ('all' | 'paid' | 'unpaid' | 'cancelled' | 'expired')[] = [
-    'all', 'paid', 'unpaid', 'cancelled', 'expired'
+  // Status filters - Updated to include 'pending-ratings'
+  statusFilters: ('all' | 'paid' | 'unpaid' | 'cancelled' | 'expired' | 'pending-ratings')[] = [
+    'all', 'paid', 'unpaid', 'cancelled', 'expired', 'pending-ratings'
   ];
 
   private paymentStatusSubscriptions: Subscription[] = [];
@@ -139,7 +147,7 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
   unpaidDeliveries: number = 0;
   isLoading = true;
   errorMessage = '';
-  selectedFilter: 'all' | 'paid' | 'unpaid' | 'cancelled' | 'expired' = 'all';
+  selectedFilter: 'all' | 'paid' | 'unpaid' | 'cancelled' | 'expired' | 'pending-ratings' = 'all';
   selectedView: 'orders' | 'payments' | 'movements' = 'orders';
   
   paymentStats = {
@@ -368,7 +376,8 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  public refreshDashboardData(): void {
+  // Fixed: Remove duplicate refreshDashboardData method
+  refreshDashboardData(): void {
     if (this.isRefreshing) {
       console.log('Already refreshing, skipping...');
       return;
@@ -398,6 +407,7 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
         
         setTimeout(() => {
           this.checkPendingPayments(deliveries);
+          this.checkPendingRatings();
         }, 1000);
       },
       error: (err) => {
@@ -759,7 +769,7 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  filterDeliveries(filter: 'all' | 'paid' | 'unpaid' | 'cancelled' | 'expired') {
+  filterDeliveries(filter: 'all' | 'paid' | 'unpaid' | 'cancelled' | 'expired' | 'pending-ratings') {
     this.selectedFilter = filter;
     
     switch (filter) {
@@ -784,6 +794,11 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
           d.status === 'EXPIRED'
         );
         break;
+      case 'pending-ratings':
+        this.filteredDeliveries = this.recentDeliveries.filter(d => 
+          d.status === 'DELIVERED' && !d.rated
+        );
+        break;
       default:
         this.filteredDeliveries = [...this.recentDeliveries];
     }
@@ -797,6 +812,7 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
       case 'unpaid': return this.stats.unpaidOrders;
       case 'cancelled': return this.stats.canceledOrders;
       case 'expired': return this.stats.expiredOrders;
+      case 'pending-ratings': return this.getPendingRatingsCount();
       default: return this.stats.totalOrders;
     }
   }
@@ -814,7 +830,7 @@ export class ClientDashboardComponent implements OnInit, OnDestroy {
     return icons[status] || 'fa-question-circle text-secondary';
   }
 
-getPaymentMethodLabel(method: string): string {
+  getPaymentMethodLabel(method: string): string {
     const labels: { [key: string]: string } = {
       'CREDIT_CARD': 'Credit Card',
       'CASH_ON_DELIVERY': 'Cash on Delivery',
@@ -911,6 +927,7 @@ getPaymentMethodLabel(method: string): string {
       case 'unpaid': return 'No unpaid orders found';
       case 'cancelled': return 'No cancelled orders found';
       case 'expired': return 'No expired orders found';
+      case 'pending-ratings': return 'No deliveries pending rating found';
       default: return 'No delivery requests found';
     }
   }
@@ -921,6 +938,7 @@ getPaymentMethodLabel(method: string): string {
       case 'unpaid': return 'All your delivered orders have been paid.';
       case 'cancelled': return 'You haven\'t cancelled any orders.';
       case 'expired': return 'No orders have expired.';
+      case 'pending-ratings': return 'All your completed deliveries have been rated.';
       default: return 'Start by creating your first delivery request.';
     }
   }
@@ -1398,4 +1416,456 @@ getPaymentMethodLabel(method: string): string {
       replaceUrl: true
     });
   }
+
+  /**
+   * Ouvre le dialog d'évaluation pour une livraison
+   */
+  openRatingDialog(delivery: DeliveryRequest): void {
+    if (!delivery.id) {
+      this.toastService.showError('Erreur: ID de livraison manquant');
+      return;
+    }
+
+    // Vérifier que la livraison peut être évaluée
+    if (delivery.status !== 'DELIVERED') {
+      this.toastService.showError('Cette livraison n\'est pas encore terminée');
+      return;
+    }
+
+    if (delivery.rated) {
+      this.toastService.showInfo('Cette livraison a déjà été évaluée');
+      return;
+    }
+
+    const dialogRef = this.dialog.open(DeliveryRatingModalComponent, {
+      width: '700px',
+      maxHeight: '90vh',
+      disableClose: true,
+      data: { 
+        delivery: delivery 
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result?.success) {
+        // Mettre à jour la livraison avec les nouvelles données d'évaluation
+        delivery.rated = true;
+        delivery.rating = result.rating.overallRating;
+        delivery.status = 'RATED';
+        
+        this.toastService.showSuccess('Évaluation soumise avec succès!');
+        this.refreshDashboardData();
+      }
+    });
+  }
+
+  /**
+   * Affiche les détails d'une évaluation existante
+   */
+viewRatingDetails(delivery: DeliveryRequest): void {
+  if (!delivery.id || !delivery.rated) {
+    this.toastService.showError('Aucune évaluation trouvée pour cette livraison');
+    return;
+  }
+
+  delivery.processing = true;
+
+  this.deliveryService.getDetailedRating(delivery.id).subscribe({
+    next: (rating: DetailedRatingResponse) => {
+      delivery.processing = false;
+      this.openRatingDetailsModal(rating);
+    },
+    error: (error: any) => {
+      delivery.processing = false;
+      this.toastService.showError('Erreur lors du chargement de l\'évaluation: ' + error.message);
+    }
+  });
+}
+
+private openRatingDetailsModal(ratingData: DetailedRatingResponse): void {
+  const dialogRef = this.dialog.open(RatingDetailsModalComponent, {
+    width: '650px',
+    maxWidth: '95vw',
+    maxHeight: '90vh',
+    disableClose: false,
+    panelClass: 'rating-details-dialog', // Pour le styling personnalisé
+    data: { 
+      ratingData: ratingData 
+    }
+  });
+
+  // Optionnel: gérer les actions après fermeture
+  dialogRef.afterClosed().subscribe(result => {
+    if (result) {
+      console.log('Rating details modal closed:', result);
+    }
+  });
+}
+getDeliveryRowClass(delivery: DeliveryRequest): string {
+  let classes = 'table-row-animated';
+  
+  // Ajouter une classe pour les livraisons en attente d'évaluation
+  if (delivery.status === 'DELIVERED' && !delivery.rated) {
+    classes += ' rating-pending';
+  }
+  
+  // Ajouter une classe pour les livraisons déjà évaluées
+  if (delivery.rated) {
+    classes += ' rating-completed';
+  }
+  
+  return classes;
+}
+
+getRatingStatusIcon(delivery: DeliveryRequest): string {
+  if (delivery.status !== 'DELIVERED') {
+    return 'fas fa-minus text-muted';
+  }
+  
+  if (delivery.rated) {
+    return `fas fa-star text-warning`;
+  }
+  
+  return 'fas fa-star-o text-muted';
+}
+
+/**
+ * Méthode pour obtenir le tooltip d'évaluation
+ */
+getRatingTooltip(delivery: DeliveryRequest): string {
+  if (delivery.status !== 'DELIVERED') {
+    return 'Livraison non terminée';
+  }
+  
+  if (delivery.rated) {
+    return `Évalué ${delivery.rating}/5 étoiles - Cliquer pour voir les détails`;
+  }
+  
+  return 'Cliquer pour évaluer cette livraison';
+}
+getRatingSummary(): { 
+  total: number, 
+  rated: number, 
+  pending: number, 
+  averageRating: number 
+} {
+  const deliveredOrders = this.recentDeliveries.filter(d => d.status === 'DELIVERED');
+  const ratedOrders = deliveredOrders.filter(d => d.rated);
+  const pendingRatings = deliveredOrders.filter(d => !d.rated);
+  
+  const totalRating = ratedOrders.reduce((sum, d) => sum + (d.rating || 0), 0);
+  const averageRating = ratedOrders.length > 0 ? totalRating / ratedOrders.length : 0;
+  
+  return {
+    total: deliveredOrders.length,
+    rated: ratedOrders.length,
+    pending: pendingRatings.length,
+    averageRating: Math.round(averageRating * 10) / 10
+  };
+}
+
+canRateDelivery(delivery: DeliveryRequest): boolean {
+  return delivery.status === 'DELIVERED' && !delivery.rated;
+}
+
+private showRatingEncouragement(): void {
+  const pendingCount = this.getPendingRatingsCount();
+  
+  if (pendingCount > 0) {
+    // Créer une notification personnalisée avec action
+    const notification = {
+      id: Date.now(),
+      type: 'info' as const,
+      title: 'Évaluations en attente',
+      message: pendingCount === 1 
+        ? 'Vous avez une livraison à évaluer'
+        : `Vous avez ${pendingCount} livraisons à évaluer`,
+      action: {
+        label: 'Voir',
+        callback: () => this.showPendingRatings()
+      }
+    };
+    
+    // Vous pouvez adapter ceci selon votre système de notifications
+    this.toastService.showNotification(notification);
+  }
+} 
+
+
+showPendingRatings(): void {
+  this.selectedFilter = 'pending-ratings';
+  this.filteredDeliveries = this.recentDeliveries.filter(d => 
+    d.status === 'DELIVERED' && !d.rated
+  );
+}
+
+private generateRatingStats(): void {
+  const summary = this.getRatingSummary();
+  
+  // Ajouter aux stats existantes
+  this.stats = {
+    ...this.stats,
+    ratingStats: {
+      totalDelivered: summary.total,
+      totalRated: summary.rated,
+      pendingRatings: summary.pending,
+      averageRating: summary.averageRating,
+      ratingRate: summary.total > 0 ? Math.round((summary.rated / summary.total) * 100) : 0
+    }
+  };
+}
+
+/**
+ * Méthode pour afficher une preview rapide de l'évaluation dans le tableau
+ */
+getRatingPreview(delivery: DeliveryRequest): string {
+  if (!delivery.rated || !delivery.rating) {
+    return '';
+  }
+  
+  const stars = '★'.repeat(Math.floor(delivery.rating)) + 
+                '☆'.repeat(5 - Math.floor(delivery.rating));
+  return `${stars} (${delivery.rating}/5)`;
+}
+
+/**
+ * Méthode pour gérer l'état de chargement des évaluations
+ */
+private setRatingLoading(deliveryId: string, isLoading: boolean): void {
+  const delivery = this.recentDeliveries.find(d => d.id === deliveryId);
+  if (delivery) {
+    delivery.processing = isLoading;
+  }
+}
+
+/**
+ * Méthode pour actualiser une évaluation spécifique après modification
+ */
+refreshRatingData(deliveryId: string): void {
+  this.setRatingLoading(deliveryId, true);
+  
+  this.deliveryService.getDeliveryById(deliveryId).subscribe({
+    next: (updatedDelivery: DeliveryRequest) => {
+      const index = this.recentDeliveries.findIndex(d => d.id === deliveryId);
+      if (index !== -1) {
+        // Préserver l'état de traitement
+        const wasProcessing = this.recentDeliveries[index].processing;
+        this.recentDeliveries[index] = { ...updatedDelivery, processing: wasProcessing };
+      }
+      this.setRatingLoading(deliveryId, false);
+      this.calculateStats(this.recentDeliveries);
+    },
+    error: (error: any) => {
+      this.setRatingLoading(deliveryId, false);
+      console.error('Erreur lors de l\'actualisation de l\'évaluation:', error);
+    }
+  });
+}
+
+  /**
+   * Affiche une modal avec les détails de l'évaluation
+   */
+  private showRatingDetailsModal(rating: DetailedRatingResponse): void {
+    // Vous pouvez créer un autre composant modal pour afficher les détails
+    // ou utiliser une simple alert/modal Bootstrap pour commencer
+    const modalContent = this.generateRatingDetailsHTML(rating);
+    
+    // Option simple avec une modal Bootstrap
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.innerHTML = `
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="fas fa-star text-warning"></i>
+              Détails de l'évaluation
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            ${modalContent}
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              Fermer
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Utiliser Bootstrap Modal
+    const bootstrapModal = new (window as any).bootstrap.Modal(modal);
+    bootstrapModal.show();
+    
+    // Nettoyer après fermeture
+    modal.addEventListener('hidden.bs.modal', () => {
+      document.body.removeChild(modal);
+    });
+  }
+
+  /**
+   * Génère le HTML pour afficher les détails de l'évaluation
+   */
+  private generateRatingDetailsHTML(rating: DetailedRatingResponse): string {
+    const stars = (count: number) => {
+      return Array(5).fill(0).map((_, i) => 
+        `<i class="fas fa-star ${i < count ? 'text-warning' : 'text-muted'}"></i>`
+      ).join('');
+    };
+
+    return `
+      <div class="rating-details">
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <h6>Livraison</h6>
+            <p class="text-muted">#${rating.deliveryId.slice(0, 8)}</p>
+            <p><i class="fas fa-map-marker-alt"></i> ${rating.deliveryAddress}</p>
+          </div>
+          <div class="col-md-6">
+            <h6>Évaluation globale</h6>
+            <div class="mb-2">
+              ${stars(Math.round(rating.overallRating))}
+              <span class="ms-2 fw-bold">${rating.overallRating}/5</span>
+            </div>
+            <small class="text-muted">Type: ${this.getRatingTypeLabel(rating.ratingType)}</small>
+          </div>
+        </div>
+
+        ${rating.punctualityRating || rating.professionalismRating || rating.packageConditionRating || rating.communicationRating ? `
+        <div class="detailed-ratings mb-3">
+          <h6>Évaluations détaillées</h6>
+          <div class="row">
+            ${rating.punctualityRating ? `
+            <div class="col-md-6 mb-2">
+              <small class="text-muted d-block">Ponctualité</small>
+              ${stars(Math.round(rating.punctualityRating))} (${rating.punctualityRating}/5)
+            </div>` : ''}
+            ${rating.professionalismRating ? `
+            <div class="col-md-6 mb-2">
+              <small class="text-muted d-block">Professionnalisme</small>
+              ${stars(Math.round(rating.professionalismRating))} (${rating.professionalismRating}/5)
+            </div>` : ''}
+            ${rating.packageConditionRating ? `
+            <div class="col-md-6 mb-2">
+              <small class="text-muted d-block">État du colis</small>
+              ${stars(Math.round(rating.packageConditionRating))} (${rating.packageConditionRating}/5)
+            </div>` : ''}
+            ${rating.communicationRating ? `
+            <div class="col-md-6 mb-2">
+              <small class="text-muted d-block">Communication</small>
+              ${stars(Math.round(rating.communicationRating))} (${rating.communicationRating}/5)
+            </div>` : ''}
+          </div>
+        </div>` : ''}
+
+        ${rating.categories && rating.categories.length > 0 ? `
+        <div class="rating-categories mb-3">
+          <h6>Aspects appréciés</h6>
+          <div class="d-flex flex-wrap gap-2">
+            ${rating.categories.map(cat => `
+              <span class="badge bg-success">${this.getCategoryLabel(cat)}</span>
+            `).join('')}
+          </div>
+        </div>` : ''}
+
+        ${rating.comment ? `
+        <div class="rating-comment mb-3">
+          <h6>Commentaire</h6>
+          <div class="p-3 bg-light rounded">
+            <i class="fas fa-quote-left text-muted"></i>
+            <em class="ms-2">${rating.comment}</em>
+            <i class="fas fa-quote-right text-muted ms-2"></i>
+          </div>
+        </div>` : ''}
+
+        ${rating.wouldRecommend !== null ? `
+        <div class="recommendation mb-3">
+          <h6>Recommandation</h6>
+          <p class="mb-0">
+            <i class="fas fa-${rating.wouldRecommend ? 'thumbs-up text-success' : 'thumbs-down text-danger'}"></i>
+            <span class="ms-2">
+              ${rating.wouldRecommend ? 'Recommanderait ExpedNow' : 'Ne recommanderait pas ExpedNow'}
+            </span>
+          </p>
+        </div>` : ''}
+
+        <div class="rating-meta">
+          <small class="text-muted">
+            <i class="fas fa-calendar"></i>
+            Évalué le ${new Date(rating.ratedAt).toLocaleDateString('fr-FR')}
+          </small>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Obtient le libellé d'un type d'évaluation
+   */
+  private getRatingTypeLabel(type: string): string {
+    const labels: { [key: string]: string } = {
+      'overall': 'Service Global',
+      'delivery_person': 'Livreur',
+      'service': 'Qualité du Service'
+    };
+    return labels[type] || type;
+  }
+
+  /**
+   * Obtient le libellé d'une catégorie d'évaluation
+   */
+  private getCategoryLabel(category: string): string {
+    const labels: { [key: string]: string } = {
+      'punctuality': 'Ponctualité',
+      'professionalism': 'Professionnalisme',
+      'package_condition': 'État du Colis',
+      'communication': 'Communication'
+    };
+    return labels[category] || category;
+  }
+
+  /**
+   * Vérifie s'il y a des livraisons en attente d'évaluation
+   */
+  getPendingRatingsCount(): number {
+    return this.recentDeliveries.filter(d => 
+      d.status === 'DELIVERED' && !d.rated
+    ).length;
+  }
+
+  /**
+   * Affiche une notification pour encourager les évaluations
+   */
+  private checkPendingRatings(): void {
+    const pendingCount = this.getPendingRatingsCount();
+    
+    if (pendingCount > 0) {
+      // Afficher une notification discrète
+      setTimeout(() => {
+        if (pendingCount === 1) {
+          this.toastService.showInfo(
+            'Vous avez une livraison terminée qui peut être évaluée',
+            'Évaluation en attente'
+          );
+        } else {
+          this.toastService.showInfo(
+            `Vous avez ${pendingCount} livraisons terminées qui peuvent être évaluées`,
+            'Évaluations en attente'
+          );
+        }
+      }, 3000); // Délai de 3 secondes après le chargement
+    }
+  }
+
+
+  
+
+  /**
+   * Filtre les livraisons pour n'afficher que celles en attente d'évaluation
+   */
+ 
 }

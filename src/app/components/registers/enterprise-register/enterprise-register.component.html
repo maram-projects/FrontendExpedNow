@@ -1,353 +1,1209 @@
-<div class="container mt-5">
-  <div class="row justify-content-center">
-    <div class="col-md-10">
-      <div class="card shadow-sm">
-        <div class="card-header bg-white">
-          <div class="d-flex align-items-center">
-            <a routerLink="/register" class="btn btn-sm btn-outline-secondary me-3">
-              <i class="fas fa-arrow-left"></i>
-            </a>
-            <h2 class="mb-0">Business Client Registration</h2>
-          </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Client Registration</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Enhanced CSS with step navigation and better UX */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        :root {
+          --primary: #667eea;
+          --primary-dark: #5a67d8;
+          --secondary: #764ba2;
+          --accent: #f093fb;
+          --success: #48bb78;
+          --warning: #ed8936;
+          --danger: #f56565;
+          --info: #38b2ac;
+          --white: #ffffff;
+          --gray-50: #f7fafc;
+          --gray-100: #edf2f7;
+          --gray-200: #e2e8f0;
+          --gray-300: #cbd5e0;
+          --gray-400: #a0aec0;
+          --gray-500: #718096;
+          --gray-600: #4a5568;
+          --gray-700: #2d3748;
+          --gray-800: #1a202c;
+          --gray-900: #171923;
+          
+          --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+          --gradient-success: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+          --gradient-bg: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+          
+          --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+          --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+          --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+          --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+          --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.25);
+          
+          --border-radius: 16px;
+          --border-radius-sm: 8px;
+          --border-radius-lg: 20px;
+          --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+          display: block;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+          background: var(--gradient-bg);
+          background-size: 400% 400%;
+          animation: gradientAnimation 15s ease infinite;
+          min-height: 100vh;
+          color: var(--gray-700);
+          line-height: 1.6;
+          overflow-x: hidden;
+          margin: 0;
+          padding: 0;
+        }
+
+        body::before {
+          content: '';
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: 
+              radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.4) 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.4) 0%, transparent 50%),
+              radial-gradient(circle at 40% 40%, rgba(229, 14, 222, 0.4)0%, transparent 50%);
+          z-index: -1;
+          animation: floatAnimation 20s ease-in-out infinite;
+        }
+
+        @keyframes gradientAnimation {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+
+        @keyframes floatAnimation {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          33% { transform: translateY(-30px) rotate(2deg); }
+          66% { transform: translateY(20px) rotate(-2deg); }
+        }
+
+        /* Step Progress */
+        .er-step-progress {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 2rem;
+          padding: 0 2rem;
+        }
+
+        .er-step {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          flex: 1;
+          position: relative;
+        }
+
+        .er-step:not(:last-child)::after {
+          content: '';
+          position: absolute;
+          top: 25px;
+          left: calc(50% + 25px);
+          right: calc(-50% + 25px);
+          height: 2px;
+          background: rgba(255, 255, 255, 0.3);
+          z-index: 0;
+        }
+
+        .er-step.active:not(:last-child)::after {
+          background: var(--gradient-primary);
+        }
+
+        .er-step-circle {
+          width: 50px;
+          height: 50px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.2);
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: rgba(255, 255, 255, 0.7);
+          font-weight: 600;
+          font-size: 1.2rem;
+          position: relative;
+          z-index: 1;
+          transition: var(--transition);
+        }
+
+        .er-step.active .er-step-circle {
+          background: var(--gradient-primary);
+          border-color: transparent;
+          color: var(--white);
+          transform: scale(1.1);
+        }
+
+        .er-step.completed .er-step-circle {
+          background: var(--gradient-success);
+          border-color: transparent;
+          color: var(--white);
+        }
+
+        .er-step-label {
+          margin-top: 0.5rem;
+          color: rgba(255, 255, 255, 0.8);
+          font-size: 0.875rem;
+          font-weight: 500;
+          text-align: center;
+        }
+
+        .er-step.active .er-step-label {
+          color: var(--white);
+          font-weight: 600;
+        }
+
+        /* Container Styles */
+        .er-container {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 2rem 1rem;
+          position: relative;
+          z-index: 1;
+        }
+
+        .er-mt-5 { margin-top: 3rem; }
+        .er-mt-4 { margin-top: 2rem; }
+        .er-mt-3 { margin-top: 1rem; }
+        .er-mt-2 { margin-top: 0.5rem; }
+        .er-mt-1 { margin-top: 0.25rem; }
+
+        .er-mb-3 { margin-bottom: 1.5rem; }
+        .er-mb-4 { margin-bottom: 2rem; }
+        .er-mb-2 { margin-bottom: 0.5rem; }
+        .er-mb-1 { margin-bottom: 0.25rem; }
+
+        .er-row {
+          display: flex;
+          flex-wrap: wrap;
+          margin: 0 -0.75rem;
+        }
+
+        .er-justify-content-center { justify-content: center; }
+
+        .er-col-md-10 {
+          flex: 0 0 auto;
+          width: 83.33333333%;
+          padding: 0 0.75rem;
+        }
+
+        .er-col-md-6 {
+          flex: 0 0 auto;
+          width: 50%;
+          padding: 0 1rem;
+        }
+
+        /* Card Styles */
+        .er-card {
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: var(--border-radius-lg);
+          box-shadow: var(--shadow-2xl);
+          overflow: hidden;
+          animation: cardEntrance 1s ease-out;
+          transition: var(--transition);
+        }
+
+        @keyframes cardEntrance {
+          0% { opacity: 0; transform: translateY(40px) scale(0.9); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .er-card:hover {
+          transform: translateY(-8px);
+          box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+        }
+
+        .er-card-header {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.1) 100%);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+          padding: 2rem;
+        }
+
+        .er-card-header h2 {
+          color: var(--white);
+          font-size: 2rem;
+          font-weight: 700;
+          text-shadow: 0 2px 15px rgba(0, 0, 0, 0.3);
+          letter-spacing: -0.02em;
+          margin: 0;
+        }
+
+        .er-card-body {
+          padding: 3rem;
+          background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Form Step Content */
+        .er-step-content {
+          display: none;
+          animation: fadeInStep 0.5s ease-out;
+        }
+
+        .er-step-content.active {
+          display: block;
+        }
+
+        @keyframes fadeInStep {
+          0% { opacity: 0; transform: translateX(30px); }
+          100% { opacity: 1; transform: translateX(0); }
+        }
+
+        /* Section Titles */
+        .er-section-title {
+          display: flex;
+          align-items: center;
+          margin-bottom: 2.5rem;
+          position: relative;
+        }
+
+        .er-section-title::after {
+          content: '';
+          position: absolute;
+          bottom: -15px;
+          left: 0;
+          width: 80px;
+          height: 4px;
+          background: var(--gradient-primary);
+          border-radius: 2px;
+          animation: underlineGrow 1s ease-out 0.5s both;
+        }
+
+        @keyframes underlineGrow {
+          0% { width: 0; opacity: 0; }
+          100% { width: 80px; opacity: 1; }
+        }
+
+        .er-section-icon {
+          width: 52px;
+          height: 52px;
+          background: var(--gradient-primary);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-right: 1rem;
+          box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+          animation: iconFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes iconFloat {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-6px); }
+        }
+
+        .er-section-icon i {
+          color: var(--white);
+          font-size: 1.4rem;
+        }
+
+        .er-section-title h3 {
+          color: var(--white);
+          font-size: 1.4rem;
+          font-weight: 600;
+          margin: 0;
+          text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Form Elements */
+        .er-form-label {
+          display: block;
+          margin-bottom: 0.75rem;
+          color: var(--white);
+          font-weight: 500;
+          font-size: 0.95rem;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .er-form-label.required::after {
+          content: ' *';
+          color: #ff8a95;
+        }
+
+        .er-form-control, .er-form-select {
+          width: 100%;
+          padding: 1rem 1.25rem;
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          border-radius: var(--border-radius-sm);
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(10px);
+          color: var(--white);
+          font-size: 1rem;
+          transition: var(--transition);
+          outline: none;
+          font-family: inherit;
+        }
+
+        .er-form-control::placeholder {
+          color: rgba(255, 255, 255, 0.6);
+        }
+
+        .er-form-control:focus, .er-form-select:focus {
+          border-color: rgba(102, 126, 234, 0.8);
+          background: rgba(255, 255, 255, 0.15);
+          box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+          transform: translateY(-2px);
+        }
+
+        .er-form-control:hover:not(:focus) {
+          border-color: rgba(255, 255, 255, 0.4);
+          background: rgba(255, 255, 255, 0.12);
+        }
+
+        .er-form-select {
+          background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%28255,255,255,0.8%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m1 6 7 7 7-7'/%3e%3c/svg%3e");
+          background-repeat: no-repeat;
+          background-position: right 1rem center;
+          background-size: 16px 12px;
+          cursor: pointer;
+        }
+
+        .er-form-select option {
+          background: var(--gray-800);
+          color: var(--white);
+        }
+
+        /* Input Groups */
+        .er-input-group {
+          display: flex;
+          width: 100%;
+          border-radius: var(--border-radius-sm);
+          overflow: hidden;
+        }
+
+        .er-input-group-text {
+          display: flex;
+          align-items: center;
+          padding: 1rem 1.25rem;
+          background: rgba(255, 255, 255, 0.15);
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          border-right: none;
+          color: rgba(255, 255, 255, 0.8);
+          font-size: 1rem;
+        }
+
+        .er-input-group .er-form-control {
+          border-left: none;
+          border-radius: 0;
+        }
+
+        .er-input-group .er-btn {
+          border-left: none;
+          border-radius: 0;
+          background: rgba(255, 255, 255, 0.15);
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          color: rgba(255, 255, 255, 0.8);
+          padding: 1rem 1.25rem;
+        }
+
+        .er-input-group .er-btn:hover {
+          background: rgba(255, 255, 255, 0.25);
+          color: var(--white);
+        }
+
+        /* Email Status */
+        .er-email-status {
+          display: flex;
+          align-items: center;
+          margin-top: 0.5rem;
+          font-size: 0.875rem;
+        }
+
+        .er-email-status.checking {
+          color: rgba(255, 255, 255, 0.7);
+        }
+
+        .er-email-status.available {
+          color: var(--success);
+        }
+
+        .er-email-status.unavailable {
+          color: var(--danger);
+        }
+
+        /* Password Strength */
+        .er-password-strength {
+          margin-top: 0.75rem;
+          animation: slideInUp 0.4s ease-out;
+        }
+
+        @keyframes slideInUp {
+          0% { opacity: 0; transform: translateY(15px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+
+        .er-progress {
+          height: 8px;
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 4px;
+          overflow: hidden;
+          margin-bottom: 0.5rem;
+        }
+
+        .er-progress-bar {
+          height: 100%;
+          background: var(--gradient-success);
+          border-radius: 4px;
+          transition: var(--transition);
+        }
+
+        .er-progress-bar.er-bg-danger {
+          background: linear-gradient(135deg, var(--danger) 0%, #e53e3e 100%);
+        }
+
+        .er-progress-bar.er-bg-warning {
+          background: linear-gradient(135deg, var(--warning) 0%, #dd6b20 100%);
+        }
+
+        .er-progress-bar.er-bg-info {
+          background: linear-gradient(135deg, var(--info) 0%, #319795 100%);
+        }
+
+        .er-progress-bar.er-bg-success {
+          background: var(--gradient-success);
+        }
+
+        .er-password-requirements {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0.5rem;
+          margin-top: 0.5rem;
+        }
+
+        .er-requirement {
+          display: flex;
+          align-items: center;
+          font-size: 0.8rem;
+          color: rgba(255, 255, 255, 0.7);
+          transition: var(--transition);
+        }
+
+        .er-requirement.met {
+          color: var(--success);
+        }
+
+        .er-requirement i {
+          margin-right: 0.5rem;
+          width: 12px;
+        }
+
+        /* Range Input */
+        .er-form-range {
+          width: 100%;
+          height: 6px;
+          border-radius: 3px;
+          background: rgba(255, 255, 255, 0.2);
+          outline: none;
+          -webkit-appearance: none;
+        }
+
+        .er-form-range::-webkit-slider-thumb {
+          appearance: none;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: var(--gradient-primary);
+          cursor: pointer;
+          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .er-form-range::-moz-range-thumb {
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: var(--gradient-primary);
+          cursor: pointer;
+          border: none;
+          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .er-range-value {
+          display: inline-block;
+          margin-left: 1rem;
+          padding: 0.25rem 0.75rem;
+          background: rgba(255, 255, 255, 0.15);
+          border-radius: var(--border-radius-sm);
+          color: var(--white);
+          font-weight: 500;
+          font-size: 0.875rem;
+        }
+
+        /* Checkboxes */
+        .er-form-check {
+          display: flex;
+          align-items: flex-start;
+          margin-bottom: 1.5rem;
+        }
+
+        .er-form-check-input {
+          width: 1.5rem;
+          height: 1.5rem;
+          margin-right: 0.75rem;
+          margin-top: 0.125rem;
+          background: rgba(255, 255, 255, 0.1);
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-radius: 6px;
+          transition: var(--transition);
+          cursor: pointer;
+          position: relative;
+        }
+
+        .er-form-check-input:checked {
+          background: var(--gradient-primary);
+          border-color: transparent;
+        }
+
+        .er-form-check-input:checked::after {
+          content: '✓';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          color: var(--white);
+          font-size: 0.9rem;
+          font-weight: bold;
+        }
+
+        .er-form-check-input:focus {
+          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .er-form-check-label {
+          color: var(--white);
+          font-size: 0.95rem;
+          line-height: 1.5;
+          cursor: pointer;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .er-form-check-label a {
+          color: rgba(255, 255, 255, 0.9);
+          text-decoration: none;
+          font-weight: 500;
+          position: relative;
+        }
+
+        .er-form-check-label a:hover {
+          color: var(--white);
+        }
+
+        .er-form-check-label a::after {
+          content: '';
+          position: absolute;
+          width: 0;
+          height: 2px;
+          bottom: -2px;
+          left: 0;
+          background: var(--gradient-primary);
+          transition: var(--transition);
+        }
+
+        .er-form-check-label a:hover::after {
+          width: 100%;
+        }
+
+        /* Error States */
+        .er-is-invalid {
+          border-color: var(--danger) !important;
+          background: rgba(245, 101, 101, 0.1) !important;
+          animation: shakeError 0.6s ease-in-out;
+        }
+
+        @keyframes shakeError {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+          20%, 40%, 60%, 80% { transform: translateX(8px); }
+        }
+
+        .er-invalid-feedback {
+          display: block;
+          color: #ff8a95;
+          font-size: 0.875rem;
+          margin-top: 0.5rem;
+          font-weight: 500;
+          animation: fadeInError 0.3s ease-out;
+        }
+
+        @keyframes fadeInError {
+          0% { opacity: 0; transform: translateY(-5px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Alert */
+        .er-alert {
+          padding: 1.25rem;
+          margin-bottom: 2rem;
+          border: 1px solid transparent;
+          border-radius: var(--border-radius-sm);
+          animation: alertSlide 0.5s ease-out;
+        }
+
+        @keyframes alertSlide {
+          0% { opacity: 0; transform: translateY(-15px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+
+        .er-alert-danger {
+          background: rgba(245, 101, 101, 0.15);
+          border-color: rgba(245, 101, 101, 0.3);
+          color: #ff8a95;
+        }
+
+        /* Buttons */
+        .er-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.75rem 1.5rem;
+          border: none;
+          border-radius: var(--border-radius-sm);
+          font-weight: 500;
+          text-decoration: none;
+          transition: var(--transition);
+          cursor: pointer;
+          font-family: inherit;
+          font-size: 0.875rem;
+          line-height: 1;
+        }
+
+        .er-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .er-btn-primary {
+          background: var(--gradient-primary);
+          border: none;
+          color: var(--white);
+          font-weight: 600;
+          font-size: 1.1rem;
+          padding: 1.25rem 2rem;
+          border-radius: var(--border-radius-sm);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .er-btn-primary::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+          transition: var(--transition);
+        }
+
+        .er-btn-primary:hover:not(:disabled) {
+          transform: translateY(-3px);
+          box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+        }
+
+        .er-btn-primary:hover::before {
+          left: 100%;
+        }
+
+        .er-btn-secondary {
+          background: rgba(255, 255, 255, 0.15);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          color: var(--white);
+        }
+
+        .er-btn-secondary:hover:not(:disabled) {
+          background: rgba(255, 255, 255, 0.25);
+          transform: translateY(-2px);
+        }
+
+        .er-btn-outline-secondary {
+          background: rgba(255, 255, 255, 0.15);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          color: var(--white);
+        }
+
+        .er-btn-outline-secondary:hover {
+          background: rgba(255, 255, 255, 0.25);
+          transform: translateX(-4px);
+        }
+
+        .er-btn-sm {
+          padding: 0.5rem 1rem;
+          font-size: 0.8rem;
+        }
+
+        /* Navigation */
+        .er-step-navigation {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-top: 2rem;
+          padding-top: 2rem;
+          border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Loading Spinner */
+        .er-spinner-border {
+          display: inline-block;
+          width: 1.5rem;
+          height: 1.5rem;
+          border: 0.25em solid currentColor;
+          border-right-color: transparent;
+          border-radius: 50%;
+          animation: spin 0.75s linear infinite;
+        }
+
+        .er-spinner-border-sm {
+          width: 1rem;
+          height: 1rem;
+          border-width: 0.2em;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        /* Utility Classes */
+        .er-d-flex { display: flex; }
+        .er-align-items-center { align-items: center; }
+        .er-justify-content-between { justify-content: space-between; }
+        .er-justify-content-center { justify-content: center; }
+        .er-me-2 { margin-right: 0.5rem; }
+        .er-me-3 { margin-right: 1rem; }
+        .er-text-center { text-align: center; color: rgba(255, 255, 255, 0.9); }
+        .er-text-muted { color: rgba(255, 255, 255, 0.7) !important; }
+        .er-text-danger { color: #ff8a95 !important; }
+        .er-text-warning { color: #fbb03b !important; }
+        .er-text-success { color: #68d391 !important; }
+        .er-text-info { color: #63b3ed !important; }
+        .er-small { font-size: 0.875rem; }
+        .er-fw-bold { font-weight: 700; }
+        .er-d-grid { display: grid; }
+        .er-gap-2 { gap: 1rem; }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+          .er-col-md-6 { width: 100%; margin-bottom: 2rem; }
+          .er-col-md-10 { width: 100%; }
+          .er-card-body { padding: 2rem 1.5rem; }
+          .er-card-header { padding: 1.5rem; }
+          .er-card-header h2 { font-size: 1.5rem; }
+          .er-step-progress { padding: 0 1rem; }
+          .er-step-label { font-size: 0.75rem; }
+          .er-password-requirements { grid-template-columns: 1fr; }
+          .er-step-navigation { flex-direction: column; gap: 1rem; }
+        }
+
+        @media (max-width: 576px) {
+          .er-container { padding: 1rem 0.5rem; }
+          .er-card { margin: 0.5rem; border-radius: var(--border-radius); }
+          .er-card-body { padding: 1.5rem 1rem; }
+          .er-card-header { padding: 1rem; }
+          .er-btn-primary { font-size: 1rem; padding: 1rem 1.5rem; }
+          .er-step-circle { width: 40px; height: 40px; font-size: 1rem; }
+          .er-step:not(:last-child)::after { top: 20px; }
+        }
+
+        /* Accessibility */
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+          }
+        }
+
+        .er-btn:focus-visible,
+        .er-form-control:focus-visible,
+        .er-form-check-input:focus-visible {
+          outline: 2px solid var(--white);
+          outline-offset: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="er-container er-mt-5">
+        <div class="er-row er-justify-content-center">
+            <div class="er-col-md-10">
+                <div class="er-card">
+                    <div class="er-card-header">
+                        <div class="er-d-flex er-align-items-center">
+                            <a routerLink="/login" class="er-btn er-btn-sm er-btn-outline-secondary er-me-3">
+                                <i class="fas fa-arrow-left"></i>
+                            </a>
+                            <h2>Business Client Registration</h2>
+                        </div>
+                    </div>
+                    
+                    <div class="er-card-body">
+                        <!-- Step Progress -->
+                        <div class="er-step-progress">
+                            <div class="er-step" [class.active]="currentStep === 1" [class.completed]="currentStep > 1">
+                                <div class="er-step-circle">
+                                    <span *ngIf="currentStep <= 1">1</span>
+                                    <i *ngIf="currentStep > 1" class="fas fa-check"></i>
+                                </div>
+                                <div class="er-step-label">Company Info</div>
+                            </div>
+                            <div class="er-step" [class.active]="currentStep === 2" [class.completed]="currentStep > 2">
+                                <div class="er-step-circle">
+                                    <span *ngIf="currentStep <= 2">2</span>
+                                    <i *ngIf="currentStep > 2" class="fas fa-check"></i>
+                                </div>
+                                <div class="er-step-label">Contact Info</div>
+                            </div>
+                            <div class="er-step" [class.active]="currentStep === 3" [class.completed]="currentStep > 3">
+                                <div class="er-step-circle">
+                                    <span *ngIf="currentStep <= 3">3</span>
+                                    <i *ngIf="currentStep > 3" class="fas fa-check"></i>
+                                </div>
+                                <div class="er-step-label">Account Setup</div>
+                            </div>
+                        </div>
+
+                        <!-- Error Alert -->
+                        <div class="er-alert er-alert-danger" *ngIf="error">
+                            <i class="fas fa-exclamation-circle er-me-2"></i>
+                            {{error}}
+                        </div>
+
+                        <form [formGroup]="enterpriseForm" (ngSubmit)="onSubmit()">
+                            <!-- Step 1: Company Information -->
+                            <div class="er-step-content" [class.active]="currentStep === 1">
+                                <div class="er-section-title">
+                                    <div class="er-section-icon">
+                                        <i class="fas fa-building"></i>
+                                    </div>
+                                    <h3>Company Information</h3>
+                                </div>
+                                
+                                <div class="er-row">
+                                    <div class="er-col-md-6">
+                                        <div class="er-mb-3">
+                                            <label for="companyName" class="er-form-label required">Company Name</label>
+                                            <input type="text" formControlName="companyName" class="er-form-control" 
+                                                [class.er-is-invalid]="hasFieldError('companyName')" 
+                                                id="companyName" placeholder="Enter your company name">
+                                            <div class="er-invalid-feedback" *ngIf="hasFieldError('companyName')">
+                                                {{ getFieldError('companyName') }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="er-col-md-6">
+                                        <div class="er-mb-3">
+                                            <label for="businessType" class="er-form-label required">Business Type</label>
+                                            <select formControlName="businessType" class="er-form-select" 
+                                                [class.er-is-invalid]="hasFieldError('businessType')" 
+                                                id="businessType">
+                                                <option value="">Select business type</option>
+                                                <option *ngFor="let type of businessTypes" [value]="type.value">{{type.display}}</option>
+                                            </select>
+                                            <div class="er-invalid-feedback" *ngIf="hasFieldError('businessType')">
+                                                {{ getFieldError('businessType') }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="er-row">
+                                    <div class="er-col-md-6">
+                                        <div class="er-mb-3">
+                                            <label for="vatNumber" class="er-form-label required">VAT Number</label>
+                                            <input type="text" formControlName="vatNumber" class="er-form-control" 
+                                                [class.er-is-invalid]="hasFieldError('vatNumber')" 
+                                                id="vatNumber" placeholder="e.g., FR12345678901"
+                                                (input)="formatVatNumber($event)">
+                                            <div class="er-invalid-feedback" *ngIf="hasFieldError('vatNumber')">
+                                                {{ getFieldError('vatNumber') }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="er-col-md-6">
+                                        <div class="er-mb-3">
+                                            <label for="businessPhone" class="er-form-label required">Business Phone</label>
+                                            <div class="er-input-group">
+                                                <span class="er-input-group-text"><i class="fas fa-phone"></i></span>
+                                                <input type="tel" formControlName="businessPhone" class="er-form-control" 
+                                                    [class.er-is-invalid]="hasFieldError('businessPhone')" 
+                                                    id="businessPhone" placeholder="+33 1 23 45 67 89"
+                                                    (input)="formatPhoneNumber($event, 'businessPhone')">
+                                            </div>
+                                            <div class="er-invalid-feedback" *ngIf="hasFieldError('businessPhone')">
+                                                {{ getFieldError('businessPhone') }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="er-mb-3">
+                                    <label for="businessAddress" class="er-form-label required">Business Address</label>
+                                    <input type="text" formControlName="businessAddress" class="er-form-control" 
+                                        [class.er-is-invalid]="hasFieldError('businessAddress')" 
+                                        id="businessAddress" placeholder="Enter your business address">
+                                    <div class="er-invalid-feedback" *ngIf="hasFieldError('businessAddress')">
+                                        {{ getFieldError('businessAddress') }}
+                                    </div>
+                                </div>
+
+                                <div class="er-mb-3">
+                                    <label for="deliveryRadius" class="er-form-label required">Delivery Radius (km)</label>
+                                    <div class="er-d-flex er-align-items-center">
+                                        <input type="range" formControlName="deliveryRadius" class="er-form-range" 
+                                            id="deliveryRadius" min="1" max="100" step="1">
+                                        <span class="er-range-value">{{f['deliveryRadius'].value}} km</span>
+                                    </div>
+                                    <small class="er-text-muted">How far are you willing to deliver? This helps us match you with suitable orders.</small>
+                                </div>
+                            </div>
+
+                            <!-- Step 2: Contact Information -->
+                            <div class="er-step-content" [class.active]="currentStep === 2">
+                                <div class="er-section-title">
+                                    <div class="er-section-icon">
+                                        <i class="fas fa-user-tie"></i>
+                                    </div>
+                                    <h3>Contact Information</h3>
+                                </div>
+                                
+                                <div class="er-row">
+                                    <div class="er-col-md-6">
+                                        <div class="er-mb-3">
+                                            <label for="firstName" class="er-form-label required">First Name</label>
+                                            <input type="text" formControlName="firstName" class="er-form-control" 
+                                                [class.er-is-invalid]="hasFieldError('firstName')" 
+                                                id="firstName" placeholder="Enter your first name">
+                                            <div class="er-invalid-feedback" *ngIf="hasFieldError('firstName')">
+                                                {{ getFieldError('firstName') }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="er-col-md-6">
+                                        <div class="er-mb-3">
+                                            <label for="lastName" class="er-form-label required">Last Name</label>
+                                            <input type="text" formControlName="lastName" class="er-form-control" 
+                                                [class.er-is-invalid]="hasFieldError('lastName')" 
+                                                id="lastName" placeholder="Enter your last name">
+                                            <div class="er-invalid-feedback" *ngIf="hasFieldError('lastName')">
+                                                {{ getFieldError('lastName') }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="er-row">
+                                    <div class="er-col-md-6">
+                                        <div class="er-mb-3">
+                                            <label for="email" class="er-form-label required">Email Address</label>
+                                            <div class="er-input-group">
+                                                <span class="er-input-group-text"><i class="fas fa-envelope"></i></span>
+                                                <input type="email" formControlName="email" class="er-form-control" 
+                                                    [class.er-is-invalid]="hasFieldError('email')" 
+                                                    id="email" placeholder="your.email@company.com">
+                                            </div>
+                                            <div class="er-email-status" *ngIf="f['email'].value && f['email'].valid">
+                                                <span *ngIf="emailChecking" class="checking">
+                                                    <i class="fas fa-spinner fa-spin er-me-2"></i>Checking availability...
+                                                </span>
+                                                <span *ngIf="!emailChecking && emailAvailable === true" class="available">
+                                                    <i class="fas fa-check-circle er-me-2"></i>Email is available
+                                                </span>
+                                                <span *ngIf="!emailChecking && emailAvailable === false" class="unavailable">
+                                                    <i class="fas fa-times-circle er-me-2"></i>Email is already registered
+                                                </span>
+                                            </div>
+                                            <div class="er-invalid-feedback" *ngIf="hasFieldError('email')">
+                                                {{ getFieldError('email') }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="er-col-md-6">
+                                        <div class="er-mb-3">
+                                            <label for="phone" class="er-form-label required">Personal Phone</label>
+                                            <div class="er-input-group">
+                                                <span class="er-input-group-text"><i class="fas fa-mobile-alt"></i></span>
+                                                <input type="tel" formControlName="phone" class="er-form-control" 
+                                                    [class.er-is-invalid]="hasFieldError('phone')" 
+                                                    id="phone" placeholder="+33 6 12 34 56 78"
+                                                    (input)="formatPhoneNumber($event, 'phone')">
+                                            </div>
+                                            <div class="er-invalid-feedback" *ngIf="hasFieldError('phone')">
+                                                {{ getFieldError('phone') }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="er-mb-3">
+                                    <label for="address" class="er-form-label required">Personal Address</label>
+                                    <input type="text" formControlName="address" class="er-form-control" 
+                                        [class.er-is-invalid]="hasFieldError('address')" 
+                                        id="address" placeholder="Enter your personal address">
+                                    <div class="er-invalid-feedback" *ngIf="hasFieldError('address')">
+                                        {{ getFieldError('address') }}
+                                    </div>
+                                    <small class="er-text-muted">This address is for personal correspondence and may be different from your business address.</small>
+                                </div>
+                            </div>
+
+                            <!-- Step 3: Account Setup -->
+                            <div class="er-step-content" [class.active]="currentStep === 3">
+                                <div class="er-section-title">
+                                    <div class="er-section-icon">
+                                        <i class="fas fa-lock"></i>
+                                    </div>
+                                    <h3>Account Security</h3>
+                                </div>
+                                
+                                <div class="er-row">
+                                    <div class="er-col-md-6">
+                                        <div class="er-mb-3">
+                                            <label for="password" class="er-form-label required">Password</label>
+                                            <div class="er-input-group">
+                                                <input [type]="showPassword ? 'text' : 'password'" formControlName="password" class="er-form-control" 
+                                                    [class.er-is-invalid]="hasFieldError('password')" 
+                                                    id="password" placeholder="Create a secure password">
+                                                <button class="er-btn" type="button" (click)="togglePasswordVisibility()">
+                                                    <i [class]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                                                </button>
+                                            </div>
+                                            <div class="er-password-strength" *ngIf="f['password'].value">
+                                                <div class="er-progress">
+                                                    <div class="er-progress-bar" [class]="'er-bg-' + passwordStrength.class" 
+                                                         [style.width]="passwordStrength.score + '%'"></div>
+                                                </div>
+                                                <div class="er-d-flex er-justify-content-between er-align-items-center">
+                                                    <small [class]="'er-text-' + passwordStrength.class">{{passwordStrength.message}}</small>
+                                                    <small class="er-text-muted">{{passwordStrength.score.toFixed(0)}}%</small>
+                                                </div>
+                                                <div class="er-password-requirements">
+                                                    <div *ngFor="let req of getPasswordRequirements()" 
+                                                         class="er-requirement" [class.met]="req.met">
+                                                        <i [class]="req.met ? 'fas fa-check' : 'fas fa-times'"></i>
+                                                        {{req.label}}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="er-invalid-feedback" *ngIf="hasFieldError('password')">
+                                                {{ getFieldError('password') }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="er-col-md-6">
+                                        <div class="er-mb-3">
+                                            <label for="confirmPassword" class="er-form-label required">Confirm Password</label>
+                                            <div class="er-input-group">
+                                                <input [type]="showConfirmPassword ? 'text' : 'password'" formControlName="confirmPassword" class="er-form-control" 
+                                                    [class.er-is-invalid]="hasFieldError('confirmPassword')" 
+                                                    id="confirmPassword" placeholder="Confirm your password">
+                                                <button class="er-btn" type="button" (click)="toggleConfirmPasswordVisibility()">
+                                                    <i [class]="showConfirmPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                                                </button>
+                                            </div>
+                                            <div class="er-invalid-feedback" *ngIf="hasFieldError('confirmPassword')">
+                                                {{ getFieldError('confirmPassword') }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Terms and Conditions -->
+                                <div class="er-mb-3">
+                                    <div class="er-form-check">
+                                        <input class="er-form-check-input" type="checkbox" formControlName="termsAccepted" 
+                                            [class.er-is-invalid]="hasFieldError('termsAccepted')" 
+                                            id="termsCheck">
+                                        <label class="er-form-check-label" for="termsCheck">
+                                            I agree to the <a href="#" target="_blank">Terms and Conditions</a> and <a href="#" target="_blank">Privacy Policy</a> <span class="er-text-danger">*</span>
+                                        </label>
+                                    </div>
+                                    <div class="er-invalid-feedback" *ngIf="hasFieldError('termsAccepted')">
+                                        {{ getFieldError('termsAccepted') }}
+                                    </div>
+                                </div>
+
+                                <div class="er-mb-3">
+                                    <div class="er-form-check">
+                                        <input class="er-form-check-input" type="checkbox" formControlName="dataProcessingAccepted" 
+                                            [class.er-is-invalid]="hasFieldError('dataProcessingAccepted')" 
+                                            id="dataProcessingCheck">
+                                        <label class="er-form-check-label" for="dataProcessingCheck">
+                                            I consent to the processing of my personal data as described in the Privacy Policy <span class="er-text-danger">*</span>
+                                        </label>
+                                    </div>
+                                    <div class="er-invalid-feedback" *ngIf="hasFieldError('dataProcessingAccepted')">
+                                        {{ getFieldError('dataProcessingAccepted') }}
+                                    </div>
+                                </div>
+
+                                <div class="er-mb-4">
+                                    <div class="er-form-check">
+                                        <input class="er-form-check-input" type="checkbox" formControlName="marketingAccepted" id="marketingCheck">
+                                        <label class="er-form-check-label" for="marketingCheck">
+                                            I would like to receive marketing communications about new features and promotions (optional)
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Step Navigation -->
+                            <div class="er-step-navigation">
+                                <button type="button" class="er-btn er-btn-secondary" 
+                                        *ngIf="canGoBack" (click)="previousStep()"
+                                        [disabled]="loading">
+                                    <i class="fas fa-arrow-left er-me-2"></i>
+                                    Previous
+                                </button>
+                                <div *ngIf="!canGoBack"></div>
+
+                                <div class="er-d-flex er-align-items-center">
+                                    <span class="er-text-muted er-small er-me-3">Step {{currentStep}} of {{totalSteps}}</span>
+                                    
+                                    <button type="button" class="er-btn er-btn-primary" 
+                                            *ngIf="canProceedToNext" (click)="nextStep()"
+                                            [disabled]="!isStepValid || loading">
+                                        Next
+                                        <i class="fas fa-arrow-right er-me-2"></i>
+                                    </button>
+
+                                    <button type="submit" class="er-btn er-btn-primary" 
+                                            *ngIf="isLastStep"
+                                            [disabled]="!isStepValid || loading || emailAvailable === false">
+                                        <span *ngIf="!loading">
+                                            <i class="fas fa-check er-me-2"></i>
+                                            Create Account
+                                        </span>
+                                        <span *ngIf="loading">
+                                            <i class="fas fa-circle-notch fa-spin er-me-2"></i>
+                                            Creating Account...
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- Login Link -->
+                        <div class="er-text-center er-mt-4">
+                            <p class="er-text-muted">
+                                Already have an account? 
+                                <a routerLink="/login">Sign in here</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-          <form [formGroup]="enterpriseForm" (ngSubmit)="onSubmit()">
-            <div class="row">
-              <!-- Personal Information Section -->
-              <div class="col-md-6">
-                <div class="section-title d-flex align-items-center mb-4">
-                  <div class="section-icon me-3">
-                    <i class="fas fa-user-circle text-primary"></i>
-                  </div>
-                  <h3 class="h5 mb-0">Primary Contact</h3>
-                </div>
-                
-                <!-- First Name -->
-                <div class="mb-3">
-                  <label for="firstName" class="form-label">First Name</label>
-                  <input 
-                    type="text" 
-                    id="firstName"
-                    formControlName="firstName" 
-                    class="form-control"
-                    [class.is-invalid]="submitted && f['firstName'].errors"
-                  >
-                  <div class="invalid-feedback" *ngIf="submitted && f['firstName'].errors">
-                    <span *ngIf="f['firstName'].errors['required']">First name is required</span>
-                  </div>
-                </div>
-                
-                <!-- Last Name -->
-                <div class="mb-3">
-                  <label for="lastName" class="form-label">Last Name</label>
-                  <input 
-                    type="text" 
-                    id="lastName"
-                    formControlName="lastName" 
-                    class="form-control"
-                    [class.is-invalid]="submitted && f['lastName'].errors"
-                  >
-                  <div class="invalid-feedback" *ngIf="submitted && f['lastName'].errors">
-                    <span *ngIf="f['lastName'].errors['required']">Last name is required</span>
-                  </div>
-                </div>
-                
-                <!-- Email -->
-                <div class="mb-3">
-                  <label for="email" class="form-label">Professional Email</label>
-                  <div class="input-group">
-                    <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                    <input 
-                      type="email" 
-                      id="email"
-                      formControlName="email" 
-                      class="form-control"
-                      [class.is-invalid]="submitted && f['email'].errors"
-                    >
-                    <div class="invalid-feedback" *ngIf="submitted && f['email'].errors">
-                      <span *ngIf="f['email'].errors['required']">Email is required</span>
-                      <span *ngIf="f['email'].errors['email']">Please enter a valid email</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Password -->
-                <div class="mb-3">
-                  <label for="password" class="form-label">Password</label>
-                  <div class="input-group">
-                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                    <input 
-                      [type]="showPassword ? 'text' : 'password'" 
-                      id="password"
-                      formControlName="password" 
-                      class="form-control"
-                      [class.is-invalid]="submitted && f['password'].errors"
-                      (input)="passwordStrength = calculatePasswordStrength(f['password'].value)"
-                    >
-                    <button 
-                      type="button" 
-                      class="btn btn-outline-secondary"
-                      (click)="togglePasswordVisibility()"
-                    >
-                      <i [class]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
-                    </button>
-                    <div class="invalid-feedback" *ngIf="submitted && f['password'].errors">
-                      <span *ngIf="f['password'].errors['required']">Password is required</span>
-                      <span *ngIf="f['password'].errors['minlength']">Password must be at least 6 characters</span>
-                    </div>
-                  </div>
-                  <!-- Password Strength Indicator -->
-                  <div class="password-strength mt-2" *ngIf="f['password'].value">
-                    <div class="progress">
-                      <div class="progress-bar" 
-                          [ngClass]="{
-                            'bg-danger': passwordStrength < 40,
-                            'bg-warning': passwordStrength >= 40 && passwordStrength < 80,
-                            'bg-success': passwordStrength >= 80
-                          }"
-                          [style.width.%]="passwordStrength">
-                      </div>
-                    </div>
-                    <small class="text-muted">
-                      Password strength: 
-                      <span [ngClass]="{
-                        'text-danger': passwordStrength < 40,
-                        'text-warning': passwordStrength >= 40 && passwordStrength < 80,
-                        'text-success': passwordStrength >= 80
-                      }">
-                        {{ getPasswordStrengthText() }}
-                      </span>
-                    </small>
-                  </div>
-                  <small class="form-text text-muted mt-1">
-                    Password must contain at least 6 characters
-                  </small>
-                </div>
-                
-                <!-- Confirm Password -->
-                <div class="mb-3">
-                  <label for="confirmPassword" class="form-label">Confirm Password</label>
-                  <div class="input-group">
-                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                    <input 
-                      [type]="showPassword ? 'text' : 'password'" 
-                      id="confirmPassword"
-                      formControlName="confirmPassword" 
-                      class="form-control"
-                      [class.is-invalid]="(submitted && f['confirmPassword'].errors) || (enterpriseForm.errors?.['mustMatch'] && f['confirmPassword'].touched)"
-                    >
-                    <button 
-                      type="button" 
-                      class="btn btn-outline-secondary"
-                      (click)="togglePasswordVisibility()"
-                    >
-                      <i [class]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
-                    </button>
-                  </div>
-                  <div class="invalid-feedback" *ngIf="submitted && f['confirmPassword'].errors">
-                    <span *ngIf="f['confirmPassword'].errors['required']">Please confirm your password</span>
-                  </div>
-                  <div class="invalid-feedback" *ngIf="enterpriseForm.errors?.['mustMatch'] && f['confirmPassword'].touched">
-                    Passwords do not match
-                  </div>
-                </div>
-                
-                <!-- Phone -->
-                <div class="mb-3">
-                  <label for="phone" class="form-label">Contact Phone</label>
-                  <div class="input-group">
-                    <span class="input-group-text"><i class="fas fa-phone"></i></span>
-                    <input 
-                      type="tel" 
-                      id="phone"
-                      formControlName="phone" 
-                      class="form-control"
-                      placeholder="+216 XX XXX XXX"
-                      [class.is-invalid]="submitted && f['phone'].errors"
-                    >
-                    <div class="invalid-feedback" *ngIf="submitted && f['phone'].errors">
-                      <span *ngIf="f['phone'].errors['required']">Phone number is required</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Address -->
-                <div class="mb-3">
-                  <label for="address" class="form-label">Personal Address</label>
-                  <div class="input-group">
-                    <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
-                    <input 
-                      type="text" 
-                      id="address"
-                      formControlName="address" 
-                      class="form-control"
-                      [class.is-invalid]="submitted && f['address'].errors"
-                    >
-                    <div class="invalid-feedback" *ngIf="submitted && f['address'].errors">
-                      <span *ngIf="f['address'].errors['required']">Address is required</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Business Information Section -->
-              <div class="col-md-6">
-                <div class="section-title d-flex align-items-center mb-4">
-                  <div class="section-icon me-3">
-                    <i class="fas fa-building text-primary"></i>
-                  </div>
-                  <h3 class="h5 mb-0">Business Information</h3>
-                </div>
-                
-                <!-- Company Name -->
-                <div class="mb-3">
-                  <label for="companyName" class="form-label">Company Name</label>
-                  <input 
-                    type="text" 
-                    id="companyName"
-                    formControlName="companyName" 
-                    class="form-control"
-                    [class.is-invalid]="submitted && f['companyName'].errors"
-                  >
-                  <div class="invalid-feedback" *ngIf="submitted && f['companyName'].errors">
-                    <span *ngIf="f['companyName'].errors['required']">Company name is required</span>
-                  </div>
-                </div>
-                
-                <!-- Business Type -->
-                <div class="mb-3">
-                  <label for="businessType" class="form-label">Business Type</label>
-                  <select 
-                    id="businessType"
-                    formControlName="businessType" 
-                    class="form-select"
-                    [class.is-invalid]="submitted && f['businessType'].errors"
-                  >
-                    <option value="" disabled selected>Select a type</option>
-                    <option *ngFor="let type of businessTypes" [value]="type.value">{{type.display}}</option>
-                  </select>
-                  <div class="invalid-feedback" *ngIf="submitted && f['businessType'].errors">
-                    <span *ngIf="f['businessType'].errors['required']">Business type is required</span>
-                  </div>
-                </div>
-                
-                <!-- VAT Number -->
-                <div class="mb-3">
-                  <label for="vatNumber" class="form-label">VAT Number</label>
-                  <input 
-                    type="text" 
-                    id="vatNumber"
-                    formControlName="vatNumber" 
-                    class="form-control"
-                    placeholder="Ex: TN12345678"
-                    [class.is-invalid]="submitted && f['vatNumber'].errors"
-                  >
-                  <div class="invalid-feedback" *ngIf="submitted && f['vatNumber'].errors">
-                    <span *ngIf="f['vatNumber'].errors['required']">VAT number is required</span>
-                    <span *ngIf="f['vatNumber'].errors['pattern']">Invalid VAT format (e.g. TN12345678)</span>
-                  </div>
-                </div>
-                
-                <!-- Business Phone -->
-                <div class="mb-3">
-                  <label for="businessPhone" class="form-label">Business Phone</label>
-                  <div class="input-group">
-                    <span class="input-group-text"><i class="fas fa-phone"></i></span>
-                    <input 
-                      type="tel" 
-                      id="businessPhone"
-                      formControlName="businessPhone" 
-                      class="form-control"
-                      placeholder="+216 XX XXX XXX"
-                      [class.is-invalid]="submitted && f['businessPhone'].errors"
-                    >
-                    <div class="invalid-feedback" *ngIf="submitted && f['businessPhone'].errors">
-                      <span *ngIf="f['businessPhone'].errors['required']">Business phone is required</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Business Address -->
-                <div class="mb-3">
-                  <label for="businessAddress" class="form-label">Business Address</label>
-                  <div class="input-group">
-                    <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
-                    <textarea
-                      id="businessAddress"
-                      formControlName="businessAddress" 
-                      class="form-control"
-                      rows="2"
-                      [class.is-invalid]="submitted && f['businessAddress'].errors"
-                    ></textarea>
-                    <div class="invalid-feedback" *ngIf="submitted && f['businessAddress'].errors">
-                      <span *ngIf="f['businessAddress'].errors['required']">Business address is required</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Delivery Radius -->
-                <div class="mb-3">
-                  <label for="deliveryRadius" class="form-label">Delivery Radius (km)</label>
-                  <input 
-                    type="number" 
-                    id="deliveryRadius"
-                    formControlName="deliveryRadius" 
-                    class="form-control"
-                    step="0.1"
-                    min="1"
-                    [class.is-invalid]="submitted && f['deliveryRadius'].errors"
-                  >
-                  <div class="invalid-feedback" *ngIf="submitted && f['deliveryRadius'].errors">
-                    <span *ngIf="f['deliveryRadius'].errors['required']">Delivery radius is required</span>
-                    <span *ngIf="f['deliveryRadius'].errors['min']">Radius must be at least 1 km</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Terms and Conditions -->
-            <div class="mb-3">
-              <div class="form-check">
-                <input 
-                  class="form-check-input" 
-                  type="checkbox" 
-                  id="termsCheck" 
-                  formControlName="termsAccepted"
-                  [class.is-invalid]="submitted && f['termsAccepted'].errors"
-                >
-                <label class="form-check-label" for="termsCheck">
-                  I accept the <a href="#" class="text-primary">terms of service</a> and <a href="#" class="text-primary">privacy policy</a>
-                </label>
-                <div class="invalid-feedback" *ngIf="submitted && f['termsAccepted'].errors">
-                  <span *ngIf="f['termsAccepted'].errors['required']">You must accept the terms to continue</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Error Message -->
-            <div class="alert alert-danger" *ngIf="error">
-              <i class="fas fa-exclamation-circle me-2"></i>
-              {{error}}
-            </div>
-
-            <!-- Submit Button -->
-            <div class="d-grid gap-2">
-              <button 
-                type="submit" 
-                class="btn btn-primary btn-lg"
-                [disabled]="loading || enterpriseForm.invalid"
-              >
-                <span *ngIf="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
-                {{loading ? 'Registering...' : 'Register'}}
-              </button>
-              
-              <p class="text-center mt-3">
-                Already have an account? <a routerLink="/login" class="text-primary fw-bold">Login here</a>
-              </p>
-            </div>
-          </form>
-        </div>
-      </div>
     </div>
-  </div>
-</div>
+</body>
+</html>

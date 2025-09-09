@@ -19,10 +19,10 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 })
 export class ForgetPasswordComponent {
   forgetForm: FormGroup;
-  message: string = '';
   error: string = '';
   loading: boolean = false;
-  successMessage: string = ''; 
+  emailSent: boolean = false;
+  emailAddress: string = '';
 
   constructor(
     private fb: FormBuilder,
@@ -35,23 +35,47 @@ export class ForgetPasswordComponent {
   }
 
   onSubmit() {
-    if (this.forgetForm.invalid) { // Changed from forgotPasswordForm to forgetForm
+    if (this.forgetForm.invalid) {
+      this.markFormGroupTouched();
       return;
     }
-  
-  
+
     this.loading = true;
-    const email = this.forgetForm.get('email')?.value; // Changed from forgotPasswordForm to forgetForm
-  
+    this.error = '';
+    const email = this.forgetForm.get('email')?.value;
+    this.emailAddress = email;
+
     this.authService.forgotPassword(email).subscribe({
-      next: () => {
-        this.successMessage = 'Password reset instructions sent to your email';
+      next: (response) => {
         this.loading = false;
+        this.emailSent = true;
+        // Optionally disable the form after successful submission
+        this.forgetForm.disable();
       },
       error: (error) => {
-        this.error = error.message || 'Failed to send reset instructions';
         this.loading = false;
+        this.error = error.message || 'Failed to send reset instructions. Please try again.';
       }
     });
+  }
+
+  private markFormGroupTouched() {
+    Object.keys(this.forgetForm.controls).forEach(key => {
+      const control = this.forgetForm.get(key);
+      control?.markAsTouched();
+    });
+  }
+
+  resendEmail() {
+    if (this.emailAddress) {
+      this.emailSent = false;
+      this.forgetForm.enable();
+      this.forgetForm.patchValue({ email: this.emailAddress });
+      this.onSubmit();
+    }
+  }
+
+  goBackToLogin() {
+    this.router.navigate(['/login']);
   }
 }

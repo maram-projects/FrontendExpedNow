@@ -1,396 +1,1295 @@
-<div class="container mt-5">
-  <div class="row justify-content-center">
-    <div class="col-md-10">
-      <div class="card shadow-sm">
-        <div class="card-header bg-white">
-          <div class="d-flex align-items-center">
-            <a routerLink="/register" class="btn btn-sm btn-outline-secondary me-3">
-              <i class="fas fa-arrow-left"></i>
-            </a>
-            <h2 class="mb-0">Temporary Driver Registration</h2>
-          </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temporary Driver Registration</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* CSS Variables */
+        :root {
+          --primary: #667eea;
+          --primary-dark: #5a67d8;
+          --secondary: #764ba2;
+          --accent: #f093fb;
+          --success: #48bb78;
+          --warning: #ed8936;
+          --danger: #f56565;
+          --white: #ffffff;
+          --gray-50: #f7fafc;
+          --gray-100: #edf2f7;
+          --gray-200: #e2e8f0;
+          --gray-300: #cbd5e0;
+          --gray-400: #a0aec0;
+          --gray-500: #718096;
+          --gray-600: #4a5568;
+          --gray-700: #2d3748;
+          --gray-800: #1a202c;
+          --gray-900: #171923;
+          
+          --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+          --gradient-success: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+          --gradient-bg: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+          
+          --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+          --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+          --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+          --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+          --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.25);
+          
+          --border-radius: 16px;
+          --border-radius-sm: 8px;
+          --border-radius-lg: 20px;
+          --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Global styles */
+        body {
+          display: block;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+          background: var(--gradient-bg);
+          background-size: 400% 400%;
+          animation: gradientAnimation 15s ease infinite;
+          min-height: 100vh;
+          color: var(--gray-700);
+          line-height: 1.6;
+          overflow-x: hidden;
+          margin: 0;
+          padding: 0;
+        }
+
+        body::before {
+          content: '';
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: 
+              radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.4) 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.4) 0%, transparent 50%),
+              radial-gradient(circle at 40% 40%, rgba(229, 14, 222, 0.4)0%, transparent 50%);
+          z-index: -1;
+          animation: floatAnimation 20s ease-in-out infinite;
+        }
+
+        @keyframes gradientAnimation {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+
+        @keyframes floatAnimation {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          33% { transform: translateY(-30px) rotate(2deg); }
+          66% { transform: translateY(20px) rotate(-2deg); }
+        }
+
+        /* Container Styles */
+        .er-container {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 2rem 1rem;
+          position: relative;
+          z-index: 1;
+        }
+
+        .er-mt-5 {
+          margin-top: 3rem;
+        }
+
+        .er-row {
+          display: flex;
+          flex-wrap: wrap;
+          margin: 0 -0.75rem;
+        }
+
+        .er-justify-content-center {
+          justify-content: center;
+        }
+
+        .er-col-md-10 {
+          flex: 0 0 auto;
+          width: 83.33333333%;
+          padding: 0 0.75rem;
+        }
+
+        /* Card Styles */
+        .er-card {
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: var(--border-radius-lg);
+          box-shadow: var(--shadow-2xl);
+          overflow: hidden;
+          animation: cardEntrance 1s ease-out;
+          transition: var(--transition);
+        }
+
+        @keyframes cardEntrance {
+          0% {
+            opacity: 0;
+            transform: translateY(40px) scale(0.9);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        .er-card:hover {
+          transform: translateY(-8px);
+          box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+        }
+
+        .er-shadow-sm {
+          box-shadow: var(--shadow-sm);
+        }
+
+        /* Card Header */
+        .er-card-header {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.1) 100%);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+          padding: 2rem;
+        }
+
+        .er-card-header.er-bg-white {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.1) 100%);
+        }
+
+        .er-d-flex {
+          display: flex;
+        }
+
+        .er-align-items-center {
+          align-items: center;
+        }
+
+        .er-me-3 {
+          margin-right: 1rem;
+        }
+
+        .er-mb-0 {
+          margin-bottom: 0;
+        }
+
+        .er-card-header h2 {
+          color: var(--white);
+          font-size: 2rem;
+          font-weight: 700;
+          text-shadow: 0 2px 15px rgba(0, 0, 0, 0.3);
+          letter-spacing: -0.02em;
+          margin: 0;
+        }
+
+        /* Back Button */
+        .er-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.75rem 1.5rem;
+          border: none;
+          border-radius: var(--border-radius-sm);
+          font-weight: 500;
+          text-decoration: none;
+          transition: var(--transition);
+          cursor: pointer;
+          font-family: inherit;
+          font-size: 0.875rem;
+          line-height: 1;
+        }
+
+        .er-btn-sm {
+          padding: 0.5rem 1rem;
+          font-size: 0.8rem;
+        }
+
+        .er-btn-outline-secondary {
+          background: rgba(255, 255, 255, 0.15);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          color: var(--white);
+        }
+
+        .er-btn-outline-secondary:hover {
+          background: rgba(255, 255, 255, 0.25);
+          transform: translateX(-4px);
+          box-shadow: var(--shadow-md);
+        }
+
+        /* Card Body */
+        .er-card-body {
+          padding: 3rem;
+          background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Section Titles */
+        .er-section-title {
+          display: flex;
+          align-items: center;
+          margin-bottom: 2.5rem;
+          position: relative;
+        }
+
+        .er-section-title::after {
+          content: '';
+          position: absolute;
+          bottom: -15px;
+          left: 0;
+          width: 80px;
+          height: 4px;
+          background: var(--gradient-primary);
+          border-radius: 2px;
+          animation: underlineGrow 1s ease-out 0.5s both;
+        }
+
+        @keyframes underlineGrow {
+          0% { width: 0; opacity: 0; }
+          100% { width: 80px; opacity: 1; }
+        }
+
+        .er-section-icon {
+          width: 52px;
+          height: 52px;
+          background: var(--gradient-primary);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-right: 1rem;
+          box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+          animation: iconFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes iconFloat {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-6px); }
+        }
+
+        .er-section-icon i {
+          color: var(--white);
+          font-size: 1.4rem;
+        }
+
+        .er-section-title h3 {
+          color: var(--white);
+          font-size: 1.4rem;
+          font-weight: 600;
+          margin: 0;
+          text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .er-h5 {
+          font-size: 1.25rem;
+        }
+
+        /* Two Column Layout */
+        .er-col-md-6 {
+          flex: 0 0 auto;
+          width: 50%;
+          padding: 0 1rem;
+        }
+
+        /* Form Styles */
+        .er-form {
+          width: 100%;
+        }
+
+        .er-mb-3 {
+          margin-bottom: 1.5rem;
+        }
+
+        .er-mb-4 {
+          margin-bottom: 2rem;
+        }
+
+        /* Labels */
+        .er-form-label {
+          display: block;
+          margin-bottom: 0.75rem;
+          color: var(--white);
+          font-weight: 500;
+          font-size: 0.95rem;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Form Controls */
+        .er-form-control, .er-form-select {
+          width: 100%;
+          padding: 1rem 1.25rem;
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          border-radius: var(--border-radius-sm);
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(10px);
+          color: var(--white);
+          font-size: 1rem;
+          transition: var(--transition);
+          outline: none;
+        }
+
+        .er-form-control::placeholder {
+          color: rgba(255, 255, 255, 0.6);
+        }
+
+        .er-form-control:focus, .er-form-select:focus {
+          border-color: rgba(102, 126, 234, 0.8);
+          background: rgba(255, 255, 255, 0.15);
+          box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+          transform: translateY(-2px);
+        }
+
+        .er-form-control:hover:not(:focus) {
+          border-color: rgba(255, 255, 255, 0.4);
+          background: rgba(255, 255, 255, 0.12);
+        }
+
+        /* Input Groups */
+        .er-input-group {
+          display: flex;
+          width: 100%;
+          border-radius: var(--border-radius-sm);
+          overflow: hidden;
+        }
+
+        .er-input-group-text {
+          display: flex;
+          align-items: center;
+          padding: 1rem 1.25rem;
+          background: rgba(255, 255, 255, 0.15);
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          border-right: none;
+          color: rgba(255, 255, 255, 0.8);
+          font-size: 1rem;
+        }
+
+        .er-input-group .er-form-control {
+          border-left: none;
+          border-radius: 0;
+        }
+
+        .er-input-group .er-btn {
+          border-left: none;
+          border-radius: 0;
+          background: rgba(255, 255, 255, 0.15);
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          color: rgba(255, 255, 255, 0.8);
+        }
+
+        .er-input-group .er-btn:hover {
+          background: rgba(255, 255, 255, 0.25);
+          color: var(--white);
+        }
+
+        /* Select Dropdown */
+        .er-form-select {
+          background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%28255,255,255,0.8%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m1 6 7 7 7-7'/%3e%3c/svg%3e");
+          background-repeat: no-repeat;
+          background-position: right 1rem center;
+          background-size: 16px 12px;
+          cursor: pointer;
+        }
+
+        .er-form-select option {
+          background: var(--gray-800);
+          color: var(--white);
+        }
+
+        /* Textarea */
+        textarea.er-form-control {
+          resize: vertical;
+          min-height: 100px;
+          font-family: inherit;
+        }
+
+        /* Password Strength */
+        .er-password-strength {
+          margin-top: 0.75rem;
+          animation: slideInUp 0.4s ease-out;
+        }
+
+        @keyframes slideInUp {
+          0% {
+            opacity: 0;
+            transform: translateY(15px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .er-progress {
+          height: 8px;
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 4px;
+          overflow: hidden;
+          margin-bottom: 0.5rem;
+        }
+
+        .er-progress-bar {
+          height: 100%;
+          background: var(--gradient-success);
+          border-radius: 4px;
+          transition: var(--transition);
+        }
+
+        .er-progress-bar.er-bg-danger {
+          background: linear-gradient(135deg, var(--danger) 0%, #e53e3e 100%);
+        }
+
+        .er-progress-bar.er-bg-warning {
+          background: linear-gradient(135deg, var(--warning) 0%, #dd6b20 100%);
+        }
+
+        .er-progress-bar.er-bg-success {
+          background: var(--gradient-success);
+        }
+
+        /* Form Check */
+        .er-form-check {
+          display: flex;
+          align-items: flex-start;
+          margin-bottom: 2rem;
+        }
+
+        .er-form-check-input {
+          width: 1.5rem;
+          height: 1.5rem;
+          margin-right: 0.75rem;
+          margin-top: 0.125rem;
+          background: rgba(255, 255, 255, 0.1);
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-radius: 6px;
+          transition: var(--transition);
+          cursor: pointer;
+        }
+
+        .er-form-check-input:checked {
+          background: var(--gradient-primary);
+          border-color: transparent;
+        }
+
+        .er-form-check-input:focus {
+          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .er-form-check-label {
+          color: var(--white);
+          font-size: 0.95rem;
+          line-height: 1.5;
+          cursor: pointer;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .er-form-check-label a {
+          color: rgba(255, 255, 255, 0.9);
+          text-decoration: none;
+          font-weight: 500;
+          position: relative;
+        }
+
+        .er-form-check-label a:hover {
+          color: var(--white);
+        }
+
+        .er-form-check-label a::after {
+          content: '';
+          position: absolute;
+          width: 0;
+          height: 2px;
+          bottom: -2px;
+          left: 0;
+          background: var(--gradient-primary);
+          transition: var(--transition);
+        }
+
+        .er-form-check-label a:hover::after {
+          width: 100%;
+        }
+
+        /* Error States */
+        .er-is-invalid {
+          border-color: var(--danger) !important;
+          background: rgba(245, 101, 101, 0.1) !important;
+          animation: shakeError 0.6s ease-in-out;
+        }
+
+        @keyframes shakeError {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+          20%, 40%, 60%, 80% { transform: translateX(8px); }
+        }
+
+        .er-invalid-feedback {
+          display: block;
+          color: #ff8a95;
+          font-size: 0.875rem;
+          margin-top: 0.5rem;
+          font-weight: 500;
+          animation: fadeInError 0.3s ease-out;
+        }
+
+        @keyframes fadeInError {
+          0% {
+            opacity: 0;
+            transform: translateY(-5px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        /* Alert */
+        .er-alert {
+          padding: 1.25rem;
+          margin-bottom: 2rem;
+          border: 1px solid transparent;
+          border-radius: var(--border-radius-sm);
+          animation: alertSlide 0.5s ease-out;
+        }
+
+        @keyframes alertSlide {
+          0% {
+            opacity: 0;
+            transform: translateY(-15px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .er-alert-danger {
+          background: rgba(245, 101, 101, 0.15);
+          border-color: rgba(245, 101, 101, 0.3);
+          color: #ff8a95;
+        }
+
+        /* Submit Button */
+        .er-d-grid {
+          display: grid;
+        }
+
+        .er-gap-2 {
+          gap: 1rem;
+        }
+
+        .er-btn-primary {
+          background: var(--gradient-primary);
+          border: none;
+          color: var(--white);
+          font-weight: 600;
+          font-size: 1.1rem;
+          padding: 1.25rem 2rem;
+          border-radius: var(--border-radius-sm);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          position: relative;
+          overflow: hidden;
+          transition: var(--transition);
+          cursor: pointer;
+        }
+
+        .er-btn-primary::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+          transition: var(--transition);
+        }
+
+        .er-btn-primary:hover:not(:disabled) {
+          transform: translateY(-3px);
+          box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+        }
+
+        .er-btn-primary:hover::before {
+          left: 100%;
+        }
+
+        .er-btn-primary:active {
+          transform: translateY(-1px);
+        }
+
+        .er-btn-primary:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none;
+        }
+
+        .er-btn-lg {
+          padding: 1.25rem 2rem;
+          font-size: 1.1rem;
+        }
+
+        /* Loading Spinner */
+        .er-spinner-border {
+          display: inline-block;
+          width: 1.5rem;
+          height: 1.5rem;
+          border: 0.25em solid currentColor;
+          border-right-color: transparent;
+          border-radius: 50%;
+          animation: spin 0.75s linear infinite;
+        }
+
+        .er-spinner-border-sm {
+          width: 1rem;
+          height: 1rem;
+          border-width: 0.2em;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        /* Text Utilities */
+        .er-text-center {
+          text-align: center;
+          color: rgba(255, 255, 255, 0.9);
+        }
+
+        .er-text-center a {
+          color: var(--white);
+          text-decoration: none;
+          font-weight: 600;
+          position: relative;
+        }
+
+        .er-text-center a::after {
+          content: '';
+          position: absolute;
+          width: 0;
+          height: 2px;
+          bottom: -3px;
+          left: 50%;
+          background: var(--gradient-primary);
+          transition: var(--transition);
+          transform: translateX(-50%);
+        }
+
+        .er-text-center a:hover::after {
+          width: 100%;
+        }
+
+        .er-text-primary {
+          color: rgba(255, 255, 255, 0.9) !important;
+        }
+
+        .er-text-muted {
+          color: rgba(255, 255, 255, 0.7) !important;
+        }
+
+        .er-text-danger {
+          color: #ff8a95 !important;
+        }
+
+        .er-text-warning {
+          color: #fbb03b !important;
+        }
+
+        .er-text-success {
+          color: #68d391 !important;
+        }
+
+        .er-fw-bold {
+          font-weight: 700;
+        }
+
+        .er-mt-1 {
+          margin-top: 0.25rem;
+        }
+
+        .er-mt-2 {
+          margin-top: 0.5rem;
+        }
+
+        .er-mt-3 {
+          margin-top: 1rem;
+        }
+
+        .er-me-2 {
+          margin-right: 0.5rem;
+        }
+
+        .er-small, .er-small {
+          font-size: 0.875rem;
+        }
+
+        .er-form-text {
+          font-size: 0.875rem;
+          color: rgba(255, 255, 255, 0.7);
+          margin-top: 0.5rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+          .er-col-md-6 {
+            width: 100%;
+            margin-bottom: 2rem;
+          }
+          
+          .er-col-md-10 {
+            width: 100%;
+          }
+          
+          .er-card-body {
+            padding: 2rem 1.5rem;
+          }
+          
+          .er-card-header {
+            padding: 1.5rem;
+          }
+          
+          .er-card-header h2 {
+            font-size: 1.5rem;
+          }
+          
+          .er-section-title {
+            flex-direction: column;
+            text-align: center;
+            gap: 1rem;
+          }
+          
+          .er-section-icon {
+            margin-right: 0;
+          }
+        }
+
+        @media (max-width: 576px) {
+          .er-container {
+            padding: 1rem 0.5rem;
+          }
+          
+          .er-card {
+            margin: 0.5rem;
+            border-radius: var(--border-radius);
+          }
+          
+          .er-card-body {
+            padding: 1.5rem 1rem;
+          }
+          
+          .er-card-header {
+            padding: 1rem;
+          }
+          
+          .er-btn-primary {
+            font-size: 1rem;
+            padding: 1rem 1.5rem;
+          }
+        }
+
+        /* Enhanced Interactions */
+        @media (hover: hover) {
+          .er-form-control:hover:not(:focus):not(.er-is-invalid) {
+            border-color: rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.12);
+          }
+        }
+
+        /* Accessibility */
+        @media (prefers-reduced-motion: reduce) {
+          body *,
+          body *::before,
+          body *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+          }
+        }
+
+        /* Focus visible for keyboard navigation */
+        .er-btn:focus-visible,
+        .er-form-control:focus-visible,
+        .er-form-check-input:focus-visible {
+          outline: 2px solid var(--white);
+          outline-offset: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="er-container er-mt-5">
+        <div class="er-row er-justify-content-center">
+            <div class="er-col-md-10">
+                <div class="er-card er-shadow-sm">
+                    <div class="er-card-header er-bg-white">
+                        <div class="er-d-flex er-align-items-center">
+                            <a routerLink="/register" class="er-btn er-btn-sm er-btn-outline-secondary er-me-3">
+                                <i class="fas fa-arrow-left"></i>
+                            </a>
+                            <h2 class="er-mb-0">Temporary Driver Registration</h2>
+                        </div>
+                    </div>
+                    <div class="er-card-body">
+                        <form [formGroup]="temporaryForm" (ngSubmit)="onSubmit()" class="er-form">
+                            <!-- Personal Information Section -->
+                            <div class="er-section-title">
+                                <div class="er-section-icon">
+                                    <i class="fas fa-user-circle"></i>
+                                </div>
+                                <h3>Personal Information</h3>
+                            </div>
+                            
+                            <div class="er-row">
+                                <div class="er-col-md-6">
+                                    <div class="er-mb-3">
+                                        <label for="firstName" class="er-form-label">First Name</label>
+                                        <input 
+                                            type="text" 
+                                            id="firstName"
+                                            formControlName="firstName" 
+                                            class="er-form-control"
+                                            [class.er-is-invalid]="submitted && f['firstName'].errors"
+                                            placeholder="Enter first name"
+                                        >
+                                        <div class="er-invalid-feedback" *ngIf="submitted && f['firstName'].errors">
+                                            First name is required
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="er-col-md-6">
+                                    <div class="er-mb-3">
+                                        <label for="lastName" class="er-form-label">Last Name</label>
+                                        <input 
+                                            type="text" 
+                                            id="lastName"
+                                            formControlName="lastName" 
+                                            class="er-form-control"
+                                            [class.er-is-invalid]="submitted && f['lastName'].errors"
+                                            placeholder="Enter last name"
+                                        >
+                                        <div class="er-invalid-feedback" *ngIf="submitted && f['lastName'].errors">
+                                            Last name is required
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Contact Information Section -->
+                            <div class="er-section-title er-mt-5">
+                                <div class="er-section-icon">
+                                    <i class="fas fa-address-card"></i>
+                                </div>
+                                <h3>Contact Information</h3>
+                            </div>
+                            
+                            <div class="er-mb-3">
+                                <label for="email" class="er-form-label">Email</label>
+                                <input 
+                                    type="email" 
+                                    id="email"
+                                    formControlName="email" 
+                                    class="er-form-control"
+                                    [class.er-is-invalid]="submitted && f['email'].errors"
+                                    placeholder="Enter email address"
+                                >
+                                <div class="er-invalid-feedback" *ngIf="submitted && f['email'].errors">
+                                    <span *ngIf="f['email'].errors['required']">Email is required</span>
+                                    <span *ngIf="f['email'].errors['email']">Invalid email format</span>
+                                </div>
+                            </div>
+                            
+                            <div class="er-mb-3">
+                                <label for="password" class="er-form-label">Password</label>
+                                <div class="er-input-group">
+                                    <input 
+                                        [type]="showPassword ? 'text' : 'password'" 
+                                        id="password"
+                                        formControlName="password" 
+                                        class="er-form-control"
+                                        [class.er-is-invalid]="submitted && f['password'].errors"
+                                        placeholder="Create a password"
+                                        (input)="calculatePasswordStrength(f['password'].value)"
+                                    >
+                                    <button 
+                                        type="button" 
+                                        class="er-btn"
+                                        (click)="togglePasswordVisibility()"
+                                    >
+                                        <i [class]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                                    </button>
+                                </div>
+                                <!-- Password Strength Indicator -->
+                                <div class="er-password-strength" *ngIf="f['password'].value">
+                                    <div class="er-progress">
+                                        <div class="er-progress-bar" 
+                                            [ngClass]="{
+                                                'er-bg-danger': passwordStrength < 40,
+                                                'er-bg-warning': passwordStrength >= 40 && passwordStrength < 80,
+                                                'er-bg-success': passwordStrength >= 80
+                                            }"
+                                            [style.width.%]="passwordStrength">
+                                        </div>
+                                    </div>
+                                    <small class="er-text-muted">
+                                        Password strength: 
+                                        <span [ngClass]="{
+                                            'er-text-danger': passwordStrength < 40,
+                                            'er-text-warning': passwordStrength >= 40 && passwordStrength < 80,
+                                            'er-text-success': passwordStrength >= 80
+                                        }">
+                                            {{ getPasswordStrengthText() }}
+                                        </span>
+                                    </small>
+                                </div>
+                                <div class="er-invalid-feedback" *ngIf="submitted && f['password'].errors">
+                                    <span *ngIf="f['password'].errors['required']">Password is required</span>
+                                    <span *ngIf="f['password'].errors['minlength']">Minimum 6 characters</span>
+                                </div>
+                                <small class="er-form-text">
+                                    Password must contain at least 6 characters
+                                </small>
+                            </div>
+
+                            <div class="er-mb-3">
+                                <label for="confirmPassword" class="er-form-label">Confirm Password</label>
+                                <div class="er-input-group">
+                                    <input 
+                                        [type]="showConfirmPassword ? 'text' : 'password'" 
+                                        id="confirmPassword"
+                                        formControlName="confirmPassword" 
+                                        class="er-form-control"
+                                        [class.er-is-invalid]="(submitted && f['confirmPassword'].errors) || (temporaryForm.errors?.['mustMatch'] && f['confirmPassword'].touched)"
+                                        placeholder="Confirm your password"
+                                    >
+                                    <button 
+                                        type="button" 
+                                        class="er-btn"
+                                        (click)="toggleConfirmPasswordVisibility()"
+                                    >
+                                        <i [class]="showConfirmPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                                    </button>
+                                </div>
+                                <div class="er-invalid-feedback" *ngIf="submitted && f['confirmPassword'].errors">
+                                    <span *ngIf="f['confirmPassword'].errors['required']">Please confirm your password</span>
+                                </div>
+                                <div class="er-invalid-feedback" *ngIf="temporaryForm.errors?.['mustMatch'] && f['confirmPassword'].touched">
+                                    Passwords do not match
+                                </div>
+                            </div>
+
+                            <div class="er-mb-3">
+                                <label for="phone" class="er-form-label">Phone</label>
+                                <input 
+                                    type="tel" 
+                                    id="phone"
+                                    formControlName="phone" 
+                                    class="er-form-control"
+                                    [class.er-is-invalid]="submitted && f['phone'].errors"
+                                    placeholder="Enter phone number"
+                                >
+                                <div class="er-invalid-feedback" *ngIf="submitted && f['phone'].errors">
+                                    Phone number is required
+                                </div>
+                            </div>
+
+                            <div class="er-mb-4">
+                                <label for="address" class="er-form-label">Address</label>
+                                <input 
+                                    type="text" 
+                                    id="address"
+                                    formControlName="address" 
+                                    class="er-form-control"
+                                    [class.er-is-invalid]="submitted && f['address'].errors"
+                                    placeholder="Enter your address"
+                                >
+                                <div class="er-invalid-feedback" *ngIf="submitted && f['address'].errors">
+                                    Address is required
+                                </div>
+                            </div>
+                            
+                            <!-- Vehicle Information Section -->
+                            <div class="er-section-title er-mt-5">
+                                <div class="er-section-icon">
+                                    <i class="fas fa-motorcycle"></i>
+                                </div>
+                                <h3>Vehicle Information</h3>
+                            </div>
+                            
+                            <div class="er-mb-3">
+                                <label for="vehicleType" class="er-form-label">Vehicle Type</label>
+                                <select 
+                                    id="vehicleType"
+                                    formControlName="vehicleType" 
+                                    class="er-form-select"
+                                    [class.er-is-invalid]="submitted && f['vehicleType'].errors"
+                                >
+                                    <option value="" disabled selected>Select vehicle type</option>
+                                    <option *ngFor="let type of vehicleTypes" [value]="type.value">{{type.display}}</option>
+                                </select>
+                                <div class="er-invalid-feedback" *ngIf="submitted && f['vehicleType'].errors">
+                                    Vehicle type is required
+                                </div>
+                            </div>
+                            
+                            <div class="er-row">
+                                <div class="er-col-md-6">
+                                    <div class="er-mb-3">
+                                        <label for="vehicleBrand" class="er-form-label">Vehicle Brand</label>
+                                        <input 
+                                            type="text" 
+                                            id="vehicleBrand"
+                                            formControlName="vehicleBrand" 
+                                            class="er-form-control"
+                                            [class.er-is-invalid]="submitted && f['vehicleBrand'].errors"
+                                            placeholder="Enter vehicle brand"
+                                        >
+                                        <div class="er-invalid-feedback" *ngIf="submitted && f['vehicleBrand'].errors">
+                                            Vehicle brand is required
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="er-col-md-6">
+                                    <div class="er-mb-3">
+                                        <label for="vehicleModel" class="er-form-label">Vehicle Model</label>
+                                        <input 
+                                            type="text" 
+                                            id="vehicleModel"
+                                            formControlName="vehicleModel" 
+                                            class="er-form-control"
+                                            [class.er-is-invalid]="submitted && f['vehicleModel'].errors"
+                                            placeholder="Enter vehicle model"
+                                        >
+                                        <div class="er-invalid-feedback" *ngIf="submitted && f['vehicleModel'].errors">
+                                            Vehicle model is required
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="er-row">
+                                <div class="er-col-md-6">
+                                    <div class="er-mb-3">
+                                        <label for="vehiclePlateNumber" class="er-form-label">License Plate</label>
+                                        <input 
+                                            type="text" 
+                                            id="vehiclePlateNumber"
+                                            formControlName="vehiclePlateNumber" 
+                                            class="er-form-control"
+                                            [class.er-is-invalid]="submitted && f['vehiclePlateNumber'].errors"
+                                            placeholder="Enter license plate"
+                                        >
+                                        <div class="er-invalid-feedback" *ngIf="submitted && f['vehiclePlateNumber'].errors">
+                                            License plate is required
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="er-col-md-6">
+                                    <div class="er-mb-3">
+                                        <label for="vehicleColor" class="er-form-label">Color</label>
+                                        <input 
+                                            type="text" 
+                                            id="vehicleColor"
+                                            formControlName="vehicleColor" 
+                                            class="er-form-control"
+                                            [class.er-is-invalid]="submitted && f['vehicleColor'].errors"
+                                            placeholder="Enter vehicle color"
+                                        >
+                                        <div class="er-invalid-feedback" *ngIf="submitted && f['vehicleColor'].errors">
+                                            Color is required
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="er-row">
+                                <div class="er-col-md-4">
+                                    <div class="er-mb-3">
+                                        <label for="vehicleYear" class="er-form-label">Year</label>
+                                        <input 
+                                            type="number" 
+                                            id="vehicleYear"
+                                            formControlName="vehicleYear" 
+                                            class="er-form-control"
+                                            [class.er-is-invalid]="submitted && f['vehicleYear'].errors"
+                                            placeholder="Enter vehicle year"
+                                        >
+                                        <div class="er-invalid-feedback" *ngIf="submitted && f['vehicleYear'].errors">
+                                            <span *ngIf="f['vehicleYear'].errors['required']">Year is required</span>
+                                            <span *ngIf="f['vehicleYear'].errors['min']">Minimum year: 1900</span>
+                                            <span *ngIf="f['vehicleYear'].errors['max']">Maximum year: {{currentYear}}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="er-col-md-4">
+                                    <div class="er-mb-3">
+                                        <label for="vehicleCapacityKg" class="er-form-label">Capacity (kg)</label>
+                                        <input 
+                                            type="number" 
+                                            step="0.1" 
+                                            id="vehicleCapacityKg"
+                                            formControlName="vehicleCapacityKg" 
+                                            class="er-form-control"
+                                            [class.er-is-invalid]="submitted && f['vehicleCapacityKg'].errors"
+                                            placeholder="Enter capacity"
+                                        >
+                                        <div class="er-invalid-feedback" *ngIf="submitted && f['vehicleCapacityKg'].errors">
+                                            <span *ngIf="f['vehicleCapacityKg'].errors['required']">Capacity is required</span>
+                                            <span *ngIf="f['vehicleCapacityKg'].errors['min']">Capacity must be positive</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="er-col-md-4">
+                                    <div class="er-mb-3">
+                                        <label for="vehicleVolumeM3" class="er-form-label">Volume (m³)</label>
+                                        <input 
+                                            type="number" 
+                                            step="0.1" 
+                                            id="vehicleVolumeM3"
+                                            formControlName="vehicleVolumeM3" 
+                                            class="er-form-control"
+                                            [class.er-is-invalid]="submitted && f['vehicleVolumeM3'].errors"
+                                            placeholder="Enter volume"
+                                        >
+                                        <div class="er-invalid-feedback" *ngIf="submitted && f['vehicleVolumeM3'].errors">
+                                            <span *ngIf="f['vehicleVolumeM3'].errors['required']">Volume is required</span>
+                                            <span *ngIf="f['vehicleVolumeM3'].errors['min']">Volume must be positive</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="er-form-check er-mb-4">
+                                <input 
+                                    class="er-form-check-input" 
+                                    type="checkbox" 
+                                    id="vehicleHasFridge" 
+                                    formControlName="vehicleHasFridge"
+                                >
+                                <label class="er-form-check-label" for="vehicleHasFridge">
+                                    Vehicle equipped with fridge
+                                </label>
+                            </div>
+                            
+                            <!-- Driver License Information Section -->
+                            <div class="er-section-title er-mt-5">
+                                <div class="er-section-icon">
+                                    <i class="fas fa-id-card"></i>
+                                </div>
+                                <h3>Driver License</h3>
+                            </div>
+                            
+                            <div class="er-row">
+                                <div class="er-col-md-6">
+                                    <div class="er-mb-3">
+                                        <label for="driverLicenseNumber" class="er-form-label">License Number</label>
+                                        <input 
+                                            type="text" 
+                                            id="driverLicenseNumber"
+                                            formControlName="driverLicenseNumber" 
+                                            class="er-form-control"
+                                            [class.er-is-invalid]="submitted && f['driverLicenseNumber'].errors"
+                                            placeholder="Enter license number"
+                                        >
+                                        <div class="er-invalid-feedback" *ngIf="submitted && f['driverLicenseNumber'].errors">
+                                            License number is required
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="er-col-md-6">
+                                    <div class="er-mb-3">
+                                        <label for="driverLicenseCategory" class="er-form-label">License Category</label>
+                                        <input 
+                                            type="text" 
+                                            id="driverLicenseCategory"
+                                            formControlName="driverLicenseCategory" 
+                                            class="er-form-control"
+                                            [class.er-is-invalid]="submitted && f['driverLicenseCategory'].errors"
+                                            placeholder="Enter license category"
+                                        >
+                                        <div class="er-invalid-feedback" *ngIf="submitted && f['driverLicenseCategory'].errors">
+                                            License category is required
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="er-mb-4">
+                                <label for="preferredZones" class="er-form-label">Preferred Zones</label>
+                                <input 
+                                    type="text" 
+                                    id="preferredZones"
+                                    formControlName="preferredZones" 
+                                    class="er-form-control"
+                                    placeholder="Ex: Downtown, Suburb, Business District"
+                                >
+                            </div>
+                            
+                            <!-- Terms and Conditions -->
+                            <div class="er-form-check">
+                                <input 
+                                    class="er-form-check-input" 
+                                    type="checkbox" 
+                                    id="termsCheck" 
+                                    formControlName="termsAccepted"
+                                    [class.er-is-invalid]="submitted && f['termsAccepted'].errors"
+                                >
+                                <label class="er-form-check-label" for="termsCheck">
+                                    I accept the <a href="#" class="er-text-primary">terms of service</a> and <a href="#" class="er-text-primary">privacy policy</a>
+                                </label>
+                                <div class="er-invalid-feedback" *ngIf="submitted && f['termsAccepted']?.errors?.['required']">
+                                    You must accept the terms to continue
+                                </div>
+                            </div>
+                            
+                            <!-- Error Message -->
+                            <div class="er-alert er-alert-danger" *ngIf="error">
+                                <i class="fas fa-exclamation-circle er-me-2"></i>
+                                {{error}}
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="er-d-grid er-gap-2">
+                                <button 
+                                    type="submit" 
+                                    class="er-btn er-btn-primary er-btn-lg"
+                                    [disabled]="loading"
+                                >
+                                    <span *ngIf="loading" class="er-spinner-border er-spinner-border-sm er-me-2" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </span>
+                                    {{loading ? 'Registering...' : 'Register'}}
+                                </button>
+                            </div>
+                            
+                            <!-- Login Link -->
+                            <div class="er-text-center er-mt-3">
+                                <p class="er-text-muted">Already have an account? <a routerLink="/login" class="er-text-primary er-fw-bold">Login here</a></p>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-          <form [formGroup]="temporaryForm" (ngSubmit)="onSubmit()">
-            <!-- Personal Information -->
-            <div class="section-title d-flex align-items-center mb-4">
-              <div class="section-icon me-3">
-                <i class="fas fa-user-circle text-primary"></i>
-              </div>
-              <h3 class="h5 mb-0">Personal Information</h3>
-            </div>
-
-            <div class="row mb-3">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">First Name</label>
-                <input 
-                  type="text" 
-                  formControlName="firstName" 
-                  class="form-control"
-                  [class.is-invalid]="submitted && f['firstName'].errors"
-                >
-                <div class="invalid-feedback" *ngIf="submitted && f['firstName'].errors">
-                  First name is required
-                </div>
-              </div>
-              
-              <div class="col-md-6">
-                <label class="form-label">Last Name</label>
-                <input 
-                  type="text" 
-                  formControlName="lastName" 
-                  class="form-control"
-                  [class.is-invalid]="submitted && f['lastName'].errors"
-                >
-                <div class="invalid-feedback" *ngIf="submitted && f['lastName'].errors">
-                  Last name is required
-                </div>
-              </div>
-            </div>
-
-            <!-- Contact Information -->
-            <div class="section-title d-flex align-items-center mb-4">
-              <div class="section-icon me-3">
-                <i class="fas fa-address-card text-primary"></i>
-              </div>
-              <h3 class="h5 mb-0">Contact Information</h3>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Email</label>
-              <input 
-                type="email" 
-                formControlName="email" 
-                class="form-control"
-                [class.is-invalid]="submitted && f['email'].errors"
-              >
-              <div class="invalid-feedback" *ngIf="submitted && f['email'].errors">
-                <span *ngIf="f['email'].errors['required']">Email is required</span>
-                <span *ngIf="f['email'].errors['email']">Invalid email format</span>
-              </div>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Password</label>
-              <div class="input-group">
-                <input 
-                  [type]="showPassword ? 'text' : 'password'" 
-                  formControlName="password" 
-                  class="form-control"
-                  [class.is-invalid]="submitted && f['password'].errors"
-                  (input)="calculatePasswordStrength(f['password'].value)"
-                >
-                <button 
-                  type="button" 
-                  class="btn btn-outline-secondary" 
-                  (click)="togglePasswordVisibility()"
-                >
-                  <i [class]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
-                </button>
-              </div>
-              <!-- Password Strength Indicator -->
-              <div class="password-strength mt-2" *ngIf="f['password'].value">
-                <div class="progress">
-                  <div class="progress-bar" 
-                      [ngClass]="{
-                        'bg-danger': passwordStrength < 40,
-                        'bg-warning': passwordStrength >= 40 && passwordStrength < 80,
-                        'bg-success': passwordStrength >= 80
-                      }"
-                      [style.width.%]="passwordStrength">
-                  </div>
-                </div>
-                <small class="text-muted">
-                  Password strength: 
-                  <span [ngClass]="{
-                    'text-danger': passwordStrength < 40,
-                    'text-warning': passwordStrength >= 40 && passwordStrength < 80,
-                    'text-success': passwordStrength >= 80
-                  }">
-                    {{ getPasswordStrengthText() }}
-                  </span>
-                </small>
-              </div>
-              <div class="invalid-feedback" *ngIf="submitted && f['password'].errors">
-                <span *ngIf="f['password'].errors['required']">Password is required</span>
-                <span *ngIf="f['password'].errors['minlength']">Minimum 6 characters</span>
-              </div>
-              <small class="form-text text-muted mt-1">
-                Password must contain at least 6 characters
-              </small>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Confirm Password</label>
-              <div class="input-group">
-                <input 
-                  [type]="showConfirmPassword ? 'text' : 'password'" 
-                  formControlName="confirmPassword" 
-                  class="form-control"
-                  [class.is-invalid]="(submitted && f['confirmPassword'].errors) || (temporaryForm.errors?.['mustMatch'] && f['confirmPassword'].touched)"
-                >
-                <button 
-                  type="button" 
-                  class="btn btn-outline-secondary" 
-                  (click)="toggleConfirmPasswordVisibility()"
-                >
-                  <i [class]="showConfirmPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
-                </button>
-              </div>
-              <div class="invalid-feedback" *ngIf="submitted && f['confirmPassword'].errors">
-                <span *ngIf="f['confirmPassword'].errors['required']">Please confirm your password</span>
-              </div>
-              <div class="invalid-feedback" *ngIf="temporaryForm.errors?.['mustMatch'] && f['confirmPassword'].touched">
-                Passwords do not match
-              </div>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Phone</label>
-              <input 
-                type="tel" 
-                formControlName="phone" 
-                class="form-control"
-                [class.is-invalid]="submitted && f['phone'].errors"
-              >
-              <div class="invalid-feedback" *ngIf="submitted && f['phone'].errors">
-                Phone number is required
-              </div>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Address</label>
-              <input 
-                type="text" 
-                formControlName="address" 
-                class="form-control"
-                [class.is-invalid]="submitted && f['address'].errors"
-              >
-              <div class="invalid-feedback" *ngIf="submitted && f['address'].errors">
-                Address is required
-              </div>
-            </div>
-
-            <!-- Vehicle Information -->
-            <div class="section-title d-flex align-items-center mb-4">
-              <div class="section-icon me-3">
-                <i class="fas fa-motorcycle text-primary"></i>
-              </div>
-              <h3 class="h5 mb-0">Vehicle Information</h3>
-            </div>
-
-            <div class="mb-4">
-              <label class="form-label">Vehicle Type</label>
-              <select 
-                formControlName="vehicleType" 
-                class="form-select"
-                [class.is-invalid]="submitted && f['vehicleType'].errors"
-              >
-                <option value="" disabled selected>Select vehicle type</option>
-                <option *ngFor="let type of vehicleTypes" [value]="type.value">{{type.display}}</option>
-              </select>
-              <div class="invalid-feedback" *ngIf="submitted && f['vehicleType'].errors">
-                Vehicle type is required
-              </div>
-            </div>
-
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <label class="form-label">Vehicle Brand</label>
-                <input 
-                  type="text" 
-                  formControlName="vehicleBrand" 
-                  class="form-control"
-                  [class.is-invalid]="submitted && f['vehicleBrand'].errors"
-                >
-                <div class="invalid-feedback" *ngIf="submitted && f['vehicleBrand'].errors">
-                  Vehicle brand is required
-                </div>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Vehicle Model</label>
-                <input 
-                  type="text" 
-                  formControlName="vehicleModel" 
-                  class="form-control"
-                  [class.is-invalid]="submitted && f['vehicleModel'].errors"
-                >
-                <div class="invalid-feedback" *ngIf="submitted && f['vehicleModel'].errors">
-                  Vehicle model is required
-                </div>
-              </div>
-            </div>
-
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <label class="form-label">License Plate</label>
-                <input 
-                  type="text" 
-                  formControlName="vehiclePlateNumber" 
-                  class="form-control"
-                  [class.is-invalid]="submitted && f['vehiclePlateNumber'].errors"
-                >
-                <div class="invalid-feedback" *ngIf="submitted && f['vehiclePlateNumber'].errors">
-                  License plate is required
-                </div>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Color</label>
-                <input 
-                  type="text" 
-                  formControlName="vehicleColor" 
-                  class="form-control"
-                  [class.is-invalid]="submitted && f['vehicleColor'].errors"
-                >
-                <div class="invalid-feedback" *ngIf="submitted && f['vehicleColor'].errors">
-                  Color is required
-                </div>
-              </div>
-            </div>
-
-            <div class="row mb-3">
-              <div class="col-md-4">
-                <label class="form-label">Year</label>
-                <input 
-                  type="number" 
-                  formControlName="vehicleYear" 
-                  class="form-control"
-                  [class.is-invalid]="submitted && f['vehicleYear'].errors"
-                >
-                <div class="invalid-feedback" *ngIf="submitted && f['vehicleYear'].errors">
-                  <span *ngIf="f['vehicleYear'].errors['required']">Year is required</span>
-                  <span *ngIf="f['vehicleYear'].errors['min']">Minimum year: 1900</span>
-                  <span *ngIf="f['vehicleYear'].errors['max']">Maximum year: {{currentYear}}</span>
-                </div>
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">Capacity (kg)</label>
-                <input 
-                  type="number" 
-                  step="0.1" 
-                  formControlName="vehicleCapacityKg" 
-                  class="form-control"
-                  [class.is-invalid]="submitted && f['vehicleCapacityKg'].errors"
-                >
-                <div class="invalid-feedback" *ngIf="submitted && f['vehicleCapacityKg'].errors">
-                  <span *ngIf="f['vehicleCapacityKg'].errors['required']">Capacity is required</span>
-                  <span *ngIf="f['vehicleCapacityKg'].errors['min']">Capacity must be positive</span>
-                </div>
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">Volume (m³)</label>
-                <input 
-                  type="number" 
-                  step="0.1" 
-                  formControlName="vehicleVolumeM3" 
-                  class="form-control"
-                  [class.is-invalid]="submitted && f['vehicleVolumeM3'].errors"
-                >
-                <div class="invalid-feedback" *ngIf="submitted && f['vehicleVolumeM3'].errors">
-                  <span *ngIf="f['vehicleVolumeM3'].errors['required']">Volume is required</span>
-                  <span *ngIf="f['vehicleVolumeM3'].errors['min']">Volume must be positive</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="mb-3 form-check">
-              <input 
-                type="checkbox" 
-                formControlName="vehicleHasFridge" 
-                class="form-check-input" 
-                id="hasFridge"
-              >
-              <label class="form-check-label" for="hasFridge">Vehicle equipped with fridge</label>
-            </div>
-
-            <!-- Driver License Information -->
-            <div class="section-title d-flex align-items-center mb-4">
-              <div class="section-icon me-3">
-                <i class="fas fa-id-card text-primary"></i>
-              </div>
-              <h3 class="h5 mb-0">Driver License</h3>
-            </div>
-
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <label class="form-label">License Number</label>
-                <input 
-                  type="text" 
-                  formControlName="driverLicenseNumber" 
-                  class="form-control"
-                  [class.is-invalid]="submitted && f['driverLicenseNumber'].errors"
-                >
-                <div class="invalid-feedback" *ngIf="submitted && f['driverLicenseNumber'].errors">
-                  License number is required
-                </div>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">License Category</label>
-                <input 
-                  type="text" 
-                  formControlName="driverLicenseCategory" 
-                  class="form-control"
-                  [class.is-invalid]="submitted && f['driverLicenseCategory'].errors"
-                >
-                <div class="invalid-feedback" *ngIf="submitted && f['driverLicenseCategory'].errors">
-                  License category is required
-                </div>
-              </div>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Preferred Zones</label>
-              <input 
-                type="text" 
-                formControlName="preferredZones" 
-                class="form-control"
-                placeholder="Ex: Downtown, Suburb, Business District"
-              >
-            </div>
-
-            <!-- Terms and Conditions -->
-            <div class="mb-3">
-              <div class="form-check">
-                <input 
-                  class="form-check-input" 
-                  type="checkbox" 
-                  id="termsCheck" 
-                  formControlName="termsAccepted"
-                  [class.is-invalid]="submitted && f['termsAccepted'].errors"
-                >
-                <label class="form-check-label" for="termsCheck">
-                  I accept the <a href="#" class="text-primary">terms of service</a> and <a href="#" class="text-primary">privacy policy</a>
-                </label>
-                <div class="invalid-feedback" *ngIf="submitted && f['termsAccepted']?.errors?.['required']">
-                  You must accept the terms to continue
-                </div>
-              </div>
-            </div>
-
-            <!-- Error Message -->
-            <div class="alert alert-danger" *ngIf="error">
-              <i class="fas fa-exclamation-circle me-2"></i>
-              {{error}}
-            </div>
-
-            <!-- Submit Button -->
-            <div class="d-grid gap-2">
-              <button 
-                type="submit" 
-                class="btn btn-primary btn-lg" 
-                [disabled]="loading"
-              >
-                <span *ngIf="loading" class="spinner-border spinner-border-sm me-2" role="status"></span>
-                {{loading ? 'Registering...' : 'Register'}}
-              </button>
-              
-              <p class="text-center mt-3">
-                Already have an account? <a routerLink="/login" class="text-primary fw-bold">Login here</a>
-              </p>
-            </div>
-          </form>
-        </div>
-      </div>
     </div>
-  </div>
-</div>
+
+    <script>
+        // Simple JavaScript for toggling password visibility
+        document.addEventListener('DOMContentLoaded', function() {
+            const togglePassword = document.querySelector('[aria-label="Toggle password visibility"]');
+            if (togglePassword) {
+                togglePassword.addEventListener('click', function() {
+                    const passwordInput = document.getElementById('password');
+                    const icon = this.querySelector('i');
+                    
+                    if (passwordInput.type === 'password') {
+                        passwordInput.type = 'text';
+                        icon.classList.remove('fa-eye');
+                        icon.classList.add('fa-eye-slash');
+                    } else {
+                        passwordInput.type = 'password';
+                        icon.classList.remove('fa-eye-slash');
+                        icon.classList.add('fa-eye');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

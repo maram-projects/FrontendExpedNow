@@ -188,15 +188,32 @@ createPaymentIntent(paymentData: {
   /**
    * Get a specific payment by ID
    */
-  getPayment(paymentId: string): Observable<PaymentResponse> {
-    return this.http.get<PaymentResponse>(`${this.apiUrl}/${paymentId}`, {
-      headers: this.createHeaders(),
-      withCredentials: true
-    }).pipe(
-      tap(response => console.log('Get payment response:', response)),
-      catchError(this.handleError)
-    );
-  }
+getPayment(paymentId: string): Observable<PaymentResponse> {
+  return this.http.get<any>(`${this.apiUrl}/${paymentId}`, {
+    headers: this.createHeaders(),
+    withCredentials: true
+  }).pipe(
+    map(response => {
+      console.log('Raw payment response:', response);
+      
+      // Handle both direct payment object and wrapped response
+      const paymentData = response.data || response;
+      
+      return {
+        success: response.success !== false, // Default to true if not specified
+        data: {
+          ...paymentData,
+          status: paymentData.status?.toString() || 'PENDING',
+          method: paymentData.method?.toString() || paymentData.paymentMethod?.toString() || 'UNKNOWN',
+          paymentDate: paymentData.paymentDate ? new Date(paymentData.paymentDate) : undefined,
+          createdAt: paymentData.createdAt ? new Date(paymentData.createdAt) : undefined,
+          updatedAt: paymentData.updatedAt ? new Date(paymentData.updatedAt) : undefined
+        }
+      } as PaymentResponse;
+    }),
+    catchError(this.handleError)
+  );
+}
 
   /**
    * Process a payment
@@ -484,13 +501,6 @@ refundPayment(paymentId: string, amount?: number, currency: string = 'TND'): Obs
         icon: 'wallet',
         description: 'Pay from your account balance',
         available: true
-      },
-      { 
-        id: PaymentMethod.CASH, 
-        name: 'Cash on Delivery', 
-        icon: 'banknote',
-        description: 'Pay cash when your order arrives',
-        available: true
       }
     ];
   }
@@ -518,6 +528,10 @@ getPaymentStatus(paymentId: string): Observable<{success: boolean, status: Payme
     catchError(this.handleError)
   );
 }
+
+
+
+
 
   /**
    * Enhanced error handling

@@ -1,593 +1,2053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Details</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Reset and Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #2d3748;
+            line-height: 1.6;
+            overflow-x: hidden;
+            padding: 20px;
+        }
 
-<div class="delivery-container" *ngIf="!isLoading && delivery && !errorMessage">
-  
-  <!-- Header Section -->
-  <div class="delivery-header">
-    <div class="header-content">
-      <div class="title-section">
-        <h1 class="page-title">
-          <i class="fas fa-shipping-fast"></i>
-          Delivery Details
-        </h1>
-        <div class="delivery-meta">
-          <span class="delivery-id">#{{delivery.id}}</span>
-          <span class="delivery-age" *ngIf="getDeliveryAge()">
-            <i class="fas fa-clock"></i>
-            {{getDeliveryAge()}}
-          </span>
-          <span class="recent-badge" *ngIf="isRecentDelivery()">NEW</span>
+        /* Container Styles */
+        .delivery-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        /* Header Section */
+        .delivery-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideDown 0.8s ease-out;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+        }
+
+        .title-section {
+            flex: 1;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .page-title i {
+            color: #667eea;
+            animation: pulse 2s infinite;
+        }
+
+        .delivery-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .delivery-id {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            animation: slideInLeft 0.8s ease-out;
+        }
+
+        .delivery-age {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .recent-badge {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            animation: bounce 2s infinite;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn-refresh, .btn-back {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .btn-refresh {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+        }
+
+        .btn-back {
+            background: rgba(0, 0, 0, 0.05);
+            color: #4a5568;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-refresh:hover, .btn-back:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-refresh:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .fa-spin {
+            animation: spin 1s linear infinite;
+        }
+
+        /* Status Container */
+        .status-container {
+            display: flex;
+            justify-content: center;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: white;
+            border: 3px solid;
+            animation: statusPulse 3s ease-in-out infinite;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .status-badge::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.6s;
+        }
+
+        .status-badge:hover::before {
+            left: 100%;
+        }
+
+        .status-pending {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        }
+
+        .status-assigned {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        }
+
+        .status-transit {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        }
+
+        .status-delivered {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .status-approved {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        }
+
+        .status-cancelled {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .status-expired {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+        }
+
+        /* NEW: Content Grid with better structure */
+        .content-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 24px;
+            animation: fadeIn 1s ease-out 0.3s both;
+        }
+
+        .grid-col-6 {
+            grid-column: span 6;
+        }
+
+        .grid-col-4 {
+            grid-column: span 4;
+        }
+
+        .grid-col-8 {
+            grid-column: span 8;
+        }
+
+        .grid-col-12 {
+            grid-column: span 12;
+        }
+
+        /* Card Styles */
+        .info-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            animation: cardSlideUp 0.8s ease-out;
+            position: relative;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+        }
+
+        .info-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
+            background-size: 200% 100%;
+            animation: shimmer 2s linear infinite;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-header h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        .card-header i {
+            color: #667eea;
+            font-size: 1.1rem;
+        }
+
+        .card-content {
+            padding: 2rem;
+            flex: 1;
+        }
+
+        /* Detail Rows */
+        .detail-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-row:hover {
+            background: rgba(102, 126, 234, 0.03);
+            border-radius: 12px;
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        .detail-label {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 140px;
+            font-weight: 600;
+            color: #4a5568;
+            flex-shrink: 0;
+        }
+
+        .detail-label i {
+            width: 20px;
+            text-align: center;
+            color: #667eea;
+        }
+
+        .detail-label i.pickup {
+            color: #4285F4;
+        }
+
+        .detail-label i.delivery {
+            color: #EA4335;
+        }
+
+        .detail-value {
+            flex: 1;
+            color: #2d3748;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .address-text {
+            flex: 1;
+        }
+
+        .instructions {
+            background: rgba(102, 126, 234, 0.05);
+            padding: 1rem;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+            font-style: italic;
+        }
+
+        .btn-map-link {
+            background: none;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-map-link:hover {
+            background: rgba(102, 126, 234, 0.1);
+            transform: scale(1.1);
+        }
+
+        /* Financial Information */
+        .final-amount {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+            border-radius: 12px;
+            padding: 1rem !important;
+            border: 1px solid rgba(16, 185, 129, 0.2) !important;
+            font-weight: 700;
+        }
+
+        .final-amount .detail-value {
+            font-size: 1.25rem;
+            color: #059669;
+        }
+
+        .payment-status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            color: white;
+            font-weight: 600;
+            font-size: 0.85rem;
+            animation: statusBlink 2s ease-in-out infinite;
+        }
+
+        .payment-completed {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .payment-pending {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        }
+
+        .payment-failed {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .payment-refunded {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+        }
+
+        .payment-approved {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            margin-top: 1.5rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-download:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-download:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Timeline Styles */
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 1rem;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, #667eea, #764ba2);
+            animation: timelineGlow 3s ease-in-out infinite;
+        }
+
+        .timeline-item {
+            position: relative;
+            padding: 1.5rem 0;
+            animation: timelineSlide 0.8s ease-out;
+        }
+
+        .timeline-item:nth-child(even) {
+            animation-delay: 0.2s;
+        }
+
+        .timeline-item:nth-child(odd) {
+            animation-delay: 0.4s;
+        }
+
+        .timeline-marker {
+            position: absolute;
+            left: -2rem;
+            top: 1.5rem;
+            width: 2rem;
+            height: 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 1), 0 0 0 8px rgba(102, 126, 234, 0.1);
+            animation: markerPulse 2s ease-in-out infinite;
+        }
+
+        .timeline-item.current .timeline-marker {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            animation: currentMarkerPulse 2s ease-in-out infinite;
+        }
+
+        .timeline-content h4 {
+            color: #2d3748;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .timeline-content p {
+            color: #718096;
+            margin-bottom: 0.25rem;
+        }
+
+        /* Assigned Person Card */
+        .assigned-person-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            animation: cardSlideUp 0.8s ease-out;
+            position: relative;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .assigned-person-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #4285F4, #EA4335, #4285F4);
+            background-size: 200% 100%;
+            animation: shimmer 2s linear infinite;
+        }
+
+        .person-content {
+            padding: 2rem;
+            flex: 1;
+        }
+
+        .person-main-info {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .avatar-container {
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            animation: avatarFloat 3s ease-in-out infinite;
+        }
+
+        .status-indicator {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .status-indicator.online {
+            background: #10b981;
+            animation: onlinePulse 2s ease-in-out infinite;
+        }
+
+        .status-indicator.offline {
+            background: #9ca3af;
+        }
+
+        .person-details {
+            flex: 1;
+        }
+
+        .person-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 1rem;
+        }
+
+        .person-meta p {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+            color: #4a5568;
+        }
+
+        .person-meta i {
+            width: 16px;
+            color: #667eea;
+        }
+
+        .person-phone a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+
+        .person-phone a:hover {
+            color: #764ba2;
+        }
+
+        .rating-value {
+            color: #f59e0b;
+            font-weight: 700;
+        }
+
+        .rating-count {
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
+
+        /* Vehicle Information */
+        .vehicle-info {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            padding: 1.5rem;
+            border-radius: 16px;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .vehicle-info h5 {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            color: #2d3748;
+            font-weight: 700;
+        }
+
+        .vehicle-info h5 i {
+            color: #667eea;
+        }
+
+        .vehicle-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .vehicle-detail {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .vehicle-detail .label {
+            font-size: 0.85rem;
+            color: #718096;
+            font-weight: 600;
+        }
+
+        .vehicle-detail .value {
+            color: #2d3748;
+            font-weight: 600;
+        }
+
+        .license-plate {
+            background: #2d3748;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-family: monospace;
+            font-weight: 700;
+            display: inline-block;
+        }
+
+        .color-swatch {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            margin-right: 0.5rem;
+        }
+
+        /* Contact Actions */
+        .contact-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-contact, .chat-button {
+            padding: 0.75rem 1.25rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .btn-contact.call {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .chat-button {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+        }
+
+        .btn-contact.whatsapp {
+            background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
+            color: white;
+        }
+
+        .btn-contact.more {
+            background: rgba(0, 0, 0, 0.05);
+            color: #4a5568;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-contact:hover, .chat-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Map Card */
+        .map-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: mapSlideUp 1s ease-out 0.5s both;
+        }
+
+        .map-card .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .map-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-map-control {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            border: none;
+            padding: 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-map-control:hover {
+            background: #667eea;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .map-container {
+            position: relative;
+            height: 400px;
+            background: #f8fafc;
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .leaflet-map {
+            height: 100%;
+            width: 100%;
+            border-radius: 16px;
+        }
+
+        .map-loading, .map-error-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(248, 250, 252, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        .map-loading i {
+            font-size: 2rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .map-error-overlay i {
+            font-size: 2rem;
+            color: #ef4444;
+            margin-bottom: 1rem;
+        }
+
+        .btn-retry {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .btn-retry:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .map-info-box {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            animation: slideInRight 0.8s ease-out;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .info-item i {
+            color: #667eea;
+            width: 16px;
+        }
+
+        .map-legend {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            display: flex;
+            gap: 1rem;
+            animation: slideInLeft 0.8s ease-out;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .map-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-map-action {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .btn-map-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        /* Loading States */
+        .loading-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .loading-content {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 3rem;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 400px;
+        }
+
+        .loading-spinner {
+            margin-bottom: 2rem;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(102, 126, 234, 0.1);
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        .loading-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+        }
+
+        .loading-subtitle {
+            color: #718096;
+            margin-bottom: 2rem;
+        }
+
+        .loading-progress {
+            width: 100%;
+            height: 4px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 2px;
+            animation: progressFlow 2s ease-in-out infinite;
+        }
+
+        /* Error States */
+        .error-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .error-content {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 3rem;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 500px;
+            margin: 20px;
+        }
+
+        .error-icon {
+            font-size: 4rem;
+            color: #ef4444;
+            margin-bottom: 1.5rem;
+            animation: errorPulse 2s ease-in-out infinite;
+        }
+
+        .error-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 1rem;
+        }
+
+        .error-message {
+            color: #718096;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .btn-retry, .btn-back-error {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .btn-retry {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-back-error {
+            background: rgba(0, 0, 0, 0.05);
+            color: #4a5568;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .retry-info {
+            color: #9ca3af;
+            font-size: 0.85rem;
+        }
+
+        /* No Data Messages */
+        .no-data-message, .no-assigned-person, .no-vehicle-info, .no-contact-actions {
+            text-align: center;
+            padding: 2rem;
+            color: #718096;
+        }
+
+        .no-data-message i, .no-assigned-person i, .no-vehicle-info i, .no-contact-actions i {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .loading-person, .error-person {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(102, 126, 234, 0.1);
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        .error-person i {
+            font-size: 2rem;
+            color: #ef4444;
+            margin-bottom: 1rem;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes cardSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes mapSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes timelineSlide {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 53%, 80%, 100% {
+                animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+                transform: translate3d(0,0,0);
+            }
+            40%, 43% {
+                animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
+                transform: translate3d(0, -30px, 0);
+            }
+            70% {
+                animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
+                transform: translate3d(0, -15px, 0);
+            }
+            90% {
+                transform: translate3d(0,-4px,0);
+            }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        @keyframes statusPulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(0, 0, 0, 0.1); }
+            50% { box-shadow: 0 0 30px rgba(0, 0, 0, 0.2), 0 0 40px rgba(102, 126, 234, 0.3); }
+        }
+
+        @keyframes statusBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        @keyframes timelineGlow {
+            0%, 100% { box-shadow: 0 0 5px rgba(102, 126, 234, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.6), 0 0 30px rgba(118, 75, 162, 0.4); }
+        }
+
+        @keyframes markerPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 4px rgba(255, 255, 255, 1), 0 0 0 8px rgba(102, 126, 234, 0.1); }
+            50% { transform: scale(1.1); box-shadow: 0 0 0 4px rgba(255, 255, 255, 1), 0 0 0 12px rgba(102, 126, 234, 0.2); }
+        }
+
+        @keyframes currentMarkerPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 4px rgba(255, 255, 255, 1), 0 0 0 8px rgba(16, 185, 129, 0.1); }
+            50% { transform: scale(1.1); box-shadow: 0 0 0 4px rgba(255, 255, 255, 1), 0 0 0 12px rgba(16, 185, 129, 0.3); }
+        }
+
+        @keyframes avatarFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        @keyframes onlinePulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        @keyframes progressFlow {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        @keyframes errorPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .grid-col-6, .grid-col-8, .grid-col-4 {
+                grid-column: span 12;
+            }
+            
+            .content-grid {
+                gap: 20px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .delivery-container {
+                padding: 0;
+            }
+
+            .content-grid {
+                gap: 16px;
+            }
+
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .header-actions {
+                align-self: stretch;
+            }
+
+            .page-title {
+                font-size: 2rem;
+            }
+
+            .delivery-meta {
+                justify-content: center;
+            }
+
+            .person-main-info {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .contact-actions {
+                justify-content: center;
+            }
+
+            .map-container {
+                height: 300px;
+            }
+
+            .map-info-box, .map-legend {
+                position: static;
+                margin: 1rem 0;
+            }
+
+            .detail-row {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .detail-label {
+                min-width: auto;
+            }
+
+            .timeline {
+                padding-left: 1.5rem;
+            }
+
+            .timeline::before {
+                left: 0.75rem;
+            }
+
+            .timeline-marker {
+                left: -1.5rem;
+                width: 1.5rem;
+                height: 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .delivery-header, .info-card, .assigned-person-card, .map-card {
+                border-radius: 16px;
+            }
+
+            .card-content {
+                padding: 1.5rem;
+            }
+
+            .page-title {
+                font-size: 1.5rem;
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .status-badge {
+                padding: 0.75rem 1.5rem;
+                font-size: 0.9rem;
+            }
+
+            .contact-actions {
+                flex-direction: column;
+            }
+
+            .btn-contact, .chat-button {
+                justify-content: center;
+            }
+        }
+
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            .delivery-container {
+                background: #000;
+                color: #fff;
+            }
+
+            .info-card, .assigned-person-card, .map-card, .delivery-header {
+                background: #222;
+                border: 2px solid #fff;
+            }
+
+            .detail-row:hover {
+                background: #333;
+            }
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+                color: #e2e8f0;
+            }
+
+            .delivery-header, .info-card, .assigned-person-card, .map-card {
+                background: rgba(45, 55, 72, 0.95);
+                border-color: rgba(255, 255, 255, 0.1);
+            }
+
+            .card-header {
+                background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+                border-bottom-color: rgba(255, 255, 255, 0.1);
+            }
+
+            .detail-row {
+                border-bottom-color: rgba(255, 255, 255, 0.05);
+            }
+
+            .detail-row:hover {
+                background: rgba(102, 126, 234, 0.08);
+            }
+
+            .detail-label, .card-header h3 {
+                color: #e2e8f0;
+            }
+
+            .detail-value {
+                color: #cbd5e0;
+            }
+
+            .timeline::before {
+                background: linear-gradient(180deg, #667eea, #764ba2);
+            }
+
+            .loading-content, .error-content {
+                background: rgba(45, 55, 72, 0.95);
+                border-color: rgba(255, 255, 255, 0.1);
+            }
+
+            .map-loading, .map-error-overlay {
+                background: rgba(45, 55, 72, 0.95);
+            }
+
+            .map-info-box, .map-legend {
+                background: rgba(45, 55, 72, 0.95);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="delivery-container" *ngIf="!isLoading && delivery && !errorMessage">
+        
+        <!-- Header Section -->
+        <div class="delivery-header">
+            <div class="header-content">
+                <div class="title-section">
+                    <h1 class="page-title">
+                        <i class="fas fa-shipping-fast"></i>
+                        Delivery Details
+                    </h1>
+                    <div class="delivery-meta">
+                        <span class="delivery-id">#{{delivery.id}}</span>
+                        <span class="delivery-age" *ngIf="getDeliveryAge()">
+                            <i class="fas fa-clock"></i>
+                            {{getDeliveryAge()}}
+                        </span>
+                        <span class="recent-badge" *ngIf="isRecentDelivery()">NEW</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="btn-refresh" (click)="refreshDelivery()" [disabled]="isLoading">
+                        <i class="fas fa-sync-alt" [class.fa-spin]="isLoading"></i>
+                        Refresh
+                    </button>
+                    <button class="btn-back" (click)="goBack()">
+                        <i class="fas fa-arrow-left"></i>
+                        Back
+                    </button>
+                </div>
+            </div>
+            
+            <div class="status-container">
+                <div class="status-badge" 
+                     [ngClass]="getStatusConfig(delivery.status).class"
+                     [style.border-color]="getStatusConfig(delivery.status).color">
+                    <i class="fas fa-{{getStatusConfig(delivery.status).icon}}"></i>
+                    <span>{{getStatusConfig(delivery.status).label}}</span>
+                </div>
+            </div>
         </div>
-      </div>
-      <div class="header-actions">
-        <button class="btn-refresh" (click)="refreshDelivery()" [disabled]="isLoading">
-          <i class="fas fa-sync-alt" [class.fa-spin]="isLoading"></i>
-          Refresh
-        </button>
-        <button class="btn-back" (click)="goBack()">
-          <i class="fas fa-arrow-left"></i>
-          Back
-        </button>
-      </div>
+
+        <!-- Main Content Grid with improved structure -->
+        <div class="content-grid">
+            
+            <!-- Order Information Card -->
+            <div class="info-card order-info grid-col-6">
+                <div class="card-header">
+                    <h3><i class="fas fa-info-circle"></i> Order Information</h3>
+                </div>
+                <div class="card-content">
+                    <div class="detail-row">
+                        <div class="detail-label">
+                            <i class="fas fa-map-marker-alt pickup"></i>
+                            Pickup Address
+                        </div>
+                        <div class="detail-value">
+                            <span class="address-text">{{delivery.pickupAddress || 'Not specified'}}</span>
+                            <button class="btn-map-link" *ngIf="delivery.pickupLatitude && delivery.pickupLongitude">
+                                <i class="fas fa-external-link-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-row">
+                        <div class="detail-label">
+                            <i class="fas fa-map-marker-alt delivery"></i>
+                            Delivery Address
+                        </div>
+                        <div class="detail-value">
+                            <span class="address-text">{{delivery.deliveryAddress || 'Not specified'}}</span>
+                            <button class="btn-map-link" *ngIf="delivery.deliveryLatitude && delivery.deliveryLongitude">
+                                <i class="fas fa-external-link-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-row">
+                        <div class="detail-label">
+                            <i class="fas fa-box"></i>
+                            Package Description
+                        </div>
+                        <div class="detail-value">
+                            {{delivery.packageDescription || 'Not specified'}}
+                        </div>
+                    </div>
+                    
+                    <div class="detail-row">
+                        <div class="detail-label">
+                            <i class="fas fa-weight-hanging"></i>
+                            Weight
+                        </div>
+                        <div class="detail-value">
+                            <span *ngIf="delivery.packageWeight; else noWeight">
+                                {{delivery.packageWeight}} kg
+                            </span>
+                            <ng-template #noWeight>Not specified</ng-template>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-row">
+                        <div class="detail-label">
+                            <i class="fas fa-calendar-plus"></i>
+                            Created Date
+                        </div>
+                        <div class="detail-value">
+                            {{formatDate(delivery.createdAt)}}
+                        </div>
+                    </div>
+
+                    <div class="detail-row" *ngIf="delivery.scheduledDate">
+                        <div class="detail-label">
+                            <i class="fas fa-calendar-check"></i>
+                            Scheduled Date
+                        </div>
+                        <div class="detail-value">
+                            {{formatDate(delivery.scheduledDate)}}
+                        </div>
+                    </div>
+
+                    <div class="detail-row" *ngIf="delivery.updatedAt">
+                        <div class="detail-label">
+                            <i class="fas fa-calendar-edit"></i>
+                            Last Updated
+                        </div>
+                        <div class="detail-value">
+                            {{formatDate(delivery.updatedAt)}}
+                        </div>
+                    </div>
+
+                    <div class="detail-row" *ngIf="delivery.additionalInstructions">
+                        <div class="detail-label">
+                            <i class="fas fa-sticky-note"></i>
+                            Instructions
+                        </div>
+                        <div class="detail-value instructions">
+                            {{delivery.additionalInstructions}}
+                        </div>
+                    </div>
+
+                    <!-- Package Details -->
+                    <div class="detail-row">
+                        <div class="detail-label">
+                            <i class="fas fa-box"></i>
+                            Package Type
+                        </div>
+                        <div class="detail-value">
+                            {{packageType}}
+                        </div>
+                    </div>
+
+                    <div class="detail-row">
+                        <div class="detail-label">
+                            <i class="fas fa-ruler-combined"></i>
+                            Dimensions
+                        </div>
+                        <div class="detail-value">
+                            {{packageDimensions}}
+                        </div>
+                    </div>
+
+                    <div class="detail-row">
+                        <div class="detail-label">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Fragile
+                        </div>
+                        <div class="detail-value">
+                            {{isFragile ? 'Yes' : 'No'}}
+                        </div>
+                    </div>
+
+                    <div class="detail-row">
+                        <div class="detail-label">
+                            <i class="fas fa-temperature-low"></i>
+                            Temperature Control
+                        </div>
+                        <div class="detail-value">
+                            {{requiresTemperatureControl ? 'Required' : 'Not required'}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financial Information Card -->
+            <div class="info-card financial-info grid-col-6">
+                <div class="card-header">
+                    <h3><i class="fas fa-credit-card"></i> Financial Information</h3>
+                </div>
+                <div class="card-content">
+                    <!-- Amount -->
+                    <div class="detail-row" *ngIf="delivery.amount !== null && delivery.amount !== undefined">
+                        <div class="detail-label">
+                            <i class="fas fa-dollar-sign"></i>
+                            Amount
+                        </div>
+                        <div class="detail-value">
+                            {{ formatCurrency(delivery.amount) }}
+                        </div>
+                    </div>
+                    
+                    <!-- Final Amount -->
+                    <div class="detail-row final-amount" *ngIf="delivery.finalAmountAfterDiscount !== null && delivery.finalAmountAfterDiscount !== undefined">
+                        <div class="detail-label">
+                            <i class="fas fa-money-bill-wave"></i>
+                            Final Amount
+                        </div>
+                        <div class="detail-value">
+                            {{ formatCurrency(delivery.finalAmountAfterDiscount) }}
+                        </div>
+                    </div>
+
+                    <!-- Payment Status -->
+                    <div class="detail-row">
+                        <div class="detail-label">
+                            <i class="fas fa-{{ getPaymentStatusConfig(delivery.paymentStatus).icon }}"></i>
+                            Payment Status
+                        </div>
+                        <div class="detail-value">
+                            <span class="payment-status-badge" 
+                                  [ngClass]="getPaymentStatusConfig(delivery.paymentStatus).class"
+                                  [style.background-color]="getPaymentStatusConfig(delivery.paymentStatus).color">
+                                {{ getPaymentStatusConfig(delivery.paymentStatus).label }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Payment Method -->
+                    <div class="detail-row" *ngIf="delivery.paymentMethod">
+                        <div class="detail-label">
+                            <i class="fas fa-{{ getPaymentMethodConfig(delivery.paymentMethod).icon }}"></i>
+                            Payment Method
+                        </div>
+                        <div class="detail-value">
+                            {{ getPaymentMethodConfig(delivery.paymentMethod).label }}
+                        </div>
+                    </div>
+
+                    <!-- Payment Date -->
+                    <div class="detail-row" *ngIf="delivery.paymentDate">
+                        <div class="detail-label">
+                            <i class="fas fa-calendar-check"></i>
+                            Payment Date
+                        </div>
+                        <div class="detail-value">
+                            {{ formatDate(delivery.paymentDate) }}
+                        </div>
+                    </div>
+
+                    <!-- Payment ID -->
+                    <div class="detail-row" *ngIf="delivery.paymentId">
+                        <div class="detail-label">
+                            <i class="fas fa-receipt"></i>
+                            Payment ID
+                        </div>
+                        <div class="detail-value">
+                            <code>{{ delivery.paymentId }}</code>
+                        </div>
+                    </div>
+                    
+                    <!-- Download Receipt Button -->
+                    <div class="action-buttons" *ngIf="canDownloadReceipt()">
+                        <button class="btn-download" 
+                                (click)="downloadReceipt()" 
+                                [disabled]="isDownloading">
+                            <i class="fas" [ngClass]="isDownloading ? 'fa-spinner fa-spin' : 'fa-download'"></i>
+                            {{ isDownloading ? 'Downloading...' : 'Download Receipt' }}
+                        </button>
+                    </div>
+                    
+                    <!-- Payment not found message -->
+                    <div class="no-data-message" *ngIf="!delivery.paymentId && !delivery.amount">
+                        <i class="fas fa-credit-card-blank"></i>
+                        <p>Payment information not available yet</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline Card -->
+            <div class="info-card timeline-card grid-col-6">
+                <div class="card-header">
+                    <h3><i class="fas fa-history"></i> Delivery Timeline</h3>
+                </div>
+                <div class="card-content">
+                    <div class="timeline">
+                        <!-- Created -->
+                        <div class="timeline-item">
+                            <div class="timeline-marker">
+                                <i class="fas fa-plus-circle"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h4>Order Created</h4>
+                                <p>{{formatDate(delivery.createdAt)}}</p>
+                            </div>
+                        </div>
+
+                        <!-- Assigned -->
+                        <div class="timeline-item" *ngIf="delivery?.assignedAt">
+                            <div class="timeline-marker">
+                                <i class="fas fa-user-check"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h4>Assigned to Delivery Person</h4>
+                                <p>{{formatDate(delivery.assignedAt)}}</p>
+                            </div>
+                        </div>
+
+                        <!-- Started -->
+                        <div class="timeline-item" *ngIf="delivery?.startedAt">
+                            <div class="timeline-marker">
+                                <i class="fas fa-play-circle"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h4>Delivery Started</h4>
+                                <p>{{formatDate(delivery.startedAt)}}</p>
+                            </div>
+                        </div>
+
+                        <!-- Completed -->
+                        <div class="timeline-item" *ngIf="delivery?.completedAt">
+                            <div class="timeline-marker">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h4>Delivery Completed</h4>
+                                <p>{{formatDate(delivery.completedAt)}}</p>
+                            </div>
+                        </div>
+
+                        <!-- Current Status -->
+                        <div class="timeline-item current">
+                            <div class="timeline-marker">
+                                <i class="fas" [ngClass]="getStatusConfig(delivery.status).icon"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h4>Current Status</h4>
+                                <p>{{getStatusConfig(delivery.status).label}}</p>
+                                <p *ngIf="delivery.updatedAt">Last updated: {{formatDate(delivery.updatedAt)}}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assigned Person Section -->
+            <div class="assigned-person-card grid-col-6">
+                <div class="card-header">
+                    <h3><i class="fas fa-user-tie"></i> Assigned Delivery Person</h3>
+                    <button class="btn-refresh" (click)="refreshDeliveryPerson()" [disabled]="isLoadingPerson">
+                        <i class="fas fa-sync-alt" [class.fa-spin]="isLoadingPerson"></i>
+                        Refresh
+                    </button>
+                </div>
+                
+                <!-- Loading State -->
+                <div class="loading-person" *ngIf="isLoadingPerson">
+                    <div class="loading-spinner"></div>
+                    <p>Loading delivery person details...</p>
+                </div>
+
+                <!-- Error State -->
+                <div class="error-person" *ngIf="personError && !isLoadingPerson">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>{{ personError }}</p>
+                    <button class="btn-retry" (click)="loadDeliveryPerson()">
+                        <i class="fas fa-redo"></i> Try Again
+                    </button>
+                </div>
+
+                <!-- Content -->
+                <div class="person-content" *ngIf="assignedPerson && !isLoadingPerson && !personError; else noAssignedPerson">
+                    <div class="person-main-info">
+                        <div class="avatar-container">
+                            <div class="avatar" [ngStyle]="{'background-color': getAvatarColor(assignedPerson)}">
+                                {{ getInitials(assignedPerson) }}
+                            </div>
+                            <div class="status-indicator" 
+                                 [ngClass]="{'online': assignedPerson.isOnline, 'offline': !assignedPerson.isOnline}"
+                                 [title]="assignedPerson.isOnline ? 'Online' : 'Offline'">
+                            </div>
+                        </div>
+                        
+                        <div class="person-details">
+                            <h4 class="person-name">
+                                {{ assignedPerson.firstName || assignedPerson.lastName ? 
+                                   (assignedPerson.firstName + ' ' + assignedPerson.lastName) : 
+                                   'Delivery Person #' + (assignedPerson.id | slice:0:8) }}
+                            </h4>
+                            
+                            <div class="person-meta">
+                                <p class="person-phone" *ngIf="assignedPerson.phone; else noPhone">
+                                    <i class="fas fa-phone"></i>
+                                    <a href="tel:{{assignedPerson.phone}}">{{ assignedPerson.phone }}</a>
+                                </p>
+                                <ng-template #noPhone>
+                                    <p class="person-phone">
+                                        <i class="fas fa-phone-slash"></i>
+                                        <span>Phone not provided</span>
+                                    </p>
+                                </ng-template>
+                                
+                                <p class="person-id">
+                                    <i class="fas fa-id-badge"></i>
+                                    ID: {{ assignedPerson.id | slice:0:8 }}
+                                </p>
+                                
+                                <p class="person-rating" *ngIf="assignedPerson.rating !== undefined">
+                                    <i class="fas fa-star"></i>
+                                    Rating: 
+                                    <span class="rating-value">{{ assignedPerson.rating | number:'1.1-1' }}</span>
+                                    <span class="rating-count">({{ assignedPerson.ratingCount || 0 }} reviews)</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Vehicle Information -->
+                    <div class="vehicle-info" *ngIf="hasVehicleInfo(); else noVehicle">
+                        <h5><i class="fas fa-car"></i> Vehicle Information</h5>
+                        <div class="vehicle-details">
+                            <div class="vehicle-detail">
+                                <span class="label">Type:</span>
+                                <span class="value">{{ assignedPerson.vehicle?.vehicleType || 'Unknown' }}</span>
+                            </div>
+                            <div class="vehicle-detail">
+                                <span class="label">Model:</span>
+                                <span class="value">{{ assignedPerson.vehicle?.vehicleModel || 'Unknown' }}</span>
+                            </div>
+                            <div class="vehicle-detail">
+                                <span class="label">Plate:</span>
+                                <span class="value license-plate">
+                                    {{ assignedPerson.vehicle?.vehiclePlateNumber || 'Not available' }}
+                                </span>
+                            </div>
+                            <div class="vehicle-detail" *ngIf="assignedPerson.vehicle?.vehicleColor">
+                                <span class="label">Color:</span>
+                                <span class="value">
+                                    <span class="color-swatch" [style.background-color]="assignedPerson.vehicle.vehicleColor"></span>
+                                    {{ assignedPerson.vehicle.vehicleColor }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <ng-template #noVehicle>
+                        <div class="no-vehicle-info">
+                            <i class="fas fa-car-crash"></i>
+                            <p>No vehicle information available</p>
+                        </div>
+                    </ng-template>
+
+                    <!-- Contact Actions -->
+                    <div class="contact-actions" *ngIf="assignedPerson.phone; else noContactActions">
+                        <a href="tel:{{assignedPerson.phone}}" class="btn-contact call">
+                            <i class="fas fa-phone"></i>
+                            Call
+                        </a>
+                        <button (click)="openChat()" class="chat-button">
+                            <i class="fas fa-comment"></i> Chat with Delivery Person
+                        </button>
+                        <a href="https://wa.me/{{assignedPerson.phone}}" class="btn-contact whatsapp" target="_blank">
+                            <i class="fab fa-whatsapp"></i>
+                            WhatsApp
+                        </a>
+                        <button class="btn-contact more" (click)="showMoreContactOptions()">
+                            <i class="fas fa-ellipsis-h"></i>
+                            More
+                        </button>
+                    </div>
+                    <ng-template #noContactActions>
+                        <div class="no-contact-actions">
+                            <i class="fas fa-comment-slash"></i>
+                            <p>No contact options available</p>
+                        </div>
+                    </ng-template>
+                </div>
+                
+                <ng-template #noAssignedPerson>
+                    <div class="no-data-message" *ngIf="!isLoadingPerson && !personError">
+                        <i class="fas fa-user-slash"></i>
+                        <p>No delivery person assigned yet</p>
+                    </div>
+                </ng-template>
+            </div>
+
+            <!-- Map Card -->
+            <div class="map-card grid-col-12" *ngIf="delivery?.pickupLatitude && delivery?.pickupLongitude && delivery?.deliveryLatitude && delivery?.deliveryLongitude">   
+                <div class="card-header">     
+                    <h3><i class="fas fa-map-marked-alt"></i> Delivery Route</h3>
+                    <div class="map-controls">
+                        <button class="btn-map-control" (click)="toggleMapType()" title="Toggle map view">
+                            <i class="fas" [ngClass]="currentMapType === 'roadmap' ? 'fa-satellite' : 'fa-map'"></i>
+                        </button>
+                        <button class="btn-map-control" (click)="centerMap()" title="Center map">
+                            <i class="fas fa-crosshairs"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card-content">     
+                    <div class="map-container">
+                        <div id="delivery-map" class="leaflet-map"></div>
+                        
+                        <div class="map-loading" *ngIf="!mapInitialized && !mapError">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Loading map...</p>
+                        </div>
+                        
+                        <div class="map-error-overlay" *ngIf="mapError">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>{{ mapErrorMessage }}</p>
+                            <button class="btn-retry" (click)="retryMapInitialization()">
+                                <i class="fas fa-sync-alt"></i> Retry
+                            </button>
+                        </div>
+                        
+                        <div class="map-info-box" *ngIf="mapInitialized && routeInfo">
+                            <div class="info-item">
+                                <i class="fas fa-route"></i>
+                                <span>{{ routeInfo.distance }}</span>
+                            </div>
+                            <div class="info-item">
+                                <i class="fas fa-clock"></i>
+                                <span>{{ routeInfo.duration }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="map-legend">
+                            <div class="legend-item">
+                                <span class="legend-marker pickup">
+                                    <i class="fas fa-map-marker-alt" style="color: #4285F4;"></i>
+                                </span>
+                                <span>Pickup</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-marker delivery">
+                                    <i class="fas fa-map-marker-alt" style="color: #EA4335;"></i>
+                                </span>
+                                <span>Delivery</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="map-actions">
+                        <button class="btn-map-action" (click)="openOSMaps()">
+                            <i class="fas fa-external-link-alt"></i>
+                            Open in OpenStreetMap
+                        </button>
+                        <button class="btn-map-action" (click)="downloadRouteImage()" *ngIf="mapInitialized">
+                            <i class="fas fa-download"></i>
+                            Download Route
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    
-    <div class="status-container">
-      <div class="status-badge" 
-           [ngClass]="getStatusConfig(delivery.status).class"
-           [style.border-color]="getStatusConfig(delivery.status).color">
-        <i class="fas fa-{{getStatusConfig(delivery.status).icon}}"></i>
-        <span>{{getStatusConfig(delivery.status).label}}</span>
-      </div>
-    </div>
-  </div>
 
-  <!-- Main Content Grid -->
-  <div class="content-grid">
-    
-    <!-- Order Information Card -->
-    <div class="info-card order-info">
-      <div class="card-header">
-        <h3><i class="fas fa-info-circle"></i> Order Information</h3>
-      </div>
-      <div class="card-content">
-        <div class="detail-row">
-          <div class="detail-label">
-            <i class="fas fa-map-marker-alt pickup"></i>
-            Pickup Address
-          </div>
-          <div class="detail-value">
-            <span class="address-text">{{delivery.pickupAddress || 'Not specified'}}</span>
-            <button class="btn-map-link" *ngIf="delivery.pickupLatitude && delivery.pickupLongitude">
-              <i class="fas fa-external-link-alt"></i>
-            </button>
-          </div>
+    <!-- Loading State -->
+    <div class="loading-container" *ngIf="isLoading">
+        <div class="loading-content">
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+            </div>
+            <h3 class="loading-title">Loading Delivery Details</h3>
+            <p class="loading-subtitle">Please wait while we fetch your information...</p>
+            <div class="loading-progress">
+                <div class="progress-bar"></div>
+            </div>
         </div>
-        
-        <div class="detail-row">
-          <div class="detail-label">
-            <i class="fas fa-map-marker-alt delivery"></i>
-            Delivery Address
-          </div>
-          <div class="detail-value">
-            <span class="address-text">{{delivery.deliveryAddress || 'Not specified'}}</span>
-            <button class="btn-map-link" *ngIf="delivery.deliveryLatitude && delivery.deliveryLongitude">
-              <i class="fas fa-external-link-alt"></i>
-            </button>
-          </div>
-        </div>
-        
-        <div class="detail-row">
-          <div class="detail-label">
-            <i class="fas fa-box"></i>
-            Package Description
-          </div>
-          <div class="detail-value">
-            {{delivery.packageDescription || 'Not specified'}}
-          </div>
-        </div>
-        
-        <div class="detail-row">
-          <div class="detail-label">
-            <i class="fas fa-weight-hanging"></i>
-            Weight
-          </div>
-          <div class="detail-value">
-            <span *ngIf="delivery.packageWeight; else noWeight">
-              {{delivery.packageWeight}} kg
-            </span>
-            <ng-template #noWeight>Not specified</ng-template>
-          </div>
-        </div>
-        
-        <div class="detail-row">
-          <div class="detail-label">
-            <i class="fas fa-calendar-plus"></i>
-            Created Date
-          </div>
-          <div class="detail-value">
-            {{formatDate(delivery.createdAt)}}
-          </div>
-        </div>
-
-        <div class="detail-row" *ngIf="delivery.scheduledDate">
-          <div class="detail-label">
-            <i class="fas fa-calendar-check"></i>
-            Scheduled Date
-          </div>
-          <div class="detail-value">
-            {{formatDate(delivery.scheduledDate)}}
-          </div>
-        </div>
-
-        <div class="detail-row" *ngIf="delivery.updatedAt">
-          <div class="detail-label">
-            <i class="fas fa-calendar-edit"></i>
-            Last Updated
-          </div>
-          <div class="detail-value">
-            {{formatDate(delivery.updatedAt)}}
-          </div>
-        </div>
-
-        <div class="detail-row" *ngIf="delivery.additionalInstructions">
-          <div class="detail-label">
-            <i class="fas fa-sticky-note"></i>
-            Instructions
-          </div>
-          <div class="detail-value instructions">
-            {{delivery.additionalInstructions}}
-          </div>
-        </div>
-
-        <!-- Package Details -->
-        <div class="detail-row">
-          <div class="detail-label">
-            <i class="fas fa-box"></i>
-            Package Type
-          </div>
-          <div class="detail-value">
-            {{packageType}}
-          </div>
-        </div>
-
-        <div class="detail-row">
-          <div class="detail-label">
-            <i class="fas fa-ruler-combined"></i>
-            Dimensions
-          </div>
-          <div class="detail-value">
-            {{packageDimensions}}
-          </div>
-        </div>
-
-        <div class="detail-row">
-          <div class="detail-label">
-            <i class="fas fa-exclamation-triangle"></i>
-            Fragile
-          </div>
-          <div class="detail-value">
-            {{isFragile ? 'Yes' : 'No'}}
-          </div>
-        </div>
-
-        <div class="detail-row">
-          <div class="detail-label">
-            <i class="fas fa-temperature-low"></i>
-            Temperature Control
-          </div>
-          <div class="detail-value">
-            {{requiresTemperatureControl ? 'Required' : 'Not required'}}
-          </div>
-        </div>
-      </div>
     </div>
 
-    <!-- Financial Information Card -->
-    <div class="info-card financial-info">
-      <div class="card-header">
-         <div *ngIf="delivery?.paymentId" class="debug-info">
-    <p>Payment ID: {{ delivery.paymentId }}</p>
-    <p>Raw Payment Status: {{ delivery.paymentStatus || 'null' }}</p>
-  </div>
-        <h3><i class="fas fa-credit-card"></i> Financial Information</h3>
-      </div>
-      <div class="card-content">
-        <!-- Always show financial information to client -->
-        <!-- Base Amount -->
-        <div class="detail-row" *ngIf="delivery.amount">
-          <div class="detail-label">
-            <i class="fas fa-dollar-sign"></i>
-            Total Amount
-          </div>
-          <div class="detail-value">
-            {{ formatCurrency(delivery.amount) }}
-          </div>
-        </div>
-        
-        <!-- Final Amount -->
-        <div class="detail-row final-amount" *ngIf="delivery.finalAmountAfterDiscount || getFinalAmount()">
-          <div class="detail-label">
-            <i class="fas fa-money-bill-wave"></i>
-            Final Amount
-          </div>
-          <div class="detail-value">
-            {{ formatCurrency(delivery.finalAmountAfterDiscount || getFinalAmount()) }}
-          </div>
-        </div>
-
-        <!-- Payment Status -->
-        <div class="detail-row">
-          <div class="detail-label">
-            <i class="fas fa-{{ getPaymentStatusConfig(delivery.paymentStatus).icon }}"></i>
-            Payment Status
-          </div>
-          <div class="detail-value">
-            <span class="payment-status-badge" 
-                  [ngClass]="getPaymentStatusConfig(delivery.paymentStatus).class"
-                  [style.background-color]="getPaymentStatusConfig(delivery.paymentStatus).color">
-              {{ getPaymentStatusConfig(delivery.paymentStatus).label }}
-            </span>
-          </div>
-        </div>
-
-        <!-- Payment Method -->
-        <div class="detail-row" *ngIf="delivery.paymentMethod">
-          <div class="detail-label">
-            <i class="fas fa-{{ getPaymentMethodConfig(delivery.paymentMethod).icon }}"></i>
-            Payment Method
-          </div>
-          <div class="detail-value">
-            {{ getPaymentMethodConfig(delivery.paymentMethod).label }}
-          </div>
-        </div>
-
-        <!-- Payment Date -->
-        <div class="detail-row" *ngIf="delivery.paymentDate">
-          <div class="detail-label">
-            <i class="fas fa-calendar-check"></i>
-            Payment Date
-          </div>
-          <div class="detail-value">
-            {{ formatDate(delivery.paymentDate) }}
-          </div>
-        </div>
-
-        <!-- Payment ID -->
-        <div class="detail-row" *ngIf="delivery.paymentId">
-          <div class="detail-label">
-            <i class="fas fa-receipt"></i>
-            Payment ID
-          </div>
-          <div class="detail-value">
-            <code>{{ delivery.paymentId }}</code>
-          </div>
-        </div>
-        
-        <!-- Download Receipt Button -->
-        <div class="action-buttons" *ngIf="canDownloadReceipt()">
-          <button class="btn-download" 
-                  (click)="downloadReceipt()" 
-                  [disabled]="isDownloading">
-            <i class="fas" [ngClass]="isDownloading ? 'fa-spinner fa-spin' : 'fa-download'"></i>
-            {{ isDownloading ? 'Downloading...' : 'Download Receipt' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Timeline Card -->
-    <div class="info-card timeline-card">
-      <div class="card-header">
-        <h3><i class="fas fa-history"></i> Delivery Timeline</h3>
-      </div>
-      <div class="card-content">
-        <div class="timeline">
-          <!-- Created -->
-          <div class="timeline-item">
-            <div class="timeline-marker">
-              <i class="fas fa-plus-circle"></i>
+    <!-- Error State -->
+    <div class="error-container" *ngIf="errorMessage && !isLoading">
+        <div class="error-content">
+            <div class="error-icon">
+                <i class="fas fa-exclamation-triangle"></i>
             </div>
-            <div class="timeline-content">
-              <h4>Order Created</h4>
-              <p>{{formatDate(delivery.createdAt)}}</p>
+            <h3 class="error-title">Something went wrong</h3>
+            <p class="error-message">{{errorMessage}}</p>
+            <div class="error-actions">
+                <button class="btn-retry" (click)="loadDeliveryDetails()">
+                    <i class="fas fa-redo"></i>
+                    Try Again
+                </button>
+                <button class="btn-back-error" (click)="goBack()">
+                    <i class="fas fa-arrow-left"></i>
+                    Go Back
+                </button>
             </div>
-          </div>
-
-          <!-- Assigned -->
-          <div class="timeline-item" *ngIf="delivery?.assignedAt">
-            <div class="timeline-marker">
-              <i class="fas fa-user-check"></i>
-            </div>
-            <div class="timeline-content">
-              <h4>Assigned to Delivery Person</h4>
-              <p>{{formatDate(delivery.assignedAt)}}</p>
-            </div>
-          </div>
-
-          <!-- Started -->
-          <div class="timeline-item" *ngIf="delivery?.startedAt">
-            <div class="timeline-marker">
-              <i class="fas fa-play-circle"></i>
-            </div>
-            <div class="timeline-content">
-              <h4>Delivery Started</h4>
-              <p>{{formatDate(delivery.startedAt)}}</p>
-            </div>
-          </div>
-
-          <!-- Completed -->
-          <div class="timeline-item" *ngIf="delivery?.completedAt">
-            <div class="timeline-marker">
-              <i class="fas fa-check-circle"></i>
-            </div>
-            <div class="timeline-content">
-              <h4>Delivery Completed</h4>
-              <p>{{formatDate(delivery.completedAt)}}</p>
-            </div>
-          </div>
-
-          <!-- Current Status -->
-          <div class="timeline-item current">
-            <div class="timeline-marker">
-              <i class="fas" [ngClass]="getStatusConfig(delivery.status).icon"></i>
-            </div>
-            <div class="timeline-content">
-              <h4>Current Status</h4>
-              <p>{{getStatusConfig(delivery.status).label}}</p>
-              <p *ngIf="delivery.updatedAt">Last updated: {{formatDate(delivery.updatedAt)}}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Assigned Person Section -->
-<div class="assigned-person-card">
-  <div class="card-header">
-    <h3><i class="fas fa-user-tie"></i> Assigned Delivery Person</h3>
-    <button class="btn-refresh" (click)="refreshDeliveryPerson()" [disabled]="isLoadingPerson">
-      <i class="fas fa-sync-alt" [class.fa-spin]="isLoadingPerson"></i>
-      Refresh
-    </button>
-  </div>
-  
-  <!-- Loading State -->
-  <div class="loading-person" *ngIf="isLoadingPerson">
-    <div class="loading-spinner"></div>
-    <p>Loading delivery person details...</p>
-  </div>
-
-  <!-- Error State -->
-  <div class="error-person" *ngIf="personError && !isLoadingPerson">
-    <i class="fas fa-exclamation-triangle"></i>
-    <p>{{ personError }}</p>
-    <button class="btn-retry" (click)="loadDeliveryPerson()">
-      <i class="fas fa-redo"></i> Try Again
-    </button>
-  </div>
-
-  <!-- Content -->
-  <div class="person-content" *ngIf="assignedPerson && !isLoadingPerson && !personError; else noAssignedPerson">
-    <div class="person-main-info">
-      <div class="avatar-container">
-        <div class="avatar" [ngStyle]="{'background-color': getAvatarColor(assignedPerson)}">
-          {{ getInitials(assignedPerson) }}
-        </div>
-        <div class="status-indicator" 
-             [ngClass]="{'online': assignedPerson.isOnline, 'offline': !assignedPerson.isOnline}"
-             [title]="assignedPerson.isOnline ? 'Online' : 'Offline'">
-        </div>
-      </div>
-      
-      <div class="person-details">
-        <h4 class="person-name">
-          {{ assignedPerson.firstName || assignedPerson.lastName ? 
-             (assignedPerson.firstName + ' ' + assignedPerson.lastName) : 
-             'Delivery Person #' + (assignedPerson.id | slice:0:8) }}
-        </h4>
-        
-        <div class="person-meta">
-          <p class="person-phone" *ngIf="assignedPerson.phone; else noPhone">
-            <i class="fas fa-phone"></i>
-            <a href="tel:{{assignedPerson.phone}}">{{ assignedPerson.phone }}</a>
-          </p>
-          <ng-template #noPhone>
-            <p class="person-phone">
-              <i class="fas fa-phone-slash"></i>
-              <span>Phone not provided</span>
+            <p class="retry-info" *ngIf="retryCount > 1">
+                Attempt {{retryCount}} of {{maxRetryAttempts}}
             </p>
-          </ng-template>
-          
-          <p class="person-id">
-            <i class="fas fa-id-badge"></i>
-            ID: {{ assignedPerson.id | slice:0:8 }}
-          </p>
-          
-          <p class="person-rating" *ngIf="assignedPerson.rating !== undefined">
-            <i class="fas fa-star"></i>
-            Rating: 
-            <span class="rating-value">{{ assignedPerson.rating | number:'1.1-1' }}</span>
-            <span class="rating-count">({{ assignedPerson.ratingCount || 0 }} reviews)</span>
-          </p>
         </div>
-      </div>
     </div>
-
-    <!-- Vehicle Information -->
-    <div class="vehicle-info" *ngIf="hasVehicleInfo(); else noVehicle">
-      <h5><i class="fas fa-car"></i> Vehicle Information</h5>
-      <div class="vehicle-details">
-        <div class="vehicle-detail">
-          <span class="label">Type:</span>
-          <span class="value">{{ assignedPerson.vehicle?.vehicleType || 'Unknown' }}</span>
-        </div>
-        <div class="vehicle-detail">
-          <span class="label">Model:</span>
-          <span class="value">{{ assignedPerson.vehicle?.vehicleModel || 'Unknown' }}</span>
-        </div>
-        <div class="vehicle-detail">
-          <span class="label">Plate:</span>
-          <span class="value license-plate">
-            {{ assignedPerson.vehicle?.vehiclePlateNumber || 'Not available' }}
-          </span>
-        </div>
-        <div class="vehicle-detail" *ngIf="assignedPerson.vehicle?.vehicleColor">
-          <span class="label">Color:</span>
-          <span class="value">
-            <span class="color-swatch" [style.background-color]="assignedPerson.vehicle.vehicleColor"></span>
-            {{ assignedPerson.vehicle.vehicleColor }}
-          </span>
-        </div>
-      </div>
-    </div>
-    <ng-template #noVehicle>
-      <div class="no-vehicle-info">
-        <i class="fas fa-car-crash"></i>
-        <p>No vehicle information available</p>
-      </div>
-    </ng-template>
-
-    <!-- Contact Actions -->
-    <div class="contact-actions" *ngIf="assignedPerson.phone; else noContactActions">
-      <a href="tel:{{assignedPerson.phone}}" class="btn-contact call">
-        <i class="fas fa-phone"></i>
-        Call
-      </a>
-      <button (click)="openChat()" class="chat-button">
-  <i class="fas fa-comment"></i> Chat with Delivery Person
-</button>
-      <a href="https://wa.me/{{assignedPerson.phone}}" class="btn-contact whatsapp" target="_blank">
-        <i class="fab fa-whatsapp"></i>
-        WhatsApp
-      </a>
-      <button class="btn-contact more" (click)="showMoreContactOptions()">
-        <i class="fas fa-ellipsis-h"></i>
-        More
-      </button>
-    </div>
-    <ng-template #noContactActions>
-      <div class="no-contact-actions">
-        <i class="fas fa-comment-slash"></i>
-        <p>No contact options available</p>
-      </div>
-    </ng-template>
-  </div>
-  
-  <ng-template #noAssignedPerson>
-    <div class="no-data-message" *ngIf="!isLoadingPerson && !personError">
-      <i class="fas fa-user-slash"></i>
-      
-    </div>
-  </ng-template>
-</div>
-
-    <!-- Map Card -->
-    <div class="map-card" *ngIf="delivery?.pickupLatitude && delivery?.pickupLongitude && delivery?.deliveryLatitude && delivery?.deliveryLongitude">   
-      <div class="card-header">     
-        <h3><i class="fas fa-map-marked-alt"></i> Delivery Route</h3>
-        <div class="map-controls">
-          <button class="btn-map-control" (click)="toggleMapType()" title="Toggle map view">
-            <i class="fas" [ngClass]="currentMapType === 'roadmap' ? 'fa-satellite' : 'fa-map'"></i>
-          </button>
-          <button class="btn-map-control" (click)="centerMap()" title="Center map">
-            <i class="fas fa-crosshairs"></i>
-          </button>
-        </div>
-      </div>
-      
-      <div class="card-content">     
-        <div class="map-container">
-          <div id="delivery-map" class="leaflet-map"></div>
-          
-          <div class="map-loading" *ngIf="!mapInitialized && !mapError">
-            <i class="fas fa-spinner fa-spin"></i>
-            <p>Loading map...</p>
-          </div>
-          
-          <div class="map-error-overlay" *ngIf="mapError">
-            <i class="fas fa-exclamation-triangle"></i>
-            <p>{{ mapErrorMessage }}</p>
-            <button class="btn-retry" (click)="retryMapInitialization()">
-              <i class="fas fa-sync-alt"></i> Retry
-            </button>
-          </div>
-          
-          <div class="map-info-box" *ngIf="mapInitialized && routeInfo">
-            <div class="info-item">
-              <i class="fas fa-route"></i>
-              <span>{{ routeInfo.distance }}</span>
-            </div>
-            <div class="info-item">
-              <i class="fas fa-clock"></i>
-              <span>{{ routeInfo.duration }}</span>
-            </div>
-          </div>
-          
-          <div class="map-legend">
-            <div class="legend-item">
-              <span class="legend-marker pickup">
-                <i class="fas fa-map-marker-alt" style="color: #4285F4;"></i>
-              </span>
-              <span>Pickup</span>
-            </div>
-            <div class="legend-item">
-              <span class="legend-marker delivery">
-                <i class="fas fa-map-marker-alt" style="color: #EA4335;"></i>
-              </span>
-              <span>Delivery</span>
-            </div>
-          </div>
-        </div>
-        
-        <div class="map-actions">
-          <button class="btn-map-action" (click)="openOSMaps()">
-            <i class="fas fa-external-link-alt"></i>
-            Open in OpenStreetMap
-          </button>
-          <button class="btn-map-action" (click)="downloadRouteImage()" *ngIf="mapInitialized">
-            <i class="fas fa-download"></i>
-            Download Route
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Loading State -->
-<div class="loading-container" *ngIf="isLoading">
-  <div class="loading-content">
-    <div class="loading-spinner">
-      <div class="spinner"></div>
-    </div>
-    <h3 class="loading-title">Loading Delivery Details</h3>
-    <p class="loading-subtitle">Please wait while we fetch your information...</p>
-    <div class="loading-progress">
-      <div class="progress-bar"></div>
-    </div>
-  </div>
-</div>
-
-<!-- Error State -->
-<div class="error-container" *ngIf="errorMessage && !isLoading">
-  <div class="error-content">
-    <div class="error-icon">
-      <i class="fas fa-exclamation-triangle"></i>
-    </div>
-    <h3 class="error-title">Something went wrong</h3>
-    <p class="error-message">{{errorMessage}}</p>
-    <div class="error-actions">
-      <button class="btn-retry" (click)="loadDeliveryDetails()">
-        <i class="fas fa-redo"></i>
-        Try Again
-      </button>
-      <button class="btn-back-error" (click)="goBack()">
-        <i class="fas fa-arrow-left"></i>
-        Go Back
-      </button>
-    </div>
-    <p class="retry-info" *ngIf="retryCount > 1">
-      Attempt {{retryCount}} of {{maxRetryAttempts}}
-    </p>
-  </div>
-</div>
+</body>
+</html>

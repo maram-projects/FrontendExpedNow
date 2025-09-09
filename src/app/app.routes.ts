@@ -129,15 +129,21 @@ export const routes: Routes = [
   },
 
   // Profile routes
-  {
-    path: 'profile',
-    canActivate: [authGuard],
-    children: [
-      { path: 'edit', component: EditProfileComponent },
-      { path: '', redirectTo: 'edit', pathMatch: 'full' }
-    ]
-  },
-
+ {
+  path: 'profile',
+  canActivate: [authGuard],
+  children: [
+    { 
+      path: '', 
+      component: UserDetailsComponent,
+      data: { selfView: true } // Add this to indicate it's self-viewing mode
+    },
+    { 
+      path: 'edit', 
+      component: EditProfileComponent 
+    }
+  ]
+},
   // Redirects
   { path: 'home', redirectTo: '', pathMatch: 'full' },
   { path: '**', redirectTo: '' }

@@ -113,6 +113,71 @@ export const VEHICLE_TYPES = [
   { value: 'BICYCLE', display: 'Vélo' }
 ];
 
+
+
+export interface UserDTO {
+  id?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  dateOfRegistration?: Date;
+  ratingCount?: number;
+  
+  // Enterprise fields
+  companyName?: string;
+  businessType?: string;
+  vatNumber?: string;
+  businessPhone?: string;
+  businessAddress?: string;
+  deliveryRadius?: number;
+
+  // Vehicle fields
+  vehicleType?: string;
+  vehicleBrand?: string;
+  vehicleModel?: string;
+  vehiclePlateNumber?: string;
+  vehicleColor?: string;
+  vehicleYear?: number;
+  vehicleCapacityKg?: number;
+  vehicleVolumeM3?: number;
+  vehicleHasFridge?: boolean;
+  vehiclePhotoUrl?: string;
+  vehicleInsuranceExpiry?: Date;
+  vehicleInspectionExpiry?: Date;
+  assignedVehicleId?: string;
+
+  // Professional fields
+  driverLicenseNumber?: string;
+  driverLicenseCategory?: string;
+  driverLicenseIssueDate?: Date;
+  driverLicenseExpiryDate?: Date;
+  identityPhotoUrl?: string;
+  criminalRecordDocumentUrl?: string;
+  medicalCertificateUrl?: string;
+  preferredZones?: string;
+  availabilitySchedule?: string;
+  hasCompanyAffiliation?: boolean;
+
+  // Account status
+  verified?: boolean;
+  enabled?: boolean;
+  available?: boolean;
+  approved?: boolean;
+
+  // Performance metrics
+  rating?: number;
+  completedDeliveries?: number;
+  lastActive?: Date;
+  successScore?: number;
+  totalDeliveries?: number;
+  averageDeliveryTime?: number;
+
+  // Roles
+  roles?: Set<string>;
+  userType?: string;
+}
 export const BUSINESS_TYPES = [
   { value: 'restaurant', display: 'Restaurant' },
   { value: 'retail', display: 'Commerce de détail' },
@@ -120,5 +185,4 @@ export const BUSINESS_TYPES = [
   { value: 'manufacturing', display: 'Fabrication' },
   { value: 'other', display: 'Autre' }
 ];
-
 

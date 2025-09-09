@@ -1,5 +1,5 @@
 // pricing-details.component.ts
-import { Component, Input, OnInit, OnDestroy } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 
@@ -27,7 +27,9 @@ interface PricingModel {
 @Component({
   selector: 'app-pricing-details',
   templateUrl: './pricing-details.component.html',
-  styleUrls: ['./pricing-details.component.scss'],
+  styleUrls: ['./pricing-details.component.css'],
+    encapsulation: ViewEncapsulation.None, // Add this line
+
   standalone: true,
   imports: [CommonModule],
   animations: [

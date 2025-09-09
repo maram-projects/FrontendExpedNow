@@ -55,21 +55,59 @@ export class UserService {
    * @param userId The user's ID
    * @returns Observable of User
    */
-  getUserById(userId: string): Observable<User> {
-    return this.http.get<User>(`${this.apiUrl}/${userId}`).pipe(
-      catchError(this.handleError)
-    );
-  }
+getUserById(userId: string): Observable<User> {
+  return this.http.get<any>(`${this.apiUrl}/${userId}`).pipe(
+    map(response => {
+      return this.transformUserResponse(response);
+    }),
+    catchError(this.handleError)
+  );
+}
+private transformUserResponse(response: any): User {
+  // Map the backend response to your frontend User interface
+  return {
+    id: response.id,
+    firstName: response.firstName,
+    lastName: response.lastName,
+    email: response.email,
+    phone: response.phone,
+    address: response.address,
+    companyName: response.companyName,
+    businessType: response.businessType,
+    vatNumber: response.vatNumber,
+    businessPhone: response.businessPhone,
+    businessAddress: response.businessAddress,
+    deliveryRadius: response.deliveryRadius,
+    vehicleType: response.vehicleType,
+    vehicleBrand: response.vehicleBrand,
+    vehicleModel: response.vehicleModel,
+    vehiclePlateNumber: response.vehiclePlateNumber,
+    vehicleColor: response.vehicleColor,
+    vehicleYear: response.vehicleYear,
+    driverLicenseNumber: response.driverLicenseNumber,
+    driverLicenseCategory: response.driverLicenseCategory,
+    preferredZones: response.preferredZones,
+    roles: response.roles ? (Array.isArray(response.roles) ? response.roles : Array.from(response.roles || [])) : [],
+    userType: response.userType,
+    approved: response.approved,
+    enabled: response.enabled
+  };
+}
 
   /**
    * Get current user details
    * @returns Observable of User
    */
-  getUserDetails(): Observable<User> {
-    return this.http.get<User>(`${this.apiUrl}/me`).pipe(
-      catchError(this.handleError)
-    );
-  }
+getUserDetails(): Observable<User> {
+  return this.http.get<any>(`${this.apiUrl}/me`).pipe(
+    map(response => {
+      // Transform the response to match your User interface
+      return this.transformUserResponse(response);
+    }),
+    catchError(this.handleError)
+  );
+}
+
 
   /**
    * Update user by ID
