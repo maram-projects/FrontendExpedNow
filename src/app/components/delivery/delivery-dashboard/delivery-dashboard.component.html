@@ -27,6 +27,17 @@
           <mat-icon>history</mat-icon>
           Delivery History
         </button>
+
+        <button class="nav-btn" 
+          [class.active]="isCurrentSection('ratings')"
+          (click)="switchSection('ratings')">
+    <mat-icon>star_rate</mat-icon>
+    <span>Évaluations</span>
+    <span class="badge rating-badge" *ngIf="ratingsStats.totalRatings > 0">
+      {{ratingsStats.totalRatings}}
+    </span>
+  </button>
+
         <button mat-stroked-button 
                 (click)="switchSection('bonuses')" 
                 [class.active]="currentSection === 'bonuses'">
@@ -250,6 +261,276 @@
         </div>
       </div>
     </div>
+
+    <!-- Ratings Section -->
+<div *ngIf="currentSection === 'ratings'" class="ratings-section">
+  <!-- Ratings Stats Header -->
+  <div class="ratings-stats-header">
+    <div class="row">
+      <div class="col-md-3">
+        <div class="stat-card rating-stat">
+          <div class="stat-icon">
+            <mat-icon>star</mat-icon>
+          </div>
+          <div class="stat-content">
+            <h3>{{ratingsStats.averageRating | number:'1.1-1'}}</h3>
+            <p>Note moyenne</p>
+            <div class="rating-stars-display">
+              <span *ngFor="let star of getRatingStarArray(ratingsStats.averageRating)" 
+                    class="star-display"
+                    [class.active]="star <= ratingsStats.averageRating">
+                <mat-icon>star</mat-icon>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon">
+            <mat-icon>reviews</mat-icon>
+          </div>
+          <div class="stat-content">
+            <h3>{{ratingsStats.totalRatings}}</h3>
+            <p>Total évaluations</p>
+            <small class="text-success">+{{ratingsStats.ratingsThisMonth}} ce mois</small>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon">
+            <mat-icon>thumb_up</mat-icon>
+          </div>
+          <div class="stat-content">
+            <h3>{{getPositiveRatingsPercentage()}}%</h3>
+            <p>Évaluations positives</p>
+            <small class="text-muted">(4-5 étoiles)</small>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-3">
+        <div class="stat-card">
+          <div class="stat-icon">
+            <mat-icon>trending_up</mat-icon>
+          </div>
+          <div class="stat-content">
+            <h3>{{ratingsStats.averageThisMonth | number:'1.1-1'}}</h3>
+            <p>Moyenne ce mois</p>
+            <small class="text-muted">{{ratingsStats.ratingsThisMonth}} évaluations</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rating Distribution Chart -->
+  <div class="rating-distribution-card">
+    <div class="card-header">
+      <h5><mat-icon>bar_chart</mat-icon> Distribution des évaluations</h5>
+    </div>
+    <div class="rating-bars">
+      <div *ngFor="let star of [5,4,3,2,1]" class="rating-bar-row">
+        <div class="rating-label">
+          <span class="star-count">{{star}}</span>
+          <mat-icon>star</mat-icon>
+        </div>
+        <div class="rating-progress">
+          <div class="progress-bar" 
+               [style.width.%]="getRatingPercentage(star)">
+          </div>
+        </div>
+        <div class="rating-count">
+          {{getRatingPercentage(star)}}% 
+          <span class="count-detail">
+            ({{star === 5 ? ratingsStats.fiveStarCount : 
+                star === 4 ? ratingsStats.fourStarCount :
+                star === 3 ? ratingsStats.threeStarCount :
+                star === 2 ? ratingsStats.twoStarCount :
+                ratingsStats.oneStarCount}})
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters and Controls -->
+  <div class="ratings-controls">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <div class="filter-group">
+          <mat-form-field appearance="outline" class="filter-select">
+            <mat-label>Filtrer par note</mat-label>
+            <mat-select [(value)]="ratingsFilter" (selectionChange)="onRatingsFilterChange()">
+              <mat-option value="all">Toutes les notes</mat-option>
+              <mat-option value="5">5 étoiles</mat-option>
+              <mat-option value="4">4 étoiles</mat-option>
+              <mat-option value="3">3 étoiles</mat-option>
+              <mat-option value="2">2 étoiles</mat-option>
+              <mat-option value="1">1 étoile</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="filter-select">
+            <mat-label>Trier par</mat-label>
+            <mat-select [(value)]="ratingsSortBy" (selectionChange)="onRatingsSortChange()">
+              <mat-option value="date-desc">Plus récent</mat-option>
+              <mat-option value="date-asc">Plus ancien</mat-option>
+              <mat-option value="rating-desc">Note décroissante</mat-option>
+              <mat-option value="rating-asc">Note croissante</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </div>
+      
+      <div class="col-md-4 text-end">
+        <button mat-raised-button 
+                color="primary" 
+                (click)="refreshRatings()"
+                [disabled]="isRatingsLoading">
+          <mat-icon>refresh</mat-icon>
+          Actualiser
+        </button>
+        
+        <button mat-button 
+                (click)="exportRatings()"
+                [disabled]="filteredRatings.length === 0">
+          <mat-icon>download</mat-icon>
+          Exporter
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ratings List -->
+  <div class="ratings-content">
+    <!-- Loading State -->
+    <div *ngIf="isRatingsLoading" class="loading-container">
+      <mat-progress-spinner diameter="50" mode="indeterminate"></mat-progress-spinner>
+      <p>Chargement des évaluations...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="ratingsError && !isRatingsLoading" class="error-container">
+      <mat-icon>error_outline</mat-icon>
+      <h3>Erreur de chargement</h3>
+      <p>{{ratingsError}}</p>
+      <button mat-raised-button color="primary" (click)="refreshRatings()">
+        Réessayer
+      </button>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="!isRatingsLoading && !ratingsError && filteredRatings.length === 0" 
+         class="empty-state">
+      <mat-icon>star_border</mat-icon>
+      <h3>Aucune évaluation</h3>
+      <p *ngIf="ratingsFilter === 'all'">
+        Vous n'avez pas encore reçu d'évaluations de la part des clients.
+      </p>
+      <p *ngIf="ratingsFilter !== 'all'">
+        Aucune évaluation trouvée avec {{ratingsFilter}} étoile(s).
+      </p>
+    </div>
+
+    <!-- Ratings Cards -->
+    <div *ngIf="!isRatingsLoading && !ratingsError && filteredRatings.length > 0" 
+         class="ratings-grid">
+      
+      <div *ngFor="let rating of filteredRatings; trackBy: trackByRatingId" 
+           class="rating-card"
+           (click)="viewRatingDetails(rating)">
+        
+        <div class="rating-card-header">
+          <div class="rating-main">
+            <div class="rating-stars">
+              <span *ngFor="let star of getRatingStarArray(5)" 
+                    class="star"
+                    [class.active]="star <= rating.overallRating">
+                <mat-icon>star</mat-icon>
+              </span>
+              <span class="rating-value">{{rating.overallRating}}/5</span>
+            </div>
+            <div class="rating-date">
+              <mat-icon>schedule</mat-icon>
+              {{formatRatingDate(rating.ratedAt)}}
+            </div>
+          </div>
+          
+          <div class="delivery-info">
+            <div class="delivery-id">
+              <mat-icon>local_shipping</mat-icon>
+              #{{rating.deliveryId | shorten}}
+            </div>
+          </div>
+        </div>
+
+        <div class="rating-card-body">
+          <div class="delivery-address">
+            <mat-icon>location_on</mat-icon>
+            <span>{{rating.deliveryAddress}}</span>
+          </div>
+
+          <!-- Categories (if any) -->
+          <div *ngIf="rating.categories && rating.categories.length > 0" 
+               class="rating-categories">
+            <div class="category-chips">
+              <span *ngFor="let category of rating.categories.slice(0, 3)" 
+                    class="category-chip">
+                {{getRatingCategoryLabel(category)}}
+              </span>
+              <span *ngIf="rating.categories.length > 3" class="more-categories">
+                +{{rating.categories.length - 3}} autres
+              </span>
+            </div>
+          </div>
+
+          <!-- Comment Preview -->
+          <div *ngIf="rating.comment" class="comment-preview">
+            <mat-icon>comment</mat-icon>
+            <p>{{rating.comment.length > 120 ? (rating.comment.substring(0, 120) + '...') : rating.comment}}</p>
+          </div>
+
+          <!-- Recommendation -->
+          <div *ngIf="rating.wouldRecommend !== null && rating.wouldRecommend !== undefined" 
+               class="recommendation-badge">
+            <mat-icon [class.text-success]="rating.wouldRecommend" 
+                      [class.text-warning]="!rating.wouldRecommend">
+              {{rating.wouldRecommend ? 'thumb_up' : 'thumb_down'}}
+            </mat-icon>
+            <span>{{rating.wouldRecommend ? 'Recommande' : 'Ne recommande pas'}}</span>
+          </div>
+        </div>
+
+        <div class="rating-card-footer">
+          <button mat-button color="primary" class="view-details-btn">
+            <mat-icon>visibility</mat-icon>
+            Voir les détails
+          </button>
+          
+          <div class="rating-type">
+            <mat-icon>{{rating.ratingType === 'overall' ? 'star' : 
+                         rating.ratingType === 'delivery_person' ? 'person' : 'truck'}}</mat-icon>
+            <span>{{rating.ratingType === 'overall' ? 'Service Global' :
+                    rating.ratingType === 'delivery_person' ? 'Livreur' : 'Service'}}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results Summary -->
+    <div *ngIf="filteredRatings.length > 0" class="results-summary">
+      <p>
+        Affichage de {{filteredRatings.length}} évaluation(s) 
+        <span *ngIf="ratingsFilter !== 'all'">avec {{ratingsFilter}} étoile(s)</span>
+        sur {{ratingsStats.totalRatings}} au total
+      </p>
+    </div>
+  </div>
+</div>
 
     <!-- Payments Section -->
     <div *ngIf="currentSection === 'payments'" class="payments-section">

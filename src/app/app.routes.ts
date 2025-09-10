@@ -26,8 +26,9 @@ import { ForgetPasswordComponent } from './components/forget-password/forget-pas
 import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
 import { UserDetailsComponent } from './components/profile/user-details/user-details.component';
 import { DeliveryScheduleComponent } from './components/delivery/delivery-schedule/delivery-schedule.component';
-// ADD THIS IMPORT
 import { DeliveryManagementComponent } from './components/admin-dashboard/delivery-management/delivery-management.component';
+// ADD THIS IMPORT
+import { EvaluationManagementComponent } from './components/admin-dashboard/evaluation-management/evaluation-management.component';
 
 export const routes: Routes = [
   // Public routes
@@ -94,8 +95,9 @@ export const routes: Routes = [
       { path: 'users/edit/:id', component: EditProfileComponent },
       { path: 'availability', component: ScheduleComponent },
       { path: 'DeliveryPersonnel', component: DeliveryPersonnelManagementComponent },
-      // ADD THIS LINE - This is what was missing!
       { path: 'delivery-management', component: DeliveryManagementComponent },
+      // ADD THIS LINE - The missing route for evaluation management
+      { path: 'evaluations', component: EvaluationManagementComponent },
       { path: 'vehicles', component: VehicleListComponent },
       { path: 'vehicles/create', component: VehicleFormComponent },
       { path: 'vehicles/edit/:id', component: VehicleFormComponent },

@@ -1,598 +1,612 @@
-<!-- delivery-chat-component.component.html -->
+<!-- chat-component.component.html (adaptive template for both delivery and client) -->
 <div class="chat-container" [class.loading]="isLoading" [class.error]="hasError">
-  <!-- Loading Overlay -->
-  <div class="loading-overlay" *ngIf="isLoading">
-    <div class="loading-spinner" aria-label="Loading chat">
-      <div class="spinner"></div>
-      <p>Loading your chats...</p>
-    </div>
-  </div>
-
-  <!-- Error Banner -->
-  <div class="error-banner" *ngIf="hasError" role="alert">
-    <div class="error-content">
-      <span class="error-icon" aria-hidden="true">⚠️</span>
-      <span class="error-message">{{ errorMessage }}</span>
-      <button 
-        *ngIf="canRetry" 
-        class="retry-btn"
-        (click)="retryConnection()"
-        aria-label="Retry connection">
-        Retry
-      </button>
-    </div>
-  </div>
-
-  <!-- Connection Status -->
- <!-- Add to both chat components -->
-<div class="connection-status" [class.connected]="webSocketService.isConnected()">
-  {{ webSocketService.isConnected() ? 'Realtime active' : 'Realtime disconnected' }}
-</div>
-
-  <!-- Chat Rooms Sidebar -->
-  <aside class="chat-sidebar" aria-label="Client chats">
-    <header class="sidebar-header">
-      <h2 class="sidebar-title">
-        <span class="chat-icon" aria-hidden="true">💬</span>
-        Client Chats
-      </h2>
-      <div class="connection-indicator" 
-           [class.connected]="(connectionStatus$ | async)"
-           [class.disconnected]="!(connectionStatus$ | async)"
-           [attr.aria-label]="(connectionStatus$ | async) ? 'Connected' : 'Disconnected'">
-      </div>
-    </header>
-
-    <div class="rooms-list" role="list">
-      <!-- Room Items -->
-      <article 
-        *ngFor="let room of rooms; trackBy: trackByRoomId" 
-        class="room-item"
-        [class.active]="selectedRoom?.deliveryId === room.deliveryId"
-        [class.has-unread]="room.unreadCount && room.unreadCount > 0"
-        (click)="selectRoom(room)"
-        role="listitem"
-        tabindex="0"
-        [attr.aria-label]="'Chat with ' + room.clientName + ' for delivery #' + room.deliveryId.slice(-6) + 
-                           (room.unreadCount ? '. ' + room.unreadCount + ' unread messages' : '')"
-        [attr.aria-current]="selectedRoom?.deliveryId === room.deliveryId ? 'true' : null">
-        
-        <figure class="room-avatar">
-          <img 
-            [src]="'/assets/default-avatar.png'" 
-            [alt]="room.clientName"
-            class="avatar-img"
-            width="40"
-            height="40"
-            loading="lazy"
-            onerror="this.src='/assets/images/fallback-avatar.png'">
-          
-          <div class="status-indicator" 
-               [class.online]="(isOnline$ | async) && selectedRoom?.deliveryId === room.deliveryId"
-               [class.offline]="!(isOnline$ | async) || selectedRoom?.deliveryId !== room.deliveryId"
-               [attr.aria-label]="(isOnline$ | async) && selectedRoom?.deliveryId === room.deliveryId ? 'Online' : 'Offline'">
-          </div>
-        </figure>
-        
-        <div class="room-info">
-          <header class="room-header">
-            <h3 class="client-name">{{ room.clientName || 'Client' }}</h3>
-            <span class="delivery-id">#{{ room.deliveryId.slice(-6) }}</span>
-          </header>
-          
-          <p class="last-message" *ngIf="room.lastMessage" [attr.aria-label]="'Last message: ' + room.lastMessage">
-            <span class="message-preview">
-              {{ room.lastMessage | slice:0:50 }}{{ room.lastMessage.length > 50 ? '...' : '' }}
-            </span>
-          </p>
-          
-          <div class="no-messages" *ngIf="!room.lastMessage">
-            <span class="no-messages-text">Start a conversation</span>
-          </div>
-          
-          <footer class="room-meta">
-            <time class="last-message-time" 
-                  *ngIf="room.lastMessageAt && isValidDate(room.lastMessageAt)" 
-                  [attr.datetime]="room.lastMessageAt | date:'yyyy-MM-ddTHH:mm'">
-              {{ formatMessageTime(room.lastMessageAt) }}
-            </time>
-            
-            <span class="unread-badge" 
-                  *ngIf="room.unreadCount && room.unreadCount > 0"
-                  [attr.aria-label]="room.unreadCount + ' unread messages'"
-                  role="status">
-              {{ room.unreadCount > 99 ? '99+' : room.unreadCount }}
-            </span>
-          </footer>
+  
+  <!-- Header Section -->
+  <div class="chat-header">
+    <div class="user-info" *ngIf="isOtherUserLoaded(); else loadingUser">
+      <div class="user-avatar">
+        <div class="avatar-circle">
+          {{ getOtherUserFirstName().charAt(0).toUpperCase() }}
         </div>
-      </article>
+        <div class="online-indicator" *ngIf="isOnline$ | async" 
+             [attr.aria-label]="getOtherUserFirstName() + ' is online'">
+        </div>
+      </div>
+      <div class="user-details">
+        <h3 class="user-name">{{ getOtherUserDisplayName() }}</h3>
+        <div class="user-status">
+          <span *ngIf="isOnline$ | async; else offlineStatus" class="status-online">
+            Online
+          </span>
+          <ng-template #offlineStatus>
+            <span class="status-offline">Offline</span>
+          </ng-template>
+        </div>
+      </div>
+    </div>
+    
+    <ng-template #loadingUser>
+      <div class="user-info loading">
+        <div class="skeleton-avatar"></div>
+        <div class="skeleton-text">
+          <div class="skeleton-line short"></div>
+          <div class="skeleton-line shorter"></div>
+        </div>
+      </div>
+    </ng-template>
+
+    <!-- Connection Status -->
+    <div class="connection-status" *ngIf="isConnecting || hasError">
+      <div *ngIf="isConnecting" class="connecting-indicator">
+        <div class="spinner"></div>
+        <span>Connecting...</span>
+      </div>
+      <div *ngIf="hasError && !isConnecting" class="error-indicator">
+        <span class="error-icon">⚠</span>
+        <span>{{ errorMessage }}</span>
+        <button *ngIf="canRetry" 
+                class="retry-btn" 
+                (click)="retryConnection()"
+                [attr.aria-label]="'Retry connection'">
+          Retry
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Messages Section -->
+  <div class="messages-section">
+    <div #messagesContainer 
+         class="messages-container" 
+         [class.loading]="isLoading"
+         role="log" 
+         aria-live="polite" 
+         aria-label="Chat messages">
       
-      <!-- Loading State for Rooms -->
-      <div class="rooms-loading" *ngIf="isLoading && rooms.length === 0">
-        <div class="loading-room-item" *ngFor="let i of [1,2,3]">
-          <div class="skeleton-avatar"></div>
-          <div class="skeleton-content">
-            <div class="skeleton-line skeleton-name"></div>
-            <div class="skeleton-line skeleton-message"></div>
-            <div class="skeleton-line skeleton-time"></div>
+      <!-- Loading More Messages Indicator -->
+      <div *ngIf="isLoadingMore" class="load-more-indicator">
+        <div class="spinner small"></div>
+        <span>Loading more messages...</span>
+      </div>
+      
+      <!-- Messages List -->
+      <div class="messages-list">
+        <div *ngFor="let message of messages; trackBy: trackByMessageId" 
+             class="message-wrapper"
+             [class.own-message]="isOwnMessage(message)"
+             [class.other-message]="!isOwnMessage(message)"
+             [attr.data-message-id]="message.id">
+          
+          <div class="message-bubble">
+            <div class="message-content">
+              {{ message.content }}
+            </div>
+            
+            <div class="message-meta">
+              <span class="message-time" *ngIf="isValidDate(message.timestamp)">
+                {{ formatMessageTime(message.timestamp) }}
+              </span>
+              
+              <!-- Message Status (only for own messages) -->
+              <div *ngIf="isOwnMessage(message)" class="message-status">
+                <span [ngSwitch]="message.status" class="status-icon">
+                  <span *ngSwitchCase="MessageStatus.SENT">✓</span>
+                  <span *ngSwitchCase="MessageStatus.DELIVERED">✓✓</span>
+                  <span *ngSwitchCase="MessageStatus.READ">✓✓</span>
+                  <span *ngSwitchCase="MessageStatus.FAILED" class="failed">✗</span>
+                  <span *ngSwitchDefault>⏳</span>
+                </span>
+              </div>
+            </div>
           </div>
+        </div>
+
+        <!-- Typing Indicator -->
+        <div *ngIf="(typingUsers$ | async)?.length" class="typing-indicator">
+          <div class="typing-bubble">
+            <div class="typing-dots">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </div>
+          <span class="typing-text">{{ getOtherUserFirstName() }} is typing...</span>
         </div>
       </div>
       
       <!-- Empty State -->
-      <div class="empty-rooms" *ngIf="!isLoading && rooms.length === 0">
-        <div class="empty-content">
-          <div class="empty-icon" aria-hidden="true">📭</div>
-          <h3>No active client chats</h3>
-          <p>Your client conversations will appear here</p>
-        </div>
-      </div>
-    </div>
-  </aside>
-
-  <!-- Chat Main Area -->
-  <main class="chat-main" [class.no-room-selected]="!selectedRoom">
-    <!-- No Room Selected State -->
-    <div class="no-selection" *ngIf="!selectedRoom">
-      <div class="no-selection-content">
-        <div class="no-selection-icon" aria-hidden="true">💬</div>
-        <h2>Select a client chat</h2>
-        <p>Choose a delivery from the sidebar to start chatting with your client</p>
-        <div class="selection-hint">
-          <span class="hint-icon" aria-hidden="true">👈</span>
-          <span>Click on a delivery to begin</span>
-        </div>
+      <div *ngIf="messages.length === 0 && !isLoading" class="empty-state">
+        <div class="empty-icon">💬</div>
+        <p>No messages yet. Start the conversation!</p>
       </div>
     </div>
 
-    <!-- Chat Content -->
-    <div class="chat-content" *ngIf="selectedRoom">
-      <!-- Chat Header -->
-      <header class="chat-header">
-        <div class="header-user-info">
-          <figure class="header-avatar">
-            <img 
-              [src]="'/assets/default-avatar.png'" 
-              [alt]="getOtherUserFirstName()"
-              class="avatar-img"
-              width="40"
-              height="40"
-              loading="lazy"
-              onerror="this.src='/assets/images/fallback-avatar.png'">
-            
-            <div class="avatar-status" 
-                 [class.online]="(isOnline$ | async)"
-                 [class.offline]="!(isOnline$ | async)">
-            </div>
-          </figure>
-          
-          <div class="header-details">
-            <h2 class="header-name">
-              {{ getOtherUserDisplayName() }}
-              <span class="loading-user" *ngIf="!isOtherUserLoaded()">Loading...</span>
-            </h2>
-            <div class="header-status">
-              <span class="delivery-info">
-                <span class="delivery-label">Delivery</span>
-                <span class="delivery-number">#{{ selectedRoom.deliveryId.slice(-6) }}</span>
-              </span>
-              
-              <!-- Online Status -->
-              <span class="online-status" *ngIf="(isOnline$ | async)" 
-                    aria-label="Online">
-                <span class="status-dot online"></span>
-                <span class="status-text">Online</span>
-              </span>
-              
-              <span class="offline-status" *ngIf="!(isOnline$ | async)" 
-                    aria-label="Offline">
-                <span class="status-dot offline"></span>
-                <span class="status-text">Last seen recently</span>
-              </span>
-              
-              <!-- Typing Indicator -->
-              <div class="typing-indicator-header" 
-                   *ngIf="getTypingUsersForCurrentRoom().length > 0"
-                   role="status"
-                   aria-live="polite">
-                <span class="typing-dots">
-                  <span class="dot"></span>
-                  <span class="dot"></span>
-                  <span class="dot"></span>
-                </span>
-                <span class="typing-text">typing...</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Chat Actions -->
-        <div class="chat-actions">
-          <button class="action-btn" 
-                  type="button"
-                  aria-label="Call client"
-                  title="Call">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
-            </svg>
-          </button>
-          
-          <button class="action-btn" 
-                  type="button"
-                  aria-label="More options"
-                  title="More">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-            </svg>
-          </button>
-        </div>
-      </header>
+    <!-- Quick Messages (Optional) -->
+    <div class="quick-messages" *ngIf="!isLoading && !hasError">
+      <button *ngFor="let quickMsg of quickMessages" 
+              class="quick-message-btn"
+              (click)="setQuickMessage(quickMsg)"
+              [attr.aria-label]="'Set quick message: ' + quickMsg">
+        {{ quickMsg }}
+      </button>
+    </div>
+  </div>
 
-      <!-- Messages Container -->
-      <section class="messages-section" 
-               role="log" 
-               aria-label="Chat messages"
-               aria-live="polite">
-        
-        <!-- Load More Messages Button -->
-        <div class="load-more-container" *ngIf="hasMoreMessages && messages.length > 0">
-          <button class="load-more-btn" 
-                  *ngIf="!isLoadingMore"
-                  (click)="loadMoreMessages()"
-                  type="button"
-                  aria-label="Load older messages">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/>
-            </svg>
-            Load older messages
-          </button>
-          
-          <div class="loading-more" *ngIf="isLoadingMore">
-            <div class="mini-spinner"></div>
-            <span>Loading messages...</span>
-          </div>
-        </div>
-
-        <!-- messages-container -->
-<div class="messages-container" 
-     #messagesContainer
-     [attr.aria-label]="'Messages with ' + getOtherUserFirstName()"
-     style="display: flex; flex-direction: column-reverse;"> <!-- Add this style -->
-          
-          <!-- Message Groups -->
-           <article class="message-group" 
-         *ngFor="let message of messages; trackBy: trackByMessageId"
-                 [class.own-message]="isOwnMessage(message)"
-                 [class.other-message]="!isOwnMessage(message)"
-                 [attr.aria-label]="(isOwnMessage(message) ? 'You' : getOtherUserFirstName()) + ' sent a message'">
-            
-            <!-- Message Avatar (for other user messages) -->
-            <figure class="message-avatar" *ngIf="!isOwnMessage(message)">
-              <img [src]="'/assets/default-avatar.png'" 
-                   [alt]="getOtherUserFirstName()"
-                   class="avatar-img"
-                   width="32"
-                   height="32"
-                   loading="lazy"
-                   onerror="this.src='/assets/images/fallback-avatar.png'">
-            </figure>
-            
-            <!-- Message Content -->
-            <div class="message-content">
-              <div class="message-bubble" 
-                   [class.delivered]="message.status === MessageStatus.DELIVERED"
-                   [class.read]="message.status === MessageStatus.READ"
-                   [class.sending]="message.status === MessageStatus.SENDING"
-                   [class.failed]="message.status === MessageStatus.FAILED">
-                
-                <div class="message-text" 
-                     [innerHTML]="message.content | slice:0:1000"
-                     [attr.aria-label]="'Message: ' + message.content">
-                </div>
-                
-                <!-- Message Status Indicators -->
-                <div class="message-status" *ngIf="isOwnMessage(message)">
-                  <!-- Sending Status -->
-                  <span class="status-sending" 
-                        *ngIf="message.status === MessageStatus.SENDING"
-                        aria-label="Sending message">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                      <circle cx="12" cy="12" r="10" opacity="0.3"/>
-                      <path d="M12 2v6l4-4-4-4z"/>
-                    </svg>
-                  </span>
-                  
-                  <!-- Delivered Status -->
-                  <span class="status-delivered" 
-                        *ngIf="message.status === MessageStatus.DELIVERED"
-                        aria-label="Message delivered">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                    </svg>
-                  </span>
-                  
-                  <!-- Read Status -->
-                  <span class="status-read" 
-                        *ngIf="message.status === MessageStatus.READ"
-                        aria-label="Message read">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M18 7l-1.41-1.41-6.34 6.34 1.41 1.41L18 7zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12-1.42-1.41z"/>
-                    </svg>
-                  </span>
-                  
-                  <!-- Failed Status -->
-                  <span class="status-failed" 
-                        *ngIf="message.status === MessageStatus.FAILED"
-                        aria-label="Message failed to send">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                    </svg>
-                  </span>
-                </div>
-              </div>
-              
-              <!-- Message Timestamp -->
-              <time class="message-time" 
-                    *ngIf="message.timestamp && isValidDate(message.timestamp)"
-                    [attr.datetime]="message.timestamp | date:'yyyy-MM-ddTHH:mm:ss'"
-                    [title]="message.timestamp | date:'full'">
-                {{ formatMessageTime(message.timestamp) }}
-              </time>
-            </div>
-          </article>
-          
-          <!-- Empty Messages State -->
-          <div class="empty-messages" *ngIf="!isLoading && messages.length === 0">
-            <div class="empty-content">
-              <div class="empty-icon" aria-hidden="true">💭</div>
-              <h3>No messages yet</h3>
-              <p>Start the conversation with {{ getOtherUserFirstName() }}</p>
-              <!-- Replace conversation-starters section -->
-<div class="conversation-starters">
-  <button class="starter-btn" 
-          type="button"
-          (click)="setQuickMessage('I\'m on my way with your delivery')">
-    "I'm on my way with your delivery"
-  </button>
-  <button class="starter-btn" 
-          type="button"
-          (click)="setQuickMessage('I\'ll arrive in 10 minutes')">
-    "I'll arrive in 10 minutes"
-  </button>
-</div>
-            </div>
-          </div>
-          
-          <!-- Messages Loading State -->
-          <div class="messages-loading" *ngIf="isLoading">
-            <div class="loading-message" *ngFor="let i of [1,2,3,4]" 
-                 [class.own]="i % 2 === 0">
-              <div class="skeleton-avatar" *ngIf="i % 2 !== 0"></div>
-              <div class="skeleton-bubble">
-                <div class="skeleton-line" [style.width.%]="60 + (i * 10)"></div>
-                <div class="skeleton-line short" *ngIf="i % 3 === 0"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Typing Indicator -->
-        <div class="typing-indicator-container" 
-             *ngIf="getTypingUsersForCurrentRoom().length > 0"
-             role="status"
-             aria-live="polite"
-             aria-label="Someone is typing">
-          <div class="typing-indicator">
-            <figure class="typing-avatar">
-              <img [src]="'/assets/default-avatar.png'" 
-                   [alt]="getOtherUserFirstName()"
-                   class="avatar-img"
-                   width="24"
-                   height="24"
-                   loading="lazy">
-            </figure>
-            <div class="typing-bubble">
-              <div class="typing-dots">
-                <span class="dot"></span>
-                <span class="dot"></span>
-                <span class="dot"></span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Message Input Section -->
-      <footer class="message-input-section">
-        <!-- Connection Warning -->
-        <div class="connection-warning" *ngIf="!(connectionStatus$ | async)">
-
-          <span class="warning-icon" aria-hidden="true">⚠️</span>
-          <span>Reconnecting... Messages will be sent when connected.</span>
-        </div>
-        
-        <!-- Input Container -->
-        <form class="message-input-container" 
-              (ngSubmit)="sendMessage()"
-              [class.disabled]="isInputDisabled">
-          
-          <!-- Attachment Button -->
-          <button class="attachment-btn" 
-                  type="button"
+  <!-- Input Section -->
+  <div class="input-section">
+    <form class="message-form" 
+          (ngSubmit)="sendMessage()" 
+          [class.disabled]="isInputDisabled">
+      
+      <div class="input-container">
+        <textarea #messageInput
+                  [(ngModel)]="newMessage"
+                  name="message"
+                  class="message-input"
+                  placeholder="Type your message..."
+                  rows="1"
+                  maxlength="1000"
                   [disabled]="isInputDisabled"
-                  aria-label="Attach file">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
-            </svg>
-          </button>
-          
-          <!-- Message Input -->
-          <div class="input-wrapper">
-            <label for="messageInput" class="sr-only">
-              Type your message to {{ getOtherUserFirstName() }}
-            </label>
-            <textarea 
-              name="messageInput"
-    [(ngModel)]="newMessage"
-              #messageInput
-              id="messageInput"
-              class="message-input"
-              [(ngModel)]="newMessage"
-              (input)="onTyping()"
-              (keydown)="onEnterKey($event)"
-              (blur)="onBlurMessageInput()"
-              [disabled]="isInputDisabled"
-              [placeholder]="isInputDisabled ? 'Connecting...' : 'Type a message to ' + getOtherUserFirstName() + '...'"
-              rows="1"
-              maxlength="1000"
-              [attr.aria-label]="'Message input, ' + (1000 - newMessage.length) + ' characters remaining'"
-              autocomplete="off"
-              spellcheck="true"></textarea>
-            
-            <!-- Character Counter -->
-            <div class="character-counter" 
-                 *ngIf="newMessage.length > 800"
-                 [class.warning]="newMessage.length > 900"
-                 [class.error]="newMessage.length >= 1000">
-              {{ 1000 - newMessage.length }}
-            </div>
-          </div>
-          
-          <!-- Send Button -->
-          <button class="send-btn" 
-                  type="submit"
-                  [disabled]="!canSendMessage() || isInputDisabled"
-                  [attr.aria-label]="newMessage.trim() ? 'Send message' : 'Type a message to send'">
-            
-            <!-- Send Icon -->
-            <svg class="send-icon" 
-                 *ngIf="!isLoading"
-                 width="20" 
-                 height="20" 
-                 viewBox="0 0 24 24" 
-                 fill="currentColor">
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-            </svg>
-            
-            <!-- Loading Icon -->
-            <div class="send-loading" *ngIf="isLoading">
-              <div class="mini-spinner"></div>
-            </div>
-          </button>
-        </form>
+                  (input)="onTyping()"
+                  (keydown)="onEnterKey($event)"
+                  (blur)="onBlurMessageInput()"
+                  [attr.aria-label]="'Message input'">
+        </textarea>
         
-        <!-- Input Footer -->
-        <div class="input-footer">
-          <small class="input-hint">
-            Press Enter to send, Shift+Enter for new line
-          </small>
-          
-          <!-- Quick Actions -->
-          <div class="quick-actions">
-            <button class="quick-action" 
-                    type="button"
-                    (click)="newMessage = 'I\'m on my way'; focusMessageInput()"
-                    [disabled]="isInputDisabled"
-                    title="Send on my way">
-              🚗 On my way
-            </button>
-            
-            <button class="quick-action" 
-                    type="button"
-                    (click)="newMessage = 'I\'ve arrived'; focusMessageInput()"
-                    [disabled]="isInputDisabled"
-                    title="I've arrived">
-              📍 I've arrived
-            </button>
-            
-            <button class="quick-action" 
-                    type="button"
-                    (click)="newMessage = 'Need directions?'; focusMessageInput()"
-                    [disabled]="isInputDisabled"
-                    title="Ask about location">
-              🗺️ Need directions?
-            </button>
-          </div>
-        </div>
-      </footer>
-    </div>
-  </main>
-</div>
+        <button type="submit" 
+                class="send-button"
+                [disabled]="!canSendMessage()"
+                [class.sending]="state.sendingMessage"
+                [attr.aria-label]="'Send message'">
+          <span *ngIf="!state.sendingMessage" class="send-icon">➤</span>
+          <div *ngIf="state.sendingMessage" class="spinner small"></div>
+        </button>
+      </div>
+      
+      <div class="input-meta">
+        <span class="char-count" 
+              [class.near-limit]="newMessage.length > 900"
+              [class.at-limit]="newMessage.length >= 1000">
+          {{ newMessage.length }}/1000
+        </span>
+      </div>
+    </form>
+  </div>
 
-<!-- Accessibility Live Region -->
-<div class="sr-only" 
-     role="status" 
-     aria-live="polite" 
-     aria-atomic="true">
-  <span *ngIf="getTypingUsersForCurrentRoom().length > 0">
-    {{ getOtherUserFirstName() }} is typing
-  </span>
-  <span *ngIf="hasError">
-    {{ errorMessage }}
-  </span>
+  <!-- Loading Overlay -->
+  <div *ngIf="isLoading" class="loading-overlay">
+    <div class="loading-content">
+      <div class="spinner large"></div>
+      <p>Loading chat...</p>
+    </div>
+  </div>
 </div>
 
 <style>
-  /* Add to both chat component styles */
-.input-wrapper {
-  position: relative;
-  flex: 1;
-  min-width: 0; /* Prevent overflow */
-}
-
-.character-counter {
-  position: absolute;
-  bottom: 8px;
-  right: 12px;
-
-
-}
-
-.message-input {
-  min-height: 40px; /* Minimum height */
-  max-height: 120px; /* Maximum height before scrolling */
-  overflow-y: auto; /* Add scroll when content exceeds max height */
-  padding-right: 40px; /* Space for character counter */
-}
-/* Base Styles */
+/* Chat Container */
 .chat-container {
   display: flex;
+  flex-direction: column;
   height: 100vh;
-  max-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  max-height: 600px;
+  background: #f8fafc;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
   position: relative;
+}
+
+/* Header */
+.chat-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 16px 20px;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.user-avatar {
+  position: relative;
+}
+
+.avatar-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+}
+
+.online-indicator {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  background: #10b981;
+  border: 2px solid white;
+  border-radius: 50%;
+}
+
+.user-details {
+  flex: 1;
+}
+
+.user-name {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.user-status {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.status-online {
+  color: #10b981;
+}
+
+.status-offline {
+  opacity: 0.7;
+}
+
+/* Connection Status */
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.connecting-indicator, .error-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.retry-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.retry-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Messages Section */
+.messages-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
-/* Loading Overlay */
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+  scroll-behavior: smooth;
+}
+
+.messages-list {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Messages */
+.message-wrapper {
+  display: flex;
+  flex-direction: column;
+  max-width: 80%;
+}
+
+.own-message {
+  align-self: flex-end;
+}
+
+.own-message .message-bubble {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.other-message {
+  align-self: flex-start;
+}
+
+.other-message .message-bubble {
+  background: white;
+  color: #374151;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.message-bubble {
+  padding: 12px 16px;
+  border-radius: 18px;
+  word-wrap: break-word;
+  position: relative;
+}
+
+.message-content {
+  font-size: 15px;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.message-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.message-time {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.message-status {
+  margin-left: 8px;
+}
+
+.status-icon {
+  font-size: 12px;
+}
+
+.status-icon.failed {
+  color: #ef4444;
+}
+
+/* Typing Indicator */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+  margin-bottom: 16px;
+}
+
+.typing-bubble {
+  background: white;
+  padding: 8px 12px;
+  border-radius: 18px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.typing-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.typing-dots span {
+  width: 6px;
+  height: 6px;
+  background: #9ca3af;
+  border-radius: 50%;
+  animation: typing 1.5s ease-in-out infinite;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.typing-text {
+  font-size: 14px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+@keyframes typing {
+  0%, 20%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Quick Messages */
+.quick-messages {
+  padding: 12px 20px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: #f1f5f9;
+  border-top: 1px solid #e2e8f0;
+}
+
+.quick-message-btn {
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 16px;
+  padding: 6px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.quick-message-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+/* Input Section */
+.input-section {
+  padding: 16px 20px;
+  background: white;
+  border-top: 1px solid #e5e7eb;
+}
+
+.message-form.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.input-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  background: #f9fafb;
+  border: 1px solid #d1d5db;
+  border-radius: 24px;
+  padding: 8px 16px;
+  transition: border-color 0.2s;
+}
+
+.input-container:focus-within {
+  border-color: #667eea;
+}
+
+.message-input {
+  flex: 1;
+  border: none;
+  background: none;
+  outline: none;
+  resize: none;
+  font-size: 15px;
+  line-height: 1.4;
+  padding: 8px 0;
+  max-height: 120px;
+  font-family: inherit;
+}
+
+.send-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.send-button:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+
+.send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.send-icon {
+  font-size: 18px;
+}
+
+.input-meta {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.char-count {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.char-count.near-limit {
+  color: #f59e0b;
+}
+
+.char-count.at-limit {
+  color: #ef4444;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+/* Loading States */
 .loading-overlay {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.9);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 10;
 }
 
-.loading-spinner {
+.loading-content {
   text-align: center;
-  color: #667eea;
 }
 
+.load-more-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* Spinners */
 .spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #667eea;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
   border-radius: 50%;
+  width: 16px;
+  height: 16px;
   animation: spin 1s linear infinite;
-  margin: 0 auto 16px;
+}
+
+.spinner.small {
+  width: 12px;
+  height: 12px;
+  border-width: 1px;
+}
+
+.spinner.large {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
 }
 
 @keyframes spin {
@@ -600,1325 +614,97 @@
   100% { transform: rotate(360deg); }
 }
 
-/* Error Banner */
-.error-banner {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(90deg, #ff6b6b, #ee5a24);
-  color: white;
-  padding: 12px 20px;
-  z-index: 999;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.error-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.error-icon {
-  font-size: 18px;
-}
-
-.error-message {
-  flex: 1;
-  font-weight: 500;
-}
-
-.retry-btn {
-  background: rgba(255,255,255,0.2);
-  border: 1px solid rgba(255,255,255,0.3);
-  color: white;
-  padding: 6px 16px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.retry-btn:hover {
-  background: rgba(255,255,255,0.3);
-  transform: translateY(-1px);
-}
-
-/* Connection Status */
-.connection-status {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(90deg, #feca57, #ff9ff3);
-  color: white;
-  padding: 10px 20px;
-  z-index: 998;
-}
-
-.status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: center;
-}
-
-.pulse-dot {
-  width: 8px;
-  height: 8px;
-  background: white;
-  border-radius: 50%;
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.2); }
-}
-
-/* Sidebar */
-.chat-sidebar {
-  width: 320px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  border-right: 1px solid rgba(255, 255, 255, 0.2);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.sidebar-header {
-  padding: 20px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7));
-  border-bottom: 1px solid rgba(0,0,0,0.05);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.sidebar-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 18px;
-  font-weight: 700;
-  color: #2d3748;
-  margin: 0;
-}
-
-.chat-icon {
-  font-size: 20px;
-}
-
-.connection-indicator {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #e53e3e;
-  transition: all 0.3s ease;
-}
-
-.connection-indicator.connected {
-  background: #38a169;
-  box-shadow: 0 0 0 2px rgba(56, 161, 105, 0.3);
-}
-
-/* Rooms List */
-.rooms-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-}
-
-.room-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 12px;
-  margin-bottom: 4px;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: 2px solid transparent;
-  position: relative;
-}
-
-.room-item:hover {
-  background: rgba(103, 126, 234, 0.08);
-  transform: translateX(2px);
-}
-
-.room-item.active {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  box-shadow: 0 4px 15px rgba(103, 126, 234, 0.3);
-}
-
-.room-item.has-unread {
-  border-color: #667eea;
-  background: rgba(103, 126, 234, 0.05);
-}
-
-.room-avatar {
-  position: relative;
-  margin: 0;
-}
-
-.avatar-img {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid rgba(255,255,255,0.5);
-}
-
-.status-indicator {
-  position: absolute;
-  bottom: -2px;
-  right: -2px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid white;
-  background: #e53e3e;
-}
-
-.status-indicator.online {
-  background: #38a169;
-}
-
-.room-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.room-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 4px;
-}
-
-.delivery-person-name {
-  font-weight: 600;
-  font-size: 14px;
-  margin: 0;
-  color: inherit;
-}
-
-.delivery-id {
-  font-size: 11px;
-  opacity: 0.7;
-  font-weight: 500;
-}
-
-.last-message {
-  margin: 0 0 6px 0;
-  font-size: 13px;
-  opacity: 0.8;
-  line-height: 1.3;
-}
-
-.message-preview {
-  display: block;
-}
-
-.no-messages {
-  margin: 0 0 6px 0;
-}
-
-.no-messages-text {
-  font-size: 13px;
+/* Skeleton Loading */
+.user-info.loading {
   opacity: 0.6;
-  font-style: italic;
-}
-
-.room-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.last-message-time {
-  font-size: 11px;
-  opacity: 0.6;
-}
-
-.unread-badge {
-  background: #667eea;
-  color: white;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 10px;
-  min-width: 16px;
-  text-align: center;
-}
-
-.room-item.active .unread-badge {
-  background: rgba(255,255,255,0.9);
-  color: #667eea;
-}
-
-/* Loading States */
-.rooms-loading, .messages-loading {
-  padding: 12px;
-}
-
-.loading-room-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 0;
-  animation: fadeIn 0.5s ease;
 }
 
 .skeleton-avatar {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background: linear-gradient(90deg, rgba(255,255,255,0.1) 25%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.1) 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  animation: skeleton 1.5s ease-in-out infinite;
 }
 
-.skeleton-content {
-  flex: 1;
+.skeleton-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .skeleton-line {
-  height: 12px;
-  border-radius: 6px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  margin-bottom: 8px;
-}
-
-.skeleton-name { width: 60%; }
-.skeleton-message { width: 80%; }
-.skeleton-time { width: 30%; }
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-/* Empty States */
-.empty-rooms, .empty-messages {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  text-align: center;
-}
-
-.empty-content {
-  max-width: 300px;
-}
-
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-  opacity: 0.5;
-}
-
-.empty-content h3 {
-  margin: 0 0 8px 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #2d3748;
-}
-
-.empty-content p {
-  margin: 0 0 20px 0;
-  color: #718096;
-  line-height: 1.5;
-}
-
-.conversation-starters {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.starter-btn {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 20px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.starter-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(103, 126, 234, 0.3);
-}
-
-/* Chat Main */
-.chat-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: rgba(255, 255, 255, 0.98);
-  backdrop-filter: blur(20px);
-  overflow: hidden;
-}
-
-.no-selection {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px;
-}
-
-.no-selection-content {
-  text-align: center;
-  max-width: 400px;
-}
-
-.no-selection-icon {
-  font-size: 64px;
-  margin-bottom: 24px;
-  opacity: 0.3;
-}
-
-.no-selection-content h2 {
-  margin: 0 0 12px 0;
-  font-size: 24px;
-  font-weight: 700;
-  color: #2d3748;
-}
-
-.no-selection-content p {
-  margin: 0 0 24px 0;
-  color: #718096;
-  line-height: 1.6;
-  font-size: 16px;
-}
-
-.selection-hint {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: #a0aec0;
-  font-size: 14px;
-}
-
-.hint-icon {
-  font-size: 20px;
-  animation: pointLeft 2s ease-in-out infinite;
-}
-
-@keyframes pointLeft {
-  0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(-5px); }
-}
-
-/* Chat Content */
-.chat-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.chat-header {
-  padding: 16px 24px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.85));
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(0,0,0,0.05);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.header-user-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-}
-
-.header-avatar {
-  position: relative;
-  margin: 0;
-}
-
-.header-avatar .avatar-img {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid rgba(103, 126, 234, 0.2);
-}
-
-.avatar-status {
-  position: absolute;
-  bottom: -2px;
-  right: -2px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid white;
-  background: #e53e3e;
-}
-
-.avatar-status.online {
-  background: #38a169;
-}
-
-.header-details {
-  flex: 1;
-  min-width: 0;
-}
-
-.header-name {
-  margin: 0 0 4px 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #2d3748;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.loading-user {
-  font-size: 12px;
-  color: #a0aec0;
-  font-weight: 400;
-}
-
-.header-status {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.delivery-info {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.delivery-label {
-  font-size: 11px;
-  color: #718096;
-  text-transform: uppercase;
-  font-weight: 500;
-}
-
-.delivery-number {
-  font-size: 12px;
-  color: #667eea;
-  font-weight: 600;
-}
-
-.online-status, .offline-status {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-
-.status-dot.online {
-  background: #38a169;
-}
-
-.status-dot.offline {
-  background: #a0aec0;
-}
-
-.status-text {
-  color: #718096;
-}
-
-.typing-indicator-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #667eea;
-  font-size: 12px;
-}
-
-.typing-dots {
-  display: flex;
-  gap: 2px;
-}
-
-.typing-dots .dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: currentColor;
-  animation: typingDot 1.4s ease-in-out infinite both;
-}
-
-.typing-dots .dot:nth-child(1) { animation-delay: -0.32s; }
-.typing-dots .dot:nth-child(2) { animation-delay: -0.16s; }
-
-@keyframes typingDot {
-  0%, 80%, 100% {
-    opacity: 0.3;
-    transform: scale(0.8);
-  }
-  40% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.chat-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.action-btn {
-  width: 40px;
-  height: 40px;
-  border: none;
-  background: rgba(103, 126, 234, 0.1);
-  color: #667eea;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.action-btn:hover {
-  background: rgba(103, 126, 234, 0.2);
-  transform: scale(1.05);
-}
-
-/* Messages Section */
-.messages-section {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
-}
-
-.load-more-container {
-  padding: 16px;
-  text-align: center;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
-}
-
-.load-more-btn {
-  background: rgba(103, 126, 234, 0.1);
-  color: #667eea;
-  border: 1px solid rgba(103, 126, 234, 0.2);
-  padding: 8px 16px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s ease;
-  margin: 0 auto;
-}
-
-.load-more-btn:hover {
-  background: rgba(103, 126, 234, 0.2);
-  transform: translateY(-1px);
-}
-
-.loading-more {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: #718096;
-  font-size: 13px;
-}
-
-.mini-spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid #e2e8f0;
-  border-top: 2px solid #667eea;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-.messages-wrapper {
-  display: flex;
-  flex-direction: column-reverse;
-  min-height: 100%;
-}
-.messages-container {
-  display: flex;
-  flex-direction: column-reverse; /* Reverse message order */
-  overflow-y: auto;
-  padding: 16px 24px;
-}
-
-.messages-container {
-  flex: 1;
-  padding: 16px 24px;
-  overflow-y: auto;
-  scroll-behavior: smooth;
-}
-
-/* Messages */
-.message-group {
-  margin-bottom: 16px;
-  display: flex;
-  gap: 12px;
-  animation: messageSlideIn 0.3s ease-out;
-}
-
-@keyframes messageSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.message-group.own-message {
-  flex-direction: row-reverse;
-}
-
-.message-avatar {
-  margin: 0;
-  flex-shrink: 0;
-}
-
-.message-avatar .avatar-img {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.message-content {
-  max-width: 70%;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.own-message .message-content {
-  align-items: flex-end;
-}
-
-.message-bubble {
-  padding: 12px 16px;
-  border-radius: 18px;
-  position: relative;
-  word-wrap: break-word;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-  transition: all 0.2s ease;
-}
-
-.other-message .message-bubble {
-  background: white;
-  color: #2d3748;
-  border-bottom-left-radius: 6px;
-}
-
-.own-message .message-bubble {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  border-bottom-right-radius: 6px;
-}
-
-.message-bubble:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
-
-.message-text {
-  font-size: 14px;
-  line-height: 1.4;
-  margin: 0;
-}
-
-.message-status {
-  display: flex;
-  align-items: center;
-  margin-top: 4px;
-  opacity: 0.7;
-}
-
-.message-status svg {
-  width: 14px;
   height: 14px;
-}
-
-.status-sending {
-  color: rgba(255,255,255,0.6);
-}
-
-.status-delivered {
-  color: rgba(255,255,255,0.8);
-}
-
-.status-read {
-  color: #4ade80;
-}
-
-.status-failed {
-  color: #f87171;
-}
-
-.message-time {
-  font-size: 11px;
-  color: #a0aec0;
-  margin-top: 2px;
-}
-
-.own-message .message-time {
-  text-align: right;
-}
-
-/* Loading Message States */
-.loading-message {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-  animation: fadeIn 0.5s ease;
-}
-
-.loading-message.own {
-  flex-direction: row-reverse;
-}
-
-.skeleton-bubble {
-  max-width: 60%;
-  background: rgba(255,255,255,0.8);
-  padding: 12px 16px;
-  border-radius: 18px;
-}
-
-.loading-message.own .skeleton-bubble {
-  background: rgba(103, 126, 234, 0.3);
+  border-radius: 4px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.1) 25%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.1) 75%);
+  background-size: 200% 100%;
+  animation: skeleton 1.5s ease-in-out infinite;
 }
 
 .skeleton-line.short {
-  width: 40%;
+  width: 120px;
 }
 
-/* Typing Indicator */
-.typing-indicator-container {
-  padding: 0 24px 16px;
-  animation: fadeIn 0.3s ease;
+.skeleton-line.shorter {
+  width: 80px;
 }
 
-.typing-indicator {
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-}
-
-.typing-avatar {
-  margin: 0;
-}
-
-.typing-avatar .avatar-img {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-}
-
-.typing-bubble {
-  background: white;
-  padding: 12px 16px;
-  border-radius: 18px;
-  border-bottom-left-radius: 6px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-}
-
-.typing-bubble .typing-dots {
-  display: flex;
-  gap: 3px;
-}
-
-.typing-bubble .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #a0aec0;
-  animation: typingDot 1.4s ease-in-out infinite both;
-}
-
-/* Message Input Section */
-.message-input-section {
-  padding: 16px 24px;
-  background: rgba(255,255,255,0.98);
-  backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(0,0,0,0.05);
-}
-
-.connection-warning {
-  background: linear-gradient(90deg, #fbbf24, #f59e0b);
-  color: white;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.warning-icon {
-  font-size: 16px;
-}
-
-.message-input-container {
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  background: white;
-  border: 2px solid rgba(0,0,0,0.1);
-  border-radius: 24px;
-  padding: 4px;
-  transition: all 0.2s ease;
-}
-
-.message-input-container:focus-within {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(103, 126, 234, 0.1);
-}
-
-.message-input-container.disabled {
-  opacity: 0.6;
-  pointer-events: none;
-}
-
-.attachment-btn {
-  width: 36px;
-  height: 36px;
-  border: none;
-  background: transparent;
-  color: #718096;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-
-.attachment-btn:hover:not(:disabled) {
-  background: rgba(103, 126, 234, 0.1);
-  color: #667eea;
-}
-
-.input-wrapper {
-  position: relative;
-  flex: 1;
-  min-width: 0; /* Add this */
-  order: 1; /* Ensure proper ordering */
-}
-
-.message-input {
-  width: 100%;
-  border: none;
-  outline: none;
-  resize: none;
-  font-family: inherit;
-  font-size: 14px;
-  line-height: 1.4;
-  padding: 10px 12px;
-  background: transparent;
-  max-height: 120px;
-    min-height: 40px;
-  overflow-y: auto; 
-
-}
-
-.message-input::placeholder {
-  color: #a0aec0;
-}
-
-.character-counter {
-  position: absolute;
-  bottom: 8px;
-  right: 12px;
-  font-size: 10px;
-  color: #a0aec0;
-
-
-  background: rgba(255,255,255,0.9);
-  padding: 2px 4px;
-  border-radius: 4px;
-}
-
-.character-counter.warning {
-  color: #f59e0b;
-}
-
-.character-counter.error {
-  color: #ef4444;
-}
-
-.send-btn {
-  width: 36px;
-  height: 36px;
-  border: none;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-
-.send-btn:hover:not(:disabled) {
-  transform: scale(1.05);
-  box-shadow: 0 2px 8px rgba(103, 126, 234, 0.3);
-}
-
-.send-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.send-icon {
-  transform: rotate(-90deg);
-}
-
-.send-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Input Footer */
-.input-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 8px;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.input-hint {
-  color: #a0aec0;
-  font-size: 11px;
-}
-
-.quick-actions {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.quick-action {
-  background: rgba(103, 126, 234, 0.1);
-  color: #667eea;
-  border: 1px solid rgba(103, 126, 234, 0.2);
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.quick-action:hover:not(:disabled) {
-  background: rgba(103, 126, 234, 0.2);
-  transform: translateY(-1px);
-}
-
-.quick-action:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Accessibility */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+@keyframes skeleton {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
   .chat-container {
-    flex-direction: column;
+    height: 100vh;
+    border-radius: 0;
   }
   
-  .chat-sidebar {
-    width: 100%;
-    height: 200px;
-    border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  .message-wrapper {
+    max-width: 90%;
   }
   
-  .rooms-list {
-    overflow-x: auto;
-    overflow-y: hidden;
-    display: flex;
+  .quick-messages {
     padding: 8px 16px;
   }
   
-  .room-item {
-    flex-shrink: 0;
-    width: 280px;
-    margin-right: 8px;
-    margin-bottom: 0;
-  }
-  
-  .chat-header {
+  .input-section {
     padding: 12px 16px;
   }
   
-  .messages-container {
-    padding: 12px 16px;
-  }
-  
-  .message-input-section {
-    padding: 12px 16px;
-  }
-  
-  .message-content {
-    max-width: 85%;
-  }
-  
-  .input-footer {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-  
-  .quick-actions {
-    width: 100%;
-    justify-content: flex-start;
-  }
-}
-
-@media (max-width: 480px) {
-  .sidebar-header {
+  .messages-list {
     padding: 16px;
   }
-  
-  .sidebar-title {
-    font-size: 16px;
-  }
-  
-  .chat-header {
-    padding: 12px;
-  }
-  
-  .header-name {
-    font-size: 15px;
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .spinner,
+  .typing-dots span {
+    animation: none;
   }
   
   .messages-container {
-    padding: 12px;
+    scroll-behavior: auto;
   }
   
-  .message-input-section {
-    padding: 12px;
-  }
-  
-  .room-item {
-    width: 250px;
-  }
-  
-  .no-selection-content h2 {
-    font-size: 20px;
-  }
-  
-  .no-selection-icon {
-    font-size: 48px;
-  }
-}
-
-/* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-  .chat-container {
-    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
-  }
-  
-  .chat-sidebar {
-    background: rgba(45, 55, 72, 0.95);
-  }
-  
-  .sidebar-header {
-    background: linear-gradient(135deg, rgba(45, 55, 72, 0.9), rgba(45, 55, 72, 0.7));
-  }
-  
-  .sidebar-title {
-    color: #e2e8f0;
-  }
-  
-  .room-item {
-    color: #e2e8f0;
-  }
-  
-  .room-item:hover {
-    background: rgba(103, 126, 234, 0.15);
-  }
-  
-  .chat-main {
-    background: rgba(45, 55, 72, 0.98);
-  }
-  
-  .chat-header {
-    background: linear-gradient(135deg, rgba(45, 55, 72, 0.95), rgba(45, 55, 72, 0.85));
-  }
-  
-  .header-name {
-    color: #e2e8f0;
-  }
-  
-  .messages-section {
-    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
-  }
-  
-  .other-message .message-bubble {
-    background: #4a5568;
-    color: #e2e8f0;
-  }
-  
-  .message-input-section {
-    background: rgba(45, 55, 72, 0.98);
-  }
-  
-  .message-input-container {
-      flex-wrap: wrap; /* Allow wrapping */
-
-    background: #4a5568;
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  .message-input-container > * {
-  z-index: 1;
-}
-  .message-input {
-    color: #e2e8f0;
-  }
-  
-  .message-input::placeholder {
-    color: #718096;
-  }
-}
-
-/* Animation Performance */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-  
-  .pulse-dot,
-  .typing-dots .dot,
-  .spinner,
-  .mini-spinner {
-    animation: none;
-  }
-}
-
-/* High Contrast Mode */
-@media (prefers-contrast: high) {
-  .chat-container {
-    background: #000;
-  }
-  
-  .chat-sidebar,
-  .chat-main {
-    background: #fff;
-    border: 2px solid #000;
-  }
-  
-  .room-item.active {
-    background: #000;
-    color: #fff;
-    border: 2px solid #fff;
-  }
-  
-  .message-bubble {
-    border: 1px solid #000;
-  }
-  
-  .own-message .message-bubble {
-    background: #000;
-    color: #fff;
-  }
-  
-  .other-message .message-bubble {
-    background: #fff;
-    color: #000;
+  .send-button:hover:not(:disabled) {
+    transform: none;
   }
 }
 
 /* Focus Styles */
-.room-item:focus,
-.action-btn:focus,
-.attachment-btn:focus,
-.send-btn:focus,
-.load-more-btn:focus,
+.message-input:focus,
+.send-button:focus,
 .retry-btn:focus,
-.starter-btn:focus,
-.quick-action:focus {
+.quick-message-btn:focus {
   outline: 2px solid #667eea;
   outline-offset: 2px;
-}
-
-.message-input:focus {
-  outline: none;
-}
-
-/* Print Styles */
-@media print {
-  .chat-container {
-    background: white;
-    color: black;
-  }
-  
-  .loading-overlay,
-  .error-banner,
-  .connection-status,
-  .chat-actions,
-  .message-input-section,
-  .typing-indicator-container {
-    display: none;
-  }
-  
-  .messages-container {
-    overflow: visible;
-  }
 }
 </style>

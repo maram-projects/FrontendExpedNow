@@ -15,180 +15,215 @@ export class WebSocketService {
   private typingSubject = new Subject<TypingIndicator>();
   private userStatusSubject = new Subject<{userId: string, status: string}>();
   private notificationSubject = new Subject<AppNotification>();
-    private maxReconnectAttemptsReachedSubject = new Subject<boolean>(); // Add this line
+  private maxReconnectAttemptsReachedSubject = new Subject<boolean>();
 
-
- // Add missing properties
+  // Connection properties
   private currentUserId: string | null = null;
+  private currentToken: string | null = null;
   private reconnectAttempts: number = 0;
   private readonly maxReconnectAttempts: number = 5;
-  private readonly reconnectInterval: number = 5000; // 5 seconds
+  private reconnectInterval: number = 5000; // 5 seconds
+  private reconnectTimeout: any = null;
 
   constructor() {}
 
 connect(token: string, userId: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      // 1. Vérification du token
-      if (!token) {
-        reject(new Error('No token provided'));
-        return;
-      }
-       const headers = {
-      'Authorization': `Bearer ${token}`
-    };
-
-
-      // 2. Vérification de la connexion existante
-      if (this.stompClient && this.isConnected()) {
-        resolve();
-        return;
-      }
-
-      this.currentUserId = userId;
-      this.reconnectAttempts = 0;
-
-      // 3. Création de la connexion SockJS avec token dans l'URL
-      const socket = new SockJS(`http://localhost:8080/ws?token=${encodeURIComponent(token)}`);
-      this.stompClient = Stomp.over(socket);
-
-      // 4. Configuration sans headers (utilise uniquement le paramètre de requête)
-      this.stompClient.configure({
-        debug: (str) => console.log('STOMP Debug:', str),
-        reconnectDelay: 5000,
-        heartbeatIncoming: 4000,
-        heartbeatOutgoing: 4000,
-        onDisconnect: () => {
-          console.log('Disconnected');
-          this.isConnectedSubject.next(false);
-        }
-      });
-
-      // 5. Gestionnaires d'événements
-      this.stompClient.onConnect = (frame) => {
-        console.log('WebSocket Connected:', frame);
-        this.isConnectedSubject.next(true);
-        this.reconnectAttempts = 0;
-        this.subscribeToChannels(userId);
-        resolve();
-      };
-
-      this.stompClient.onStompError = (frame) => {
-        console.error('WebSocket STOMP Error:', frame);
-        this.isConnectedSubject.next(false);
-        reject(new Error('WebSocket connection failed: ' + frame.headers['message']));
-      };
-
-      this.stompClient.onWebSocketError = (error) => {
-        console.error('WebSocket Error:', error);
-        this.isConnectedSubject.next(false);
-        this.handleReconnection();
-      };
-
-      this.stompClient.onWebSocketClose = (event) => {
-        console.log('WebSocket Closed:', event);
-        this.isConnectedSubject.next(false);
-        this.handleReconnection();
-      };
-
-      this.stompClient.onWebSocketClose = (event) => {
-        console.log('WebSocket Closed:', event);
-        this.isConnectedSubject.next(false);
-        // Add immediate reconnect attempt
-        setTimeout(() => this.handleReconnection(), 1000);
-    };
-
-    // Add heartbeat monitoring
-    setInterval(() => {
-        if (this.stompClient && !this.stompClient.connected) {
-            this.handleReconnection();
-        }
-    }, 30000);
-
-      // 6. Activation de la connexion
-      this.stompClient.activate();
-    });
-  }
-
-
-  private subscribeToChannels(userId: string): void {
-
+  return new Promise((resolve, reject) => {
+    console.log(`🔌 Connecting WebSocket for user: ${userId}`);
     
-    if (!this.stompClient) return;
+    if (this.stompClient && this.isConnected()) {
+      console.log('✅ Already connected');
+      resolve();
+      return;
+    }
 
-    // Personal message queue
-    this.stompClient.subscribe(`/user/queue/messages`, (message: IMessage) => {
+    this.currentUserId = userId;
+    this.currentToken = token;
+    
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    
+    const socket = new SockJS(`http://localhost:8080/ws?token=${encodeURIComponent(token)}`);
+    this.stompClient = Stomp.over(socket);
+    
+    this.stompClient.configure({
+      debug: (str) => console.debug('🔧 STOMP Debug:', str),
+      reconnectDelay: 0,
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
+      onDisconnect: () => {
+        console.log('🔌 STOMP disconnected');
+        this.isConnectedSubject.next(false);
+        this.handleReconnection();
+      },
+      onWebSocketError: (error) => {
+        console.error('❌ WebSocket error:', error);
+        this.isConnectedSubject.next(false);
+      }
+    });
+
+    const connectionTimeout = setTimeout(() => {
+      console.error('⏰ Connection timeout');
+      reject(new Error('Connection timeout'));
+    }, 10000);
+
+    this.stompClient.onConnect = (frame) => {
+      clearTimeout(connectionTimeout);
+      console.log('✅ STOMP connected successfully:', frame);
+      this.isConnectedSubject.next(true);
+      this.reconnectAttempts = 0;
+      this.reconnectInterval = 5000;
+      
+      // **الأهم** - Subscribe with correct userId
+      this.subscribeToChannels(userId);
+      resolve();
+    };
+
+    this.stompClient.onStompError = (frame) => {
+      clearTimeout(connectionTimeout);
+      console.error('❌ STOMP error:', frame);
+      reject(new Error(frame.headers['message'] || 'Connection failed'));
+    };
+
+    try {
+      this.stompClient.activate();
+    } catch (error) {
+      clearTimeout(connectionTimeout);
+      console.error('❌ Failed to activate STOMP client:', error);
+      reject(error);
+    }
+  });
+}
+
+ private subscribeToChannels(userId: string): void {
+  if (!this.stompClient) return;
+
+  try {
+    // 1. **الأهم** - Personal message queue with userId
+    this.stompClient.subscribe(`/user/${userId}/queue/messages`, (message: IMessage) => {
       try {
         const wsMessage: WebSocketMessage = JSON.parse(message.body);
+        console.log('✅ Message received for user:', userId, wsMessage);
         this.messageSubject.next(wsMessage);
       } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+        console.error('❌ Error parsing WebSocket message:', error);
       }
     });
 
-    // Typing indicators
-    this.stompClient.subscribe(`/user/queue/typing`, (message: IMessage) => {
+    // 2. Typing indicators - Fixed path
+    this.stompClient.subscribe(`/user/${userId}/queue/typing`, (message: IMessage) => {
       try {
         const wsMessage: WebSocketMessage = JSON.parse(message.body);
-        if (wsMessage.type === WebSocketMessageType.USER_TYPING || 
-            wsMessage.type === WebSocketMessageType.USER_STOP_TYPING) {
+        console.log('⌨️ Typing received for user:', userId, wsMessage);
+        if (wsMessage.type === WebSocketMessageType.TYPING_START || 
+            wsMessage.type === WebSocketMessageType.TYPING_STOP) {
           this.typingSubject.next(wsMessage.payload as TypingIndicator);
         }
       } catch (error) {
-        console.error('Error parsing typing indicator:', error);
+        console.error('❌ Error parsing typing indicator:', error);
       }
     });
 
-    // User status updates
-    this.stompClient.subscribe(`/topic/user.status.${userId}`, (message: IMessage) => {
+    // 3. Chat rooms updates
+    this.stompClient.subscribe(`/user/${userId}/queue/chat-rooms`, (message: IMessage) => {
+      try {
+        const wsMessage: WebSocketMessage = JSON.parse(message.body);
+        console.log('🏠 Chat room update for user:', userId, wsMessage);
+        this.messageSubject.next(wsMessage);
+      } catch (error) {
+        console.error('❌ Error parsing chat room update:', error);
+      }
+    });
+
+    // 4. User status updates - Fixed
+    this.stompClient.subscribe(`/user/${userId}/queue/status`, (message: IMessage) => {
       try {
         const statusUpdate = JSON.parse(message.body);
+        console.log('👤 User status update:', statusUpdate);
         this.userStatusSubject.next(statusUpdate);
       } catch (error) {
-        console.error('Error parsing user status update:', error);
+        console.error('❌ Error parsing user status:', error);
       }
     });
 
-    // Notifications
-    this.stompClient.subscribe(`/user/queue/notifications`, (message: IMessage) => {
+    // 5. Notifications
+    this.stompClient.subscribe(`/user/${userId}/queue/notifications`, (message: IMessage) => {
       try {
         const notification: AppNotification = JSON.parse(message.body);
+        console.log('🔔 Notification received:', notification);
         this.notificationSubject.next(notification);
       } catch (error) {
-        console.error('Error parsing notification:', error);
+        console.error('❌ Error parsing notification:', error);
       }
     });
-  }
 
-  getUserStatusUpdates(): Observable<{userId: string, status: string}> {
-    return this.userStatusSubject.asObservable();
+    console.log(`✅ Successfully subscribed to ALL channels for user: ${userId}`);
+  } catch (error) {
+    console.error('❌ CRITICAL: Error subscribing to channels:', error);
   }
-private handleReconnection(): void {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-      
-      const token = localStorage.getItem('token');
-      if (!token || !this.currentUserId) {
-        console.error('No token or user ID available for reconnection');
-        this.maxReconnectAttemptsReachedSubject.next(true);
-        return;
-      }
+}
 
-      setTimeout(() => {
-        this.connect(token, this.currentUserId!)
-          .catch(err => console.error('Reconnection attempt failed:', err));
-      }, this.reconnectInterval * this.reconnectAttempts);
-    } else {
+public enableDebugLogging(): void {
+  console.log('🔍 WebSocket Debug Mode Enabled');
+  
+  this.getConnectionStatus().subscribe(status => {
+    console.log('🔌 Connection Status:', status);
+  });
+  
+  this.getMessages().subscribe(msg => {
+    console.log('📨 Raw WebSocket Message:', msg);
+  });
+}
+
+
+
+
+  private handleReconnection(): void {
+    if (this.reconnectTimeout) {
+      return; // Already attempting reconnection
+    }
+
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.error('Max reconnection attempts reached');
       this.maxReconnectAttemptsReachedSubject.next(true);
+      return;
     }
+
+    this.reconnectAttempts++;
+    console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    
+    if (!this.currentToken || !this.currentUserId) {
+      console.error('No token or user ID available for reconnection');
+      this.maxReconnectAttemptsReachedSubject.next(true);
+      return;
+    }
+
+    const delay = this.reconnectInterval * this.reconnectAttempts;
+    this.reconnectTimeout = setTimeout(() => {
+      this.reconnectTimeout = null;
+      this.connect(this.currentToken!, this.currentUserId!)
+        .then(() => {
+          console.log('Reconnection successful');
+        })
+        .catch(err => {
+          console.error('Reconnection attempt failed:', err);
+          this.handleReconnection(); // Try again
+        });
+    }, delay);
   }
+
   sendMessage(destination: string, message: any): void {
     if (this.stompClient && this.isConnected()) {
-      this.stompClient.publish({
-        destination: destination,
-        body: JSON.stringify(message)
-      });
+      try {
+        this.stompClient.publish({
+          destination: destination,
+          body: JSON.stringify(message)
+        });
+      } catch (error) {
+        console.error('Error sending message:', error);
+      }
     } else {
       console.error('WebSocket not connected. Cannot send message.');
     }
@@ -206,12 +241,32 @@ private handleReconnection(): void {
     this.sendMessage('/app/chat/stop-typing', indicator);
   }
 
+  sendHeartbeat(): void {
+    if (this.isConnected()) {
+      // Fixed: Use correct destination for heartbeat
+      this.sendMessage('/app/heartbeat', {
+        type: 'PING',
+        payload: { timestamp: Date.now() }
+      });
+    }
+  }
+
   disconnect(): void {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
     if (this.stompClient) {
-      this.stompClient.deactivate();
+      try {
+        this.stompClient.deactivate();
+      } catch (error) {
+        console.error('Error during disconnect:', error);
+      }
       this.stompClient = null;
       this.isConnectedSubject.next(false);
       this.currentUserId = null;
+      this.currentToken = null;
       this.reconnectAttempts = 0;
       console.log('WebSocket Disconnected');
     }
@@ -236,14 +291,17 @@ private handleReconnection(): void {
   // Force reconnection
   reconnect(): void {
     this.disconnect();
-    if (this.currentUserId) {
-      const token = localStorage.getItem('token') || '';
-      this.connect(token, this.currentUserId);
+    if (this.currentUserId && this.currentToken) {
+      this.connect(this.currentToken, this.currentUserId);
     }
   }
 
   getAllNotifications(): Observable<AppNotification> {
     return this.notificationSubject.asObservable();
+  }
+
+  getUserStatusUpdates(): Observable<{userId: string, status: string}> {
+    return this.userStatusSubject.asObservable();
   }
 
   // Additional utility methods

@@ -27,6 +27,8 @@ export interface DetailedRatingResponse {
   deliveryId: string;
   clientId: string;
   overallRating: number;
+    clientName?: string;  // Add this
+
   comment?: string;
   categories: string[];
   ratingType: string;
@@ -744,6 +746,43 @@ getAvailableDeliveryPersons(): Observable<any[]> {
     catchError(error => {
       console.error('Error fetching available delivery persons:', error);
       return throwError(() => new Error('Failed to fetch available delivery persons'));
+    })
+  );
+}
+
+
+// Add to DeliveryService
+getAllRatings(): Observable<DetailedRatingResponse[]> {
+  return this.http.get<DetailedRatingResponse[]>(
+    `${this.apiUrl}/ratings/all`,
+    { headers: this.getAuthHeaders() }
+  ).pipe(
+    catchError(error => {
+      console.error('Error fetching all ratings:', error);
+      return throwError(() => new Error('Failed to load ratings'));
+    })
+  );
+}
+
+getDeliveryPersonPerformanceStats(): Observable<any[]> {
+  return this.http.get<any[]>(
+    `${this.apiUrl}/performance/stats`,
+    { headers: this.getAuthHeaders() }
+  ).pipe(
+    catchError(error => {
+      console.error('Error fetching performance stats:', error);
+      return throwError(() => new Error('Failed to load performance statistics'));
+    })
+  );
+}
+getDeliveryPersonRatings(deliveryPersonId: string): Observable<DetailedRatingResponse[]> {
+  return this.http.get<DetailedRatingResponse[]>(
+    `${this.apiUrl}/delivery-person/${deliveryPersonId}/ratings`,
+    { headers: this.getAuthHeaders() }
+  ).pipe(
+    catchError((error: HttpErrorResponse) => {
+      console.error('Error fetching delivery person ratings:', error);
+      return throwError(() => new Error('Failed to load delivery person ratings'));
     })
   );
 }

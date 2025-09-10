@@ -1,4 +1,4 @@
-// client-chat.component.ts
+// client-chat.component.ts (fixed)
 import { 
   Component, 
   OnInit, 
@@ -15,13 +15,22 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Observable, Subscription, of, timer, Subject, BehaviorSubject } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
-import { debounceTime, distinctUntilChanged, takeUntil, filter, switchMap, tap, catchError } from 'rxjs/operators';
+import { 
+  debounceTime, 
+  distinctUntilChanged, 
+  takeUntil, 
+  filter, 
+  switchMap, 
+  tap, 
+  catchError 
+} from 'rxjs/operators';
 import { 
   ChatRoom, 
   Message, 
   TypingIndicator, 
   ChatMessageRequest,
-  MessageStatus 
+  MessageStatus,
+  PageResponse
 } from '../../../../models/chat.models';
 import { ChatService } from '../../../../services/chat.service';
 import { UserService } from '../../../../services/user.service';
@@ -41,6 +50,7 @@ interface ChatState {
   connectionRetries: number;
   error: string | null;
   lastActivity: Date;
+  sendingMessage: boolean;
 }
 
 @Component({
@@ -54,7 +64,8 @@ interface ChatState {
 export class ClientChatComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('messagesContainer', { static: false }) messagesContainer!: ElementRef;
   @ViewChild('messageInput', { static: false }) messageInput!: ElementRef<HTMLTextAreaElement>;
-public MessageStatus = MessageStatus; // Expose to template
+  
+  public MessageStatus = MessageStatus;
 
   // Core data
   messages: Message[] = [];
@@ -68,17 +79,18 @@ public MessageStatus = MessageStatus; // Expose to template
   private typingSubject = new Subject<string>();
   
   // Observables
-  typingStatus$: Observable<Map<string, TypingIndicator>> = of(new Map());
+  typingUsers$: Observable<TypingIndicator[]> = of([]);
   isOnline$: Observable<boolean> = of(false);
   connectionStatus$: Observable<boolean>;
   
   // State management
-  state$ = new BehaviorSubject<ChatState>({
+  private state$ = new BehaviorSubject<ChatState>({
     isLoading: false,
     isConnecting: false,
     connectionRetries: 0,
     error: null,
-    lastActivity: new Date()
+    lastActivity: new Date(),
+    sendingMessage: false
   });
   
   // Component lifecycle
@@ -110,13 +122,14 @@ public MessageStatus = MessageStatus; // Expose to template
     this.connectionStatus$ = this.webSocketService.getConnectionStatus();
   }
 
-ngOnInit(): void {
-  this.initializeComponent();
-  this.setupTypingHandler();
-  this.setupSubscriptions();
-  this.initializeWebSocket();
-  this.monitorConnection(); // Add this line to monitor WebSocket connection
-}
+  ngOnInit(): void {
+    this.initializeComponent();
+    this.setupTypingHandler();
+    this.setupSubscriptions();
+    this.initializeWebSocket();
+    this.monitorConnection();
+  }
+
   ngAfterViewInit(): void {
     this.setupScrollListeners();
   }
@@ -125,7 +138,6 @@ ngOnInit(): void {
     this.cleanup();
   }
 
-  // Keyboard listeners for better UX
   @HostListener('window:beforeunload', ['$event'])
   beforeUnloadHandler(event: any): void {
     if (this.newMessage.trim()) {
@@ -183,13 +195,13 @@ ngOnInit(): void {
   }
 
   private setupSubscriptions(): void {
-    // Messages subscription
+    // Messages subscription - using the correct observable
     this.subscriptions.add(
-      this.chatService.getMessagesObservable().pipe(
+      this.chatService.messages$.pipe(
         takeUntil(this.destroy$)
       ).subscribe(messages => {
         this.ngZone.run(() => {
-          this.messages = messages;
+          this.messages = this.sortMessagesByTime(messages);
           this.cdr.markForCheck();
           this.scrollToBottom();
         });
@@ -198,7 +210,7 @@ ngOnInit(): void {
 
     // Chat rooms subscription
     this.subscriptions.add(
-      this.chatService.getChatRoomsObservable().pipe(
+      this.chatService.chatRooms$.pipe(
         takeUntil(this.destroy$)
       ).subscribe(rooms => {
         this.ngZone.run(() => {
@@ -229,8 +241,24 @@ ngOnInit(): void {
       })
     );
 
-    // Typing status
-    this.typingStatus$ = this.chatService.getTypingUsersObservable();
+    // Error subscription
+    this.subscriptions.add(
+      this.chatService.error$.pipe(
+        filter(error => error !== null),
+        takeUntil(this.destroy$)
+      ).subscribe(error => {
+        this.updateState({ error });
+      })
+    );
+
+    // Loading state subscription
+    this.subscriptions.add(
+      this.chatService.loading$.pipe(
+        takeUntil(this.destroy$)
+      ).subscribe(isLoading => {
+        this.updateState({ isLoading });
+      })
+    );
 
     // WebSocket max reconnect attempts
     this.subscriptions.add(
@@ -247,19 +275,21 @@ ngOnInit(): void {
     );
   }
 
+  // Add missing methods
   private async initializeWebSocket(): Promise<void> {
     const currentUser = this.authService.getCurrentUser();
     
     if (!currentUser?.token) {
       this.updateState({ error: 'Authentication token missing' });
-      return;
+      return Promise.reject();
     }
 
     this.updateState({ isConnecting: true });
 
     try {
-      await this.webSocketService.connect(currentUser.token, currentUser.userId);
+      await this.chatService.connectWebSocket();
       this.updateState({ isConnecting: false, error: null });
+      return Promise.resolve();
     } catch (error) {
       console.error('WebSocket connection failed:', error);
       this.updateState({ 
@@ -267,30 +297,68 @@ ngOnInit(): void {
         error: 'Failed to connect to chat server. Retrying...' 
       });
       this.scheduleReconnection();
+      return Promise.reject(error);
     }
   }
 
-  private scheduleReconnection(): void {
-    const state = this.state$.value;
-    if (state.connectionRetries < 3) {
-      timer(2000 * (state.connectionRetries + 1)).pipe(
-        takeUntil(this.destroy$)
-      ).subscribe(() => {
-        this.updateState({ connectionRetries: state.connectionRetries + 1 });
+  private monitorConnection(): void {
+    this.webSocketService.getConnectionStatus().pipe(
+      distinctUntilChanged(),
+      takeUntil(this.destroy$)
+    ).subscribe(isConnected => {
+      if (!isConnected) {
+        console.warn('WebSocket disconnected! Attempting reconnection...');
         this.initializeWebSocket();
-      });
+      }
+    });
+  }
+
+  private setupScrollListeners(): void {
+    if (this.messagesContainer?.nativeElement) {
+      this.messagesContainer.nativeElement.addEventListener('scroll', 
+        this.onScroll.bind(this), { passive: true });
+    }
+  }
+
+  private cleanup(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.subscriptions.unsubscribe();
+    this.state$.complete();
+    
+    if (this.typingTimer) {
+      clearTimeout(this.typingTimer);
+    }
+    
+    this.stopTyping();
+    this.chatService.setCurrentChatRoom(null);
+    
+    if (this.messagesContainer?.nativeElement) {
+      this.messagesContainer.nativeElement.removeEventListener('scroll', this.onScroll);
     }
   }
 
   private handleConnectionRestore(): void {
-    this.updateState({ connectionRetries: 0 });
-    this.initializeWebSocket();
+    if (navigator.onLine) {
+      this.updateState({ error: null });
+      this.initializeWebSocket();
+    }
   }
 
-  public loadInitialData(): void {
+  private updateState(updates: Partial<ChatState>): void {
+    const currentState = this.state$.value;
+    this.state$.next({ 
+      ...currentState, 
+      ...updates, 
+      lastActivity: new Date() 
+    });
+    this.cdr.markForCheck();
+  }
+
+  private loadInitialData(): void {
     this.updateState({ isLoading: true });
     
-    this.chatService.getChatRooms().pipe(
+    this.chatService.loadChatRooms().pipe(
       takeUntil(this.destroy$),
       catchError(error => {
         console.error('Failed to load chat rooms:', error);
@@ -308,16 +376,55 @@ ngOnInit(): void {
     });
   }
 
+  private sendTypingIndicator(isTyping: boolean): void {
+    if (!this.selectedRoom || !this.webSocketService.isConnected()) return;
+
+    this.chatService.sendTypingIndicator(
+      this.selectedRoom.deliveryPersonId, // Note: This is different from delivery component
+      this.selectedRoom.deliveryId,
+      isTyping
+    );
+  }
+
+  private scheduleStopTyping(): void {
+    if (this.typingTimer) {
+      clearTimeout(this.typingTimer);
+    }
+    
+    this.typingTimer = setTimeout(() => {
+      this.stopTyping();
+    }, 3000);
+  }
+
+  private sortMessagesByTime(messages: Message[]): Message[] {
+    return [...messages].sort((a, b) => {
+      const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return timeA - timeB;
+    });
+  }
+
+  private scrollToBottom(smooth: boolean = true): void {
+    this.ngZone.runOutsideAngular(() => {
+      setTimeout(() => {
+        try {
+          if (this.messagesContainer?.nativeElement) {
+            const element = this.messagesContainer.nativeElement;
+            element.scrollTo({
+              top: element.scrollHeight,
+              behavior: smooth ? 'smooth' : 'auto'
+            });
+          }
+        } catch (err) {
+          console.error('Error scrolling to bottom:', err);
+        }
+      }, 50);
+    });
+  }
+
   private handleRoomsUpdate(rooms: ChatRoom[]): void {
     if (rooms.length > 0 && !this.selectedRoom) {
       this.selectRoom(rooms[0]);
-    }
-  }
-
-  private setupScrollListeners(): void {
-    if (this.messagesContainer?.nativeElement) {
-      this.messagesContainer.nativeElement.addEventListener('scroll', 
-        this.onScroll.bind(this), { passive: true });
     }
   }
 
@@ -332,65 +439,49 @@ ngOnInit(): void {
     }
   }
 
-  public loadMoreMessages(): void {
-    if (!this.selectedRoom || this.isLoadingMore || !this.hasMoreMessages) return;
-
-    this.isLoadingMore = true;
-    const nextPage = this.currentPage + 1;
-
-    this.chatService.getMessages(
-      this.selectedRoom.deliveryId, 
-      this.selectedRoom.deliveryPersonId, 
-      nextPage, 
-      this.pageSize
-    ).pipe(
-      takeUntil(this.destroy$)
-    ).subscribe({
-      next: (response) => {
-        this.currentPage = nextPage;
-        this.hasMoreMessages = !response.last;
-        this.isLoadingMore = false;
-      },
-      error: (error) => {
-        console.error('Error loading more messages:', error);
-        this.isLoadingMore = false;
-      }
-    });
+  private scheduleReconnection(): void {
+    const state = this.state$.value;
+    if (state.connectionRetries < 3) {
+      timer(2000 * (state.connectionRetries + 1)).pipe(
+        takeUntil(this.destroy$)
+      ).subscribe(() => {
+        this.updateState({ connectionRetries: state.connectionRetries + 1 });
+        this.initializeWebSocket();
+      });
+    }
   }
 
-  // Room selection
- selectRoom(room: ChatRoom): void {
-  console.log('Selecting room:', room);
-  
-  if (this.selectedRoom?.deliveryId === room.deliveryId) {
-    console.log('Room already selected');
-    return;
+  private stopTyping(): void {
+    if (this.typingTimer) {
+      clearTimeout(this.typingTimer);
+      this.typingTimer = null;
+    }
+    
+    if (this.selectedRoom && this.webSocketService.isConnected()) {
+      this.sendTypingIndicator(false);
+    }
   }
 
-  // التحقق من صحة بيانات الغرفة
-  if (!room.deliveryId || !room.deliveryPersonId) {
-    console.error('Invalid room data:', room);
-    this.updateState({ error: 'Invalid chat room data' });
-    return;
+  // Add missing selectRoom method
+  selectRoom(room: ChatRoom): void {
+    if (this.selectedRoom?.deliveryId === room.deliveryId) return;
+
+    this.selectedRoom = room;
+    this.currentPage = 0;
+    this.hasMoreMessages = true;
+    
+    this.chatService.setCurrentChatRoom(room.deliveryId);
+    
+    if (room.deliveryPersonId) {
+      this.loadMessages(room.deliveryId, room.deliveryPersonId);
+      this.loadOtherUser(room.deliveryPersonId);
+      this.isOnline$ = this.chatService.isUserOnline(room.deliveryPersonId);
+      this.typingUsers$ = this.chatService.getTypingUsers(room.deliveryId);
+    }
+    
+    this.markMessagesAsRead();
+    this.focusMessageInput();
   }
-
-  this.selectedRoom = room;
-  this.currentPage = 0;
-  this.hasMoreMessages = true;
-  
-  console.log('Room selected successfully:', this.selectedRoom);
-  
-  this.chatService.setCurrentChatRoom(room.deliveryId);
-  
-  this.loadMessages(room.deliveryId, room.deliveryPersonId);
-  this.loadOtherUser(room.deliveryPersonId);
-  this.isOnline$ = this.chatService.isUserOnline(room.deliveryPersonId);
-  
-  this.markMessagesAsRead();
-  this.focusMessageInput();
-  this.cdr.markForCheck();
-}
-
 
   private loadMessages(deliveryId: string, otherUserId: string): void {
     this.chatService.getMessages(deliveryId, otherUserId, 0, this.pageSize).pipe(
@@ -402,39 +493,6 @@ ngOnInit(): void {
       }
     });
   }
-
-  checkConnectionStatus(): void {
-  console.log('Connection status check:', {
-    isConnected: this.webSocketService.isConnected(),
-    connectionState: this.state$.value,
-    selectedRoom: this.selectedRoom
-  });
-}
-
-onMessageInputClick(): void {
-  console.log('Message input clicked');
-  this.checkConnectionStatus();
-}
-
-onMessageInputChange(): void {
-  console.log('Message input changed:', this.newMessage);
-  this.onTyping();
-}
-reloadMessages(): void {
-  if (this.selectedRoom) {
-    console.log('Reloading messages for room:', this.selectedRoom.deliveryId);
-    this.loadMessages(this.selectedRoom.deliveryId, this.selectedRoom.deliveryPersonId);
-  }
-}
-
-private handleConnectionError(error: any): void {
-  console.error('Connection error:', error);
-  this.updateState({ 
-    error: 'Connection lost. Trying to reconnect...',
-    isConnecting: true 
-  });
-  }
-
 
   private loadOtherUser(userId: string): void {
     this.userService.getUserById(userId).pipe(
@@ -452,78 +510,93 @@ private handleConnectionError(error: any): void {
     });
   }
 
+  // Add missing loadMoreMessages method
+  public loadMoreMessages(): void {
+    if (!this.selectedRoom || this.isLoadingMore || !this.hasMoreMessages) return;
+
+    this.isLoadingMore = true;
+    const nextPage = this.currentPage + 1;
+
+    this.chatService.getMessages(
+      this.selectedRoom.deliveryId, 
+      this.selectedRoom.deliveryPersonId, 
+      nextPage, 
+      this.pageSize
+    ).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe({
+      next: (response: PageResponse<Message>) => {
+        this.currentPage = nextPage;
+        this.hasMoreMessages = !response.last;
+        this.isLoadingMore = false;
+        this.cdr.markForCheck();
+      },
+      error: (error) => {
+        console.error('Error loading more messages:', error);
+        this.isLoadingMore = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
   // Message handling
- sendMessage(): void {
-  console.log('sendMessage called');
-  
-  if (!this.canSendMessage()) {
-    console.log('Cannot send message - conditions not met');
-    return;
-  }
+  async sendMessage(): Promise<void> {
+    if (!this.canSendMessage()) return;
 
-  const messageContent = this.newMessage.trim();
-  console.log('Sending message:', messageContent);
-
-  if (!this.selectedRoom) {
-    console.error('No room selected');
-    return;
-  }
-
-  const messageRequest: ChatMessageRequest = {
-    receiverId: this.selectedRoom.deliveryPersonId,
-    deliveryId: this.selectedRoom.deliveryId,
-    content: messageContent,
-    messageType: 'TEXT'
-  };
-
-  console.log('Message request:', messageRequest);
-
-  // تنظيف النموذج
-  const originalMessage = this.newMessage;
-  this.newMessage = '';
-  this.stopTyping();
-  this.resizeTextarea();
-  this.updateLastActivity();
-
-  // إرسال الرسالة
-  this.chatService.sendMessage(messageRequest).pipe(
-    takeUntil(this.destroy$)
-  ).subscribe({
-    next: (response) => {
-      console.log('Message sent successfully:', response);
-      // لا حاجة لإضافة الرسالة هنا لأن الخدمة تضيفها
-    },
-    error: (error) => {
-      console.error('Error sending message:', error);
-      // استعادة الرسالة في حالة الخطأ
-      this.newMessage = originalMessage;
-      this.updateState({ 
-        error: 'Failed to send message. Please try again.' 
-      });
-      this.focusMessageInput();
-      this.cdr.markForCheck();
+    // Check WebSocket connection
+    if (!this.webSocketService.isConnected()) {
+      try {
+        await this.initializeWebSocket();
+        // Small delay to ensure connection is established
+        await new Promise(resolve => setTimeout(resolve, 300));
+      } catch (error) {
+        this.updateState({ error: 'Unable to connect. Please try again.' });
+        return;
+      }
     }
-  });
-}
 
-public canSendMessage(): boolean {
-  console.log('Checking if can send message:', {
-    newMessage: this.newMessage.trim(),
-    selectedRoom: !!this.selectedRoom,
-    isLoading: this.state$.value.isLoading,
-    isConnected: this.webSocketService.isConnected(),
-    connectionStatus: this.connectionStatus$
-  });
+    const messageContent = this.newMessage.trim();
+    const messageRequest: ChatMessageRequest = {
+      receiverId: this.selectedRoom!.deliveryPersonId,
+      deliveryId: this.selectedRoom!.deliveryId,
+      content: messageContent,
+      messageType: 'TEXT'
+    };
 
-   return !!(
-    this.newMessage.trim() && 
-    this.selectedRoom && 
-    this.selectedRoom.deliveryPersonId &&
-    this.selectedRoom.deliveryId &&
-    !this.state$.value.isLoading
-    // Removed: this.webSocketService.isConnected()
-  );
-}
+    // Clear input and update UI state
+    this.newMessage = '';
+    this.stopTyping();
+    this.resizeTextarea();
+    this.updateLastActivity();
+    this.updateState({ sendingMessage: true });
+
+    this.chatService.sendMessage(messageRequest).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe({
+      next: () => {
+        this.updateState({ sendingMessage: false });
+      },
+      error: (error) => {
+        console.error('Error sending message:', error);
+        // Restore message on error
+        this.newMessage = messageContent;
+        this.updateState({ 
+          error: 'Failed to send message. Please try again.',
+          sendingMessage: false 
+        });
+        this.focusMessageInput();
+      }
+    });
+  }
+
+  public canSendMessage(): boolean {
+    return !!(
+      this.newMessage.trim() && 
+      this.selectedRoom && 
+      !this.state$.value.sendingMessage &&
+      !this.state$.value.isLoading
+    );
+  }
 
   // Typing indicators
   onTyping(): void {
@@ -531,63 +604,14 @@ public canSendMessage(): boolean {
     this.resizeTextarea();
   }
 
-  private sendTypingIndicator(isTyping: boolean): void {
-    if (!this.selectedRoom) return;
-
-    this.chatService.sendTypingIndicator(
-      this.selectedRoom.deliveryPersonId,
-      this.selectedRoom.deliveryId,
-      isTyping
-    );
-  }
-
-  private scheduleStopTyping(): void {
-    if (this.typingTimer) {
-      clearTimeout(this.typingTimer);
-    }
-    
-    this.typingTimer = setTimeout(() => {
-      this.stopTyping();
-    }, 3000);
-  }
-
-  private stopTyping(): void {
-    if (this.typingTimer) {
-      clearTimeout(this.typingTimer);
-      this.typingTimer = null;
-    }
-    
-    if (this.selectedRoom) {
-      this.sendTypingIndicator(false);
+  onEnterKey(event: KeyboardEvent): void {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      this.sendMessage();
     }
   }
-
-  // Input handling
- onEnterKey(event: KeyboardEvent): void {
-  console.log('Enter key pressed:', event);
-  
-  if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    console.log('Attempting to send message via Enter key');
-    this.sendMessage();
-  }
-}
-
-onSendButtonClick(event?: Event): void {
-  console.log('Send button clicked');
-  
-  if (event) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-  
-  this.sendMessage();
-}
 
   onBlurMessageInput(): void {
-    // Delay to allow click events to register first
     setTimeout(() => this.stopTyping(), 100);
   }
 
@@ -623,36 +647,6 @@ onSendButtonClick(event?: Event): void {
     });
   }
 
-  // UI utilities
-  private scrollToBottom(smooth: boolean = true): void {
-    this.ngZone.runOutsideAngular(() => {
-      setTimeout(() => {
-        try {
-          if (this.messagesContainer?.nativeElement) {
-            const element = this.messagesContainer.nativeElement;
-            element.scrollTo({
-              top: element.scrollHeight,
-              behavior: smooth ? 'smooth' : 'auto'
-            });
-          }
-        } catch (err) {
-          console.error('Error scrolling to bottom:', err);
-        }
-      }, 50);
-    });
-  }
-
-  // State management
-  private updateState(updates: Partial<ChatState>): void {
-    const currentState = this.state$.value;
-    this.state$.next({ 
-      ...currentState, 
-      ...updates, 
-      lastActivity: new Date() 
-    });
-    this.cdr.markForCheck();
-  }
-
   private updateLastActivity(): void {
     this.updateState({ lastActivity: new Date() });
   }
@@ -671,9 +665,11 @@ onSendButtonClick(event?: Event): void {
   }
 
   formatMessageTime(timestamp: Date | undefined): string {
-    if (!timestamp || !this.isValidDate(timestamp)) return '';
+    if (!timestamp) return '';
     
     const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+    if (isNaN(date.getTime())) return '';
+    
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
     
@@ -717,31 +713,17 @@ onSendButtonClick(event?: Event): void {
     return this.otherUser !== null;
   }
 
-  isUserTypingInCurrentRoom(userId: string): boolean {
-    if (!this.selectedRoom) return false;
-    return this.chatService.isUserTyping(userId, this.selectedRoom.deliveryId);
-  }
-
-  getTypingUsersForCurrentRoom(): TypingIndicator[] {
-    if (!this.selectedRoom) return [];
-    return this.chatService.getTypingUsersForRoom(this.selectedRoom.deliveryId);
-  }
-
   // Connection management
   retryConnection(): void {
     this.updateState({ connectionRetries: 0, error: null });
     this.initializeWebSocket();
   }
 
-  // Accessibility
-  onRoomKeydown(event: KeyboardEvent, room: ChatRoom): void {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      this.selectRoom(room);
-    }
+  // Component state getters
+  get state(): ChatState {
+    return this.state$.value;
   }
 
-  // Component state getters
   get isLoading(): boolean {
     return this.state$.value.isLoading;
   }
@@ -763,47 +745,24 @@ onSendButtonClick(event?: Event): void {
   }
 
   get isInputDisabled(): boolean {
-    return this.isLoading || this.isConnecting || !this.webSocketService.isConnected();
+    return this.isLoading || this.isConnecting || this.state$.value.sendingMessage;
   }
 
-  // Cleanup
-  private cleanup(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-    this.subscriptions.unsubscribe();
-    this.state$.complete();
-    
-    if (this.typingTimer) {
-      clearTimeout(this.typingTimer);
-    }
-    
-    this.stopTyping();
-    this.chatService.setCurrentChatRoom(null);
-    
-    // Remove scroll listener
-    if (this.messagesContainer?.nativeElement) {
-      this.messagesContainer.nativeElement.removeEventListener('scroll', this.onScroll);
-    }
-  }
-
-
-  // Add this method to the ClientChatComponent class
-setQuickMessage(message: string): void {
-  this.ngZone.run(() => {
-    this.newMessage = message;
-    this.resizeTextarea();
-    this.focusMessageInput();
-    this.cdr.detectChanges();
-  });
-}
-
-
-monitorConnection() {
-    this.webSocketService.getConnectionStatus().subscribe(isConnected => {
-        if (!isConnected) {
-            console.warn('WebSocket disconnected! Reconnecting...');
-            this.initializeWebSocket();
-        }
+  setQuickMessage(message: string): void {
+    this.ngZone.run(() => {
+      this.newMessage = message;
+      this.resizeTextarea();
+      this.focusMessageInput();
+      this.cdr.detectChanges();
     });
-}
+  }
+
+  // Add this property to both components for quick messages functionality
+quickMessages: string[] = [
+  "On my way!",
+  "Almost there",
+  "Running a bit late",
+  "Thank you!",
+  "Delivered successfully"
+];
 }

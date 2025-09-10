@@ -5,8 +5,7 @@ export enum MessageStatus {
   DELIVERED = 'DELIVERED',
   READ = 'READ',
   FAILED = 'FAILED',
-    SENDING = 'SENDING' // Add this new status
-
+  SENDING = 'SENDING'
 }
 
 export enum WebSocketMessageType {
@@ -16,7 +15,14 @@ export enum WebSocketMessageType {
   USER_STOP_TYPING = 'USER_STOP_TYPING',     
   MESSAGE_READ = 'MESSAGE_READ',
   DELIVERY_UPDATE = 'DELIVERY_UPDATE',
-  USER_STATUS = 'USER_STATUS'
+  USER_STATUS = 'USER_STATUS',
+  HEARTBEAT = 'HEARTBEAT',
+  CONNECTION_ESTABLISHED = 'CONNECTION_ESTABLISHED',
+  CONNECTION_CLOSED = 'CONNECTION_CLOSED',
+  SYSTEM_NOTIFICATION = 'SYSTEM_NOTIFICATION',
+  ERROR = 'ERROR',
+  TYPING_STOP = "TYPING_STOP",
+  TYPING_START = "TYPING_START"
 }
 
 export interface Message {
@@ -35,7 +41,6 @@ export interface Message {
   editedAt?: Date;
   isEdited?: boolean;
   replyToMessageId?: string;
-
 }
 
 export interface ChatRoom {
@@ -110,6 +115,17 @@ export interface PageResponse<T> {
   first: boolean;
   numberOfElements: number;
   empty: boolean;
+  // Add optional pagination field for server response
+  pagination?: {
+    page: number;
+    size: number;
+    totalElements: number;
+    totalPages: number;
+    first: boolean;
+    last: boolean;
+    pageable?: any;
+    sort?: any;
+  };
 }
 
 export interface UserStatus {
@@ -168,6 +184,9 @@ export interface ChatConfig {
   allowedFileTypes: string[];
   enableTypingIndicators: boolean;
   enableReadReceipts: boolean;
+  maxMessagesInMemory: number;  // Added this missing property
+  heartbeatInterval: number;    // Added for heartbeat configuration
+  connectionTimeout: number;    // Added for connection timeout
 }
 
 // Default configuration
@@ -178,7 +197,10 @@ export const DEFAULT_CHAT_CONFIG: ChatConfig = {
   maxFileSize: 10 * 1024 * 1024, // 10MB
   allowedFileTypes: ['image/jpeg', 'image/png', 'image/gif', 'application/pdf', 'text/plain'],
   enableTypingIndicators: true,
-  enableReadReceipts: true
+  enableReadReceipts: true,
+  maxMessagesInMemory: 1000,    // Added default value
+  heartbeatInterval: 30000,     // 30 seconds
+  connectionTimeout: 5000       // 5 seconds
 };
 
 // Utility functions for type checking
@@ -205,4 +227,17 @@ export function isTypingIndicator(obj: any): obj is TypingIndicator {
     typeof obj.receiverId === 'string' &&
     typeof obj.deliveryId === 'string' &&
     typeof obj.isTyping === 'boolean';
+}
+
+// Additional utility interfaces for WebSocket service compatibility
+export interface WebSocketServiceMessage {
+  type: string;
+  payload: any;
+}
+
+export interface ConnectionStatus {
+  isConnected: boolean;
+  connectionId?: string;
+  lastConnected?: Date;
+  reconnectAttempts?: number;
 }

@@ -32,10 +32,14 @@ import { Payment} from '../../../models/Payment.model';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { PaymentStatus } from '../../../models/Payment.model';
 import { ShortenPipe } from '../../../pipes/shorten.pipe';
+import { DetailedRatingResponse } from '../../../services/delivery-service.service';
+import { MatDialog } from '@angular/material/dialog';
 
 import { 
   PaymentListResponse 
 } from '../../../services/payment.service';
+import { RatingDetailsModalComponent } from '../../client/rating-details-modal/rating-details-modal.component';
+import { HttpErrorResponse } from '@angular/common/http';
 
 @Component({
   selector: 'app-delivery-dashboard',
@@ -67,9 +71,9 @@ import {
 })
 export class DeliveryDashboardComponent implements OnInit {
 totalReleasedPaymentsAmount: number = 0;
-isCurrentSection(section: 'pending' | 'history' | 'bonuses' | 'overview' | 'payments'): boolean {
-  return this.currentSection === section;
-}
+isCurrentSection(section: 'pending' | 'history' | 'bonuses' | 'overview' | 'payments' | 'ratings'): boolean {    return this.currentSection === section as any;
+  }
+
   isPaymentLoading: boolean = false;
 paymentFilter: string = 'ALL';
 paymentSortBy: string = 'date-desc';
@@ -98,8 +102,7 @@ dateFilter: string = 'all';
   selectedDeliveryPerson: User | null = null;
   
   // Section management - إضافة bonus للأقسام
-currentSection: 'pending' | 'history' | 'bonuses' | 'overview' | 'payments' = 'overview';
-  // View mode for pending deliveries
+currentSection: 'pending' | 'history' | 'bonuses' | 'overview' | 'payments' | 'ratings' = 'overview';  // View mode for pending deliveries
   viewMode: 'cards' | 'table' = 'cards';
   
   // Availability panel
@@ -130,12 +133,37 @@ currentSection: 'pending' | 'history' | 'bonuses' | 'overview' | 'payments' = 'o
   // Enum references
   BonusStatus = BonusStatus;
 
+
+
+  // Add ratings-related properties
+  myRatings: DetailedRatingResponse[] = [];
+  filteredRatings: DetailedRatingResponse[] = [];
+  isRatingsLoading = false;
+  ratingsError = '';
+  ratingsFilter: 'all' | '5' | '4' | '3' | '2' | '1' = 'all';
+  ratingsSortBy: 'date-desc' | 'date-asc' | 'rating-desc' | 'rating-asc' = 'date-desc';
+
+  // Rating statistics
+  ratingsStats = {
+    totalRatings: 0,
+    averageRating: 0,
+    fiveStarCount: 0,
+    fourStarCount: 0,
+    threeStarCount: 0,
+    twoStarCount: 0,
+    oneStarCount: 0,
+    ratingsThisMonth: 0,
+    averageThisMonth: 0
+  };
+
+
   constructor(
     public deliveryService: DeliveryService,
     private router: Router,
     public authService: AuthService,
     private availabilityService: AvailabilityService,
     private bonusService: BonusService,
+    private dialog: MatDialog,
       private paymentService: PaymentService ,// Add this line,
         private snackBar: MatSnackBar // Add this
 
@@ -152,17 +180,208 @@ ngOnInit(): void {
   }
 }
 
- loadInitialData(): void {
-  this.loadAssignedDeliveries();
-  this.loadSchedule();
-  this.loadHistory();
-  this.loadMetrics();
-  
-  // Load bonuses first, then summary
-  this.loadMyBonuses().then(() => {
-    this.loadBonusSummary();
-  });
+loadInitialData(): void {
+    this.loadAssignedDeliveries();
+    this.loadSchedule();
+    this.loadHistory();
+    this.loadMetrics();
+    this.loadReceivedPayments();
+    
+    // Load bonuses first, then summary
+    this.loadMyBonuses().then(() => {
+      this.loadBonusSummary();
+    });
+
+    // Load ratings
+    this.loadMyRatings();
+  }
+
+   calculateRatingsStats(): void {
+    const ratings = this.myRatings;
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    // Basic stats
+    this.ratingsStats.totalRatings = ratings.length;
+    
+    if (ratings.length === 0) {
+      this.ratingsStats.averageRating = 0;
+      return;
+    }
+
+    // Calculate average rating
+    const totalRating = ratings.reduce((sum, r) => sum + (r.overallRating || 0), 0);
+    this.ratingsStats.averageRating = Math.round((totalRating / ratings.length) * 10) / 10;
+
+    // Count by star rating
+    this.ratingsStats.fiveStarCount = ratings.filter(r => Math.round(r.overallRating) === 5).length;
+    this.ratingsStats.fourStarCount = ratings.filter(r => Math.round(r.overallRating) === 4).length;
+    this.ratingsStats.threeStarCount = ratings.filter(r => Math.round(r.overallRating) === 3).length;
+    this.ratingsStats.twoStarCount = ratings.filter(r => Math.round(r.overallRating) === 2).length;
+    this.ratingsStats.oneStarCount = ratings.filter(r => Math.round(r.overallRating) === 1).length;
+
+    // This month stats
+    const thisMonthRatings = ratings.filter(r => {
+      if (!r.ratedAt) return false;
+      const ratingDate = new Date(r.ratedAt);
+      return ratingDate.getMonth() === currentMonth && 
+             ratingDate.getFullYear() === currentYear;
+    });
+
+    this.ratingsStats.ratingsThisMonth = thisMonthRatings.length;
+    
+    if (thisMonthRatings.length > 0) {
+      const monthlyTotal = thisMonthRatings.reduce((sum, r) => sum + (r.overallRating || 0), 0);
+      this.ratingsStats.averageThisMonth = Math.round((monthlyTotal / thisMonthRatings.length) * 10) / 10;
+    } else {
+      this.ratingsStats.averageThisMonth = 0;
+    }
+  }
+  applyRatingsFilter(): void {
+    if (this.ratingsFilter === 'all') {
+      this.filteredRatings = [...this.myRatings];
+    } else {
+      const targetRating = parseInt(this.ratingsFilter);
+      this.filteredRatings = this.myRatings.filter(r => 
+        Math.round(r.overallRating) === targetRating
+      );
+    }
+    this.sortRatings();
+  }
+
+  sortRatings(): void {
+    const [field, direction] = this.ratingsSortBy.split('-');
+    
+    this.filteredRatings.sort((a, b) => {
+      let valueA: any, valueB: any;
+      
+      if (field === 'date') {
+        valueA = a.ratedAt ? new Date(a.ratedAt).getTime() : 0;
+        valueB = b.ratedAt ? new Date(b.ratedAt).getTime() : 0;
+      } else if (field === 'rating') {
+        valueA = a.overallRating || 0;
+        valueB = b.overallRating || 0;
+      } else {
+        return 0;
+      }
+      
+      return direction === 'desc' ? valueB - valueA : valueA - valueB;
+    });
+  }
+
+  onRatingsFilterChange(): void {
+    this.applyRatingsFilter();
+  }
+
+  onRatingsSortChange(): void {
+    this.sortRatings();
+  }
+
+  viewRatingDetails(rating: DetailedRatingResponse): void {
+    const dialogRef = this.dialog.open(RatingDetailsModalComponent, {
+      width: '650px',
+      maxWidth: '95vw',
+      maxHeight: '90vh',
+      disableClose: false,
+      data: { 
+        ratingData: rating 
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        console.log('Rating details modal closed:', result);
+      }
+    });
+  }
+
+  refreshRatings(): void {
+    this.loadMyRatings();
+  }
+
+  getRatingStarArray(rating: number): number[] {
+    return Array(5).fill(0).map((_, i) => i + 1);
+  }
+
+  getRatingPercentage(starCount: number): number {
+    if (this.ratingsStats.totalRatings === 0) return 0;
+    
+    let count = 0;
+    switch (starCount) {
+      case 5: count = this.ratingsStats.fiveStarCount; break;
+      case 4: count = this.ratingsStats.fourStarCount; break;
+      case 3: count = this.ratingsStats.threeStarCount; break;
+      case 2: count = this.ratingsStats.twoStarCount; break;
+      case 1: count = this.ratingsStats.oneStarCount; break;
+    }
+    
+    return Math.round((count / this.ratingsStats.totalRatings) * 100);
+  }
+
+  getPositiveRatingsPercentage(): number {
+    if (this.ratingsStats.totalRatings === 0) return 0;
+    const positiveRatings = this.ratingsStats.fiveStarCount + this.ratingsStats.fourStarCount;
+    return Math.round((positiveRatings / this.ratingsStats.totalRatings) * 100);
+  }
+
+  formatRatingDate(dateString: string): string {
+    try {
+      return new Date(dateString).toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+    } catch (error) {
+      return 'Date invalide';
+    }
+  }
+
+  getRatingCategoryLabel(category: string): string {
+    const labels: { [key: string]: string } = {
+      'punctuality': 'Ponctualité',
+      'professionalism': 'Professionnalisme',
+      'package_condition': 'État du Colis',
+      'communication': 'Communication'
+    };
+    return labels[category] || category;
+  }
+
+  trackByRatingId(index: number, rating: DetailedRatingResponse): string {
+    return rating.id;
+  }
+
+  exportRatings(): void {
+    // Implement export logic for ratings
+    console.log('Exporting ratings data...');
+    // You can add CSV export or PDF generation here
+  }
+
+
+  loadMyRatings(): void {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser?.userId) return;
+
+    this.isRatingsLoading = true;
+    this.ratingsError = '';
+
+    this.deliveryService.getDeliveryPersonRatings(currentUser.userId).subscribe({
+      next: (ratings: DetailedRatingResponse[]) => {
+        console.log('Loaded delivery person ratings:', ratings);
+        this.myRatings = ratings;
+        this.calculateRatingsStats();
+        this.applyRatingsFilter();
+        this.isRatingsLoading = false;
+      },
+    error: (err: HttpErrorResponse) => {
+  console.error('Error loading ratings:', err);
+  this.ratingsError = 'Failed to load ratings';
+  this.isRatingsLoading = false;
+  this.myRatings = [];
+  this.filteredRatings = [];
 }
+    });
+  }
 
 
   // =============================================================================
@@ -347,17 +566,18 @@ getBonusStatusIcon(status: BonusStatus): string {
   clearSuccessMessage(): void {
     this.successMessage = '';
   }
-switchSection(section: 'pending' | 'history' | 'bonuses' | 'overview' | 'payments'): void {
-  this.currentSection = section;
-  
-  if (section === 'history' && this.filteredHistory.length === 0) {
-    this.loadHistory();
-  } else if (section === 'bonuses' && this.myBonuses.length === 0) {
-    this.loadMyBonuses();
-  } else if (section === 'payments' && this.receivedPayments.length === 0) {
-    this.loadReceivedPayments();
+switchSection(section: 'pending' | 'history' | 'bonuses' | 'overview' | 'payments' | 'ratings'): void {    this.currentSection = section as any;
+    
+    if (section === 'history' && this.filteredHistory.length === 0) {
+      this.loadHistory();
+    } else if (section === 'bonuses' && this.myBonuses.length === 0) {
+      this.loadMyBonuses();
+    } else if (section === 'payments' && this.receivedPayments.length === 0) {
+      this.loadReceivedPayments();
+    } else if (section === 'ratings' && this.myRatings.length === 0) {
+      this.loadMyRatings();
+    }
   }
-}
 
   loadHistory(): void {
     this.isHistoryLoading = true;

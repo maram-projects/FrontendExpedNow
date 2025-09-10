@@ -1,0 +1,443 @@
+<!-- evaluation-management.component.html -->
+<div class="evaluation-management-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h2 class="page-title">
+        <i class="fas fa-star-half-alt"></i>
+        Gestion des Évaluations
+      </h2>
+      <p class="page-description">
+        Surveillez et analysez les évaluations des clients et la performance des livreurs
+      </p>
+    </div>
+    <div class="header-actions">
+      <button mat-raised-button color="primary" (click)="refreshData()" [disabled]="isLoading">
+        <mat-icon>refresh</mat-icon>
+        Actualiser
+      </button>
+      <button mat-raised-button (click)="exportEvaluations()">
+        <mat-icon>download</mat-icon>
+        Exporter
+      </button>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="stats-grid" *ngIf="!isLoading">
+    <mat-card class="stat-card overview-card">
+      <mat-card-content>
+        <div class="stat-header">
+          <div class="stat-icon rating-icon">
+            <i class="fas fa-star"></i>
+          </div>
+          <div class="stat-info">
+            <h3>{{evaluationStats.averageRating}}</h3>
+            <p>Note Moyenne</p>
+          </div>
+        </div>
+        <div class="stat-details">
+          <span class="detail-item">{{evaluationStats.totalRatings}} évaluations</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card positive-card">
+      <mat-card-content>
+        <div class="stat-header">
+          <div class="stat-icon positive-icon">
+            <i class="fas fa-thumbs-up"></i>
+          </div>
+          <div class="stat-info">
+            <h3>{{getPositiveRatingsPercentage()}}%</h3>
+            <p>Évaluations Positives</p>
+          </div>
+        </div>
+        <div class="stat-details">
+          <span class="detail-item">4-5 étoiles</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card monthly-card">
+      <mat-card-content>
+        <div class="stat-header">
+          <div class="stat-icon monthly-icon">
+            <i class="fas fa-calendar-alt"></i>
+          </div>
+          <div class="stat-info">
+            <h3>{{evaluationStats.ratingsThisMonth}}</h3>
+            <p>Ce Mois</p>
+          </div>
+        </div>
+        <div class="stat-details">
+          <span class="detail-item">Moyenne: {{evaluationStats.averageThisMonth}}</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card weekly-card">
+      <mat-card-content>
+        <div class="stat-header">
+          <div class="stat-icon weekly-icon">
+            <i class="fas fa-chart-line"></i>
+          </div>
+          <div class="stat-info">
+            <h3>{{evaluationStats.ratingsThisWeek}}</h3>
+            <p>Cette Semaine</p>
+          </div>
+        </div>
+        <div class="stat-details">
+          <span class="detail-item">Nouvelles évaluations</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Main Content Tabs -->
+  <mat-tab-group class="main-tabs" mat-stretch-tabs>
+    <!-- Overview Tab -->
+    <mat-tab label="Vue d'ensemble">
+      <div class="tab-content">
+        <!-- Charts Row -->
+        <div class="charts-row">
+          <mat-card class="chart-card">
+            <mat-card-header>
+              <mat-card-title>Distribution des Notes</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="chart-container">
+                <canvas id="ratingDistributionChart"></canvas>
+              </div>
+              <div class="rating-breakdown">
+                <div *ngFor="let star of [5,4,3,2,1]" class="rating-row">
+                  <span class="rating-stars">
+                    <i class="fas fa-star" *ngFor="let s of getRatingStarArray(star).slice(0, star)"></i>
+                  </span>
+                  <div class="rating-bar">
+                    <div class="rating-fill" [style.width.%]="getRatingPercentage(star)"></div>
+                  </div>
+                  <span class="rating-count">{{getRatingPercentage(star)}}%</span>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card class="chart-card">
+            <mat-card-header>
+              <mat-card-title>Tendance Mensuelle</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="chart-container">
+                <canvas id="monthlyTrendChart"></canvas>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+
+        <!-- Top and Low Performers -->
+        <div class="performers-row">
+          <mat-card class="performers-card">
+            <mat-card-header>
+              <mat-card-title>
+                <i class="fas fa-trophy text-success"></i>
+                Top Performers
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="performer-list">
+                <div *ngFor="let performer of evaluationStats.topPerformers" class="performer-item top-performer">
+                  <div class="performer-info">
+                    <strong>{{performer.name}}</strong>
+                    <span class="performer-stats">
+                      {{performer.averageRating}} ⭐ ({{performer.totalRatings}} avis)
+                    </span>
+                  </div>
+                  <button mat-icon-button (click)="viewDeliveryPersonProfile(performer.id)">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <mat-card class="performers-card">
+            <mat-card-header>
+              <mat-card-title>
+                <i class="fas fa-exclamation-triangle text-warning"></i>
+                Performances à Améliorer
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="performer-list">
+                <div *ngFor="let performer of evaluationStats.lowPerformers" class="performer-item low-performer">
+                  <div class="performer-info">
+                    <strong>{{performer.name}}</strong>
+                    <span class="performer-stats">
+                      {{performer.averageRating}} ⭐ ({{performer.totalRatings}} avis)
+                    </span>
+                  </div>
+                  <button mat-icon-button (click)="viewDeliveryPersonProfile(performer.id)">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- Ratings Tab -->
+    <mat-tab label="Toutes les Évaluations">
+      <div class="tab-content">
+        <!-- Filters -->
+        <mat-card class="filters-card">
+          <mat-card-content>
+            <div class="filters-grid">
+              <mat-form-field>
+                <mat-label>Filtrer par Note</mat-label>
+                <mat-select [(value)]="ratingFilter" (selectionChange)="onFilterChange()">
+                  <mat-option value="all">Toutes les notes</mat-option>
+                  <mat-option value="5">5 étoiles</mat-option>
+                  <mat-option value="4">4 étoiles</mat-option>
+                  <mat-option value="3">3 étoiles</mat-option>
+                  <mat-option value="2">2 étoiles</mat-option>
+                  <mat-option value="1">1 étoile</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field>
+                <mat-label>Période</mat-label>
+                <mat-select [(value)]="dateFilter" (selectionChange)="onFilterChange()">
+                  <mat-option value="all">Toutes les périodes</mat-option>
+                  <mat-option value="today">Aujourd'hui</mat-option>
+                  <mat-option value="week">Cette semaine</mat-option>
+                  <mat-option value="month">Ce mois</mat-option>
+                  <mat-option value="quarter">Ce trimestre</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field>
+                <mat-label>Livreur</mat-label>
+                <input matInput [(ngModel)]="deliveryPersonFilter" (input)="onFilterChange()" placeholder="Nom du livreur">
+              </mat-form-field>
+
+              <mat-form-field>
+                <mat-label>Trier par</mat-label>
+                <mat-select [(value)]="sortBy" (selectionChange)="onFilterChange()">
+                  <mat-option value="date-desc">Date (récent)</mat-option>
+                  <mat-option value="date-asc">Date (ancien)</mat-option>
+                  <mat-option value="rating-desc">Note (élevée)</mat-option>
+                  <mat-option value="rating-asc">Note (basse)</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <div class="filter-actions">
+                <button mat-raised-button (click)="clearFilters()">
+                  <mat-icon>clear</mat-icon>
+                  Effacer
+                </button>
+              </div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Ratings Table -->
+        <mat-card class="table-card">
+          <mat-card-content>
+            <div class="table-header">
+              <h3>Évaluations ({{filteredRatings.length}})</h3>
+            </div>
+            
+            <div *ngIf="isLoading" class="loading-container">
+              <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+            </div>
+
+            <div *ngIf="!isLoading && filteredRatings.length === 0" class="no-data">
+              <i class="fas fa-star-o"></i>
+              <p>Aucune évaluation trouvée</p>
+            </div>
+
+            <table mat-table [dataSource]="dataSource" matSort *ngIf="!isLoading && filteredRatings.length > 0">
+              <!-- Delivery ID Column -->
+              <ng-container matColumnDef="deliveryId">
+                <th mat-header-cell *matHeaderCellDef>ID Livraison</th>
+                <td mat-cell *matCellDef="let rating">
+                  <span class="delivery-id">{{rating.deliveryId.slice(0, 8)}}...</span>
+                </td>
+              </ng-container>
+
+              <!-- Delivery Person Column -->
+              <ng-container matColumnDef="deliveryPerson">
+                <th mat-header-cell *matHeaderCellDef>Livreur</th>
+                <td mat-cell *matCellDef="let rating">
+                  <div class="person-info">
+                    <strong>{{rating.deliveryPersonName || 'N/A'}}</strong>
+                  </div>
+                </td>
+              </ng-container>
+
+              <!-- Client Column -->
+              <ng-container matColumnDef="client">
+                <th mat-header-cell *matHeaderCellDef>Client</th>
+                <td mat-cell *matCellDef="let rating">
+                  <span>{{rating.clientName || 'Anonyme'}}</span>
+                </td>
+              </ng-container>
+
+              <!-- Overall Rating Column -->
+              <ng-container matColumnDef="overallRating">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>Note Globale</th>
+                <td mat-cell *matCellDef="let rating">
+                  <div class="rating-display">
+                    <span class="rating-stars">
+                      <i *ngFor="let star of getRatingStarArray(5)" 
+                         class="fas fa-star"
+                         [class.active]="star <= rating.overallRating"
+                         [class.inactive]="star > rating.overallRating"></i>
+                    </span>
+                    <span class="rating-value">{{rating.overallRating}}</span>
+                  </div>
+                </td>
+              </ng-container>
+
+              <!-- Categories Column -->
+              <ng-container matColumnDef="categories">
+                <th mat-header-cell *matHeaderCellDef>Catégories</th>
+                <td mat-cell *matCellDef="let rating">
+                  <div class="categories-chips">
+                    <mat-chip-listbox>
+                      <mat-chip *ngFor="let category of rating.categories" 
+                                class="category-chip">
+                        {{getCategoryLabel(category)}}
+                      </mat-chip>
+                    </mat-chip-listbox>
+                  </div>
+                </td>
+              </ng-container>
+
+              <!-- Rated At Column -->
+              <ng-container matColumnDef="ratedAt">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
+                <td mat-cell *matCellDef="let rating">
+                  <span class="date-display">{{formatDate(rating.ratedAt)}}</span>
+                </td>
+              </ng-container>
+
+              <!-- Actions Column -->
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef>Actions</th>
+                <td mat-cell *matCellDef="let rating">
+                  <button mat-icon-button 
+                          (click)="viewRatingDetails(rating)"
+                          matTooltip="Voir les détails">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="table-row"></tr>
+            </table>
+
+            <mat-paginator [pageSizeOptions]="[10, 25, 50, 100]" showFirstLastButtons></mat-paginator>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </mat-tab>
+
+    <!-- Performance Tab -->
+    <mat-tab label="Performance des Livreurs">
+      <div class="tab-content">
+        <mat-card class="table-card">
+          <mat-card-header>
+            <mat-card-title>Statistiques de Performance</mat-card-title>
+            <div class="header-actions">
+              <button mat-raised-button (click)="exportPerformanceReport()">
+                <mat-icon>download</mat-icon>
+                Exporter Rapport
+              </button>
+            </div>
+          </mat-card-header>
+          <mat-card-content>
+            <div *ngIf="isPerformanceLoading" class="loading-container">
+              <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+            </div>
+
+            <table mat-table [dataSource]="performanceDataSource" matSort *ngIf="!isPerformanceLoading">
+              <!-- Name Column -->
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>Nom</th>
+                <td mat-cell *matCellDef="let performance">
+                  <div class="person-info">
+                    <strong>{{performance.name}}</strong>
+                    <small>{{performance.email}}</small>
+                  </div>
+                </td>
+              </ng-container>
+
+              <!-- Total Ratings Column -->
+              <ng-container matColumnDef="totalRatings">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>Total Évaluations</th>
+                <td mat-cell *matCellDef="let performance">
+                  <span class="metric-value">{{performance.totalRatings}}</span>
+                </td>
+              </ng-container>
+
+              <!-- Average Rating Column -->
+              <ng-container matColumnDef="averageRating">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>Note Moyenne</th>
+                <td mat-cell *matCellDef="let performance">
+                  <div class="rating-display">
+                    <span class="rating-stars small">
+                      <i *ngFor="let star of getRatingStarArray(5)" 
+                         class="fas fa-star"
+                         [class.active]="star <= performance.averageRating"
+                         [class.inactive]="star > performance.averageRating"></i>
+                    </span>
+                    <span class="rating-value">{{performance.averageRating}}</span>
+                  </div>
+                </td>
+              </ng-container>
+
+              <!-- Completed Deliveries Column -->
+              <ng-container matColumnDef="completedDeliveries">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>Livraisons Complétées</th>
+                <td mat-cell *matCellDef="let performance">
+                  <span class="metric-value">{{performance.completedDeliveries}}</span>
+                </td>
+              </ng-container>
+
+              <!-- Positive Ratings Column -->
+              <ng-container matColumnDef="positiveRatings">
+                <th mat-header-cell *matHeaderCellDef>Évaluations Positives</th>
+                <td mat-cell *matCellDef="let performance">
+                  <div class="positive-negative">
+                    <span class="positive">+{{performance.positiveRatings}}</span>
+                    <span class="negative">-{{performance.negativeRatings}}</span>
+                  </div>
+                </td>
+              </ng-container>
+
+              <!-- Actions Column -->
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef>Actions</th>
+                <td mat-cell *matCellDef="let performance">
+                  <button mat-icon-button 
+                          (click)="viewDeliveryPersonProfile(performance.id)"
+                          matTooltip="Voir le profil">
+                    <mat-icon>person</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="performanceColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: performanceColumns;" class="table-row"></tr>
+            </table>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>
