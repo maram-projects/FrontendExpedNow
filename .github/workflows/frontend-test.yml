@@ -1,13 +1,11 @@
-name: Frontend Test
+name: Frontend Build & Deploy
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
-  test:
+  build-and-deploy:
     runs-on: ubuntu-latest
     
     steps:
@@ -19,14 +17,19 @@ jobs:
       with:
         node-version: '18'
         
-    - name: Cache npm packages
-      uses: actions/cache@v3
-      with:
-        path: ~/.npm
-        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-        
     - name: Install dependencies
       run: npm install
       
     - name: Build project
       run: npm run build
+      
+    - name: Deploy to Netlify
+      uses: netlify/actions/cli@master
+      with:
+        args: deploy --prod --dir=dist
+      env:
+        NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        
+    - name: Deployment Status
+      run: echo "🚀 Frontend deployed successfully!"
