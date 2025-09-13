@@ -1,459 +1,1309 @@
-/* Modern Base Styles */
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  background-color: #f8fafc;
-  color: #1e293b;
-  margin: 0;
-  padding: 0;
-  line-height: 1.5;
+/* Modern Delivery Personnel Management Component Styles */
+
+.delivery-management-container {
+  padding: 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
 }
 
-/* Fun Animations */
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
+.delivery-management-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+  pointer-events: none;
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-
-@keyframes slideIn {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-/* Header with Fun Animation */
+/* Header Styles */
 .management-header {
+  position: relative;
+  z-index: 1;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  padding: 1.5rem 2rem;
-  border-radius: 16px;
-  margin-bottom: 1.5rem;
-  color: white;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  animation: slideIn 0.5s ease-out;
+  margin-bottom: 32px;
+  animation: slideInDown 0.8s ease-out;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .header-title {
-  font-size: 1.8rem;
+  color: #ffffff;
+  font-size: 2.5rem;
   font-weight: 700;
+  margin: 0;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin: 0;
+  gap: 16px;
+  animation: glow 2s ease-in-out infinite alternate;
 }
 
-/* Modern Buttons */
+@keyframes glow {
+  from {
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 255, 255, 0.1);
+  }
+  to {
+    text-shadow: 0 2px 30px rgba(0, 0, 0, 0.4), 0 0 30px rgba(255, 255, 255, 0.2);
+  }
+}
+
+.header-title i {
+  font-size: 2.2rem;
+  color: #ffd700;
+  animation: spin 3s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Primary Button Styles */
 .primary-button {
-  background-color: #4f46e5;
-  color: white;
-  padding: 0.75rem 1.5rem;
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: white !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(10px);
+  border-radius: 12px !important;
+  padding: 12px 24px !important;
   font-weight: 600;
-  border: none;
+  text-transform: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 1rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+  gap: 8px;
 }
 
 .primary-button:hover {
-  background-color: #4338ca;
+  background: rgba(255, 255, 255, 0.25) !important;
   transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.primary-button:disabled {
+  opacity: 0.6;
+  transform: none;
+  cursor: not-allowed;
 }
 
 .secondary-button {
-  background-color: white;
-  color: #4f46e5;
-  padding: 0.75rem 1.5rem;
-  border-radius: 12px;
+  background: rgba(108, 117, 125, 0.15) !important;
+  color: white !important;
+  border: 1px solid rgba(108, 117, 125, 0.2) !important;
+  backdrop-filter: blur(10px);
+  border-radius: 12px !important;
+  padding: 12px 24px !important;
   font-weight: 600;
-  border: 2px solid #e0e7ff;
+  text-transform: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 1rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 8px;
 }
 
 .secondary-button:hover {
-  background-color: #e0e7ff;
+  background: rgba(108, 117, 125, 0.25) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+  border-color: rgba(108, 117, 125, 0.3) !important;
+}
+
+/* Status Messages */
+.status-messages {
+  animation: fadeInUp 1s ease-out 0.2s both;
+  margin-bottom: 24px;
+}
+
+.loading-state {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 40px;
+  text-align: center;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.loading-state .spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(102, 126, 234, 0.1);
+  border-left: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-state p {
+  color: #1a1a1a;
+  font-weight: 600;
+  margin: 0;
+}
+
+.error-state {
+  background: rgba(244, 67, 54, 0.95);
+  color: white;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(244, 67, 54, 0.2);
+}
+
+.empty-state {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 60px 40px;
+  text-align: center;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.empty-state p {
+  color: #1a1a1a;
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Main Content */
+.management-content {
+  position: relative;
+  z-index: 1;
+  animation: fadeInUp 1s ease-out 0.6s both;
+}
+
+/* Table Container */
+.responsive-table-container {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.responsive-table-container:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
   transform: translateY(-2px);
 }
 
-/* Modern Table Design */
-.responsive-table-container {
-  background-color: white;
-  border-radius: 16px;
-  padding: 1.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-  animation: slideIn 0.6s ease-out;
-  overflow: hidden;
-}
-
+/* Table Styles */
 .delivery-personnel-table {
   width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
+  margin-bottom: 0;
+  background: transparent;
+  border-collapse: collapse;
 }
 
-.delivery-personnel-table th {
-  background-color: #f1f5f9;
-  color: #64748b;
+.delivery-personnel-table thead th {
+  background: linear-gradient(90deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  border-bottom: 2px solid rgba(102, 126, 234, 0.2);
   font-weight: 600;
+  color: #667eea;
   text-transform: uppercase;
-  font-size: 0.75rem;
-  letter-spacing: 0.05em;
-  padding: 1rem;
+  letter-spacing: 0.5px;
+  font-size: 0.85rem;
+  padding: 20px 12px;
   text-align: left;
   position: sticky;
   top: 0;
+  z-index: 10;
 }
 
-.delivery-personnel-table td {
-  padding: 1rem;
-  border-bottom: 1px solid #f1f5f9;
-  transition: background-color 0.2s ease;
-}
-
-.delivery-personnel-table tr:hover td {
-  background-color: #f8fafc;
-}
-
-/* Role Badges with Animation */
-.role-badge {
-  padding: 0.5rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
+.delivery-personnel-table tbody tr {
   transition: all 0.3s ease;
-  animation: pulse 2s infinite;
-}
-
-.role-professional {
-  background-color: #e0f2fe;
-  color: #0369a1;
-}
-
-.role-temporary {
-  background-color: #fef3c7;
-  color: #92400e;
-}
-
-/* Vehicle Status with Fun Icons */
-.vehicle-status {
-  min-width: 200px;
-  transition: all 0.3s ease;
-}
-
-.vehicle-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.vehicle-info i {
-  font-size: 1.25rem;
-  animation: float 3s ease-in-out infinite;
-}
-
-.license-plate {
-  font-family: 'Courier New', monospace;
-  font-weight: bold;
-  background-color: #f1f5f9;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  display: inline-block;
-  font-size: 0.75rem;
-}
-
-/* Action Buttons with Hover Effects */
-.action-button {
-  border: none;
-  padding: 0.5rem 1rem;
-  margin-right: 0.5rem;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeInUp 0.4s ease-out;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   cursor: pointer;
 }
 
-.btn-edit {
-  background-color: #e0f2fe;
-  color: #0369a1;
+.delivery-personnel-table tbody tr:hover {
+  background: linear-gradient(90deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+  transform: scale(1.01);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.delivery-personnel-table tbody tr.selected {
+  background: linear-gradient(90deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  position: relative;
+}
+
+.delivery-personnel-table tbody tr.selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, #667eea, #764ba2);
+  border-radius: 0 2px 2px 0;
+}
+
+.delivery-personnel-table td {
+  padding: 16px 12px;
+  vertical-align: middle;
+  border-bottom-color: rgba(0, 0, 0, 0.05);
+}
+
+/* User Information Cells */
+.user-name {
+  font-weight: 600;
+  color: #1a1a1a;
+  font-size: 1rem;
+}
+
+.user-email {
+  color: #666;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.9rem;
+}
+
+.user-phone {
+  color: #666;
+  font-weight: 500;
+}
+
+.user-date {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+/* Role Badge */
+.user-roles {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.role-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+}
+
+.role-badge:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.role-professional {
+  background: linear-gradient(135deg, #198754, #146c43);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(25, 135, 84, 0.3);
+}
+
+.role-temporary {
+  background: linear-gradient(135deg, #ffc107, #e0a800);
+  color: #000;
+  box-shadow: 0 2px 10px rgba(255, 193, 7, 0.3);
+}
+
+/* Vehicle Status */
+.vehicle-status {
+  max-width: 200px;
+}
+
+.vehicle-info {
+  color: #1a1a1a;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.license-plate {
+  color: #666;
+  font-weight: 400;
+  font-size: 0.9rem;
+  display: block;
+  margin-top: 2px;
+}
+
+.no-vehicle {
+  color: #888;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+/* Action Buttons */
+.user-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.action-button {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  color: #667eea;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  padding: 8px 12px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.action-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
 .btn-edit:hover {
-  background-color: #bae6fd;
-  transform: scale(1.05);
-}
-
-.btn-details {
-  background-color: #ecfdf5;
-  color: #059669;
+  background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+  color: white;
 }
 
 .btn-details:hover {
-  background-color: #d1fae5;
-  transform: scale(1.05);
-}
-
-.btn-select-vehicle {
-  background-color: #f0f9ff;
-  color: #0c4a6e;
+  background: linear-gradient(135deg, #198754, #146c43);
+  color: white;
 }
 
 .btn-select-vehicle:hover {
-  background-color: #e0f2fe;
-  transform: scale(1.05);
+  background: linear-gradient(135deg, #ffc107, #e0a800);
+  color: #000;
 }
 
-/* Modern Spinner */
-.spinner, .spinner-button {
-  width: 1.5rem;
-  height: 1.5rem;
-  border: 3px solid rgba(79, 70, 229, 0.2);
-  border-top-color: #4f46e5;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  display: inline-block;
-}
-
-/* Modern Modal Design */
+/* Modal Styles */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(15, 23, 42, 0.7);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(4px);
+  z-index: 9999;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .modal-content {
-  background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  width: 90%;
-  max-width: 700px;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 20px;
+  border: none;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(20px);
+  animation: modalSlideIn 0.4s ease-out;
+  max-width: 90vw;
   max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .modal-header {
+  background: linear-gradient(90deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  border-bottom: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 20px 20px 0 0;
+  padding: 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
 }
 
 .modal-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1e293b;
+  color: #1a1a1a;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.25rem;
   margin: 0;
 }
 
 .btn-close {
-  background: none;
+  background: rgba(255, 255, 255, 0.2);
   border: none;
-  font-size: 1.5rem;
-  color: #64748b;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: bold;
+  color: #666;
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: all 0.3s ease;
 }
 
 .btn-close:hover {
-  transform: rotate(90deg);
-  color: #475569;
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+  color: #333;
 }
 
-/* Form Styling */
-.form-group {
-  margin-bottom: 1.25rem;
-}
-
-.form-group label {
-  font-weight: 500;
-  color: #334155;
-  margin-bottom: 0.5rem;
-  display: block;
-}
-
-input, select {
-  width: 100%;
-  padding: 0.75rem;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  font-size: 1rem;
-  transition: all 0.3s ease;
-  background-color: #f8fafc;
-}
-
-input:focus, select:focus {
-  outline: none;
-  border-color: #a5b4fc;
-  box-shadow: 0 0 0 3px rgba(199, 210, 254, 0.5);
-}
-
-.form-row {
-  display: flex;
-  gap: 1.5rem;
-}
-
-.form-row .form-group {
+.modal-body {
+  padding: 32px;
+  overflow-y: auto;
   flex: 1;
 }
 
+/* Form Styles */
+.form-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.form-group input,
+.form-group select {
+  border-radius: 12px;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  padding: 12px 16px;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+  background: white;
+  outline: none;
+}
+
+.form-group input.invalid {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+.error-message {
+  color: #dc3545;
+  font-size: 0.8rem;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.form-section {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.form-section h4 {
+  color: #667eea;
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vehicle-selection select {
+  width: 100%;
+}
+
+.vehicle-selection small {
+  color: #666;
+  font-style: italic;
+  margin-top: 8px;
+  display: block;
+}
+
 .form-actions {
-  margin-top: 2rem;
   display: flex;
   justify-content: flex-end;
-  gap: 1rem;
+  gap: 12px;
+  padding: 24px;
+  background: rgba(248, 249, 250, 0.5);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 0 0 20px 20px;
+  margin: 32px -32px -32px -32px;
 }
 
-/* Vehicle Cards with Hover Effects */
-.vehicle-card {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-}
-
-.vehicle-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  border-color: #a5b4fc;
-}
-
-.vehicle-card.selected {
-  border: 2px solid #6366f1;
-  background-color: #eef2ff;
+/* Vehicle Grid */
+.no-vehicles-message {
+  text-align: center;
+  padding: 40px;
+  color: #666;
 }
 
 .vehicle-grid {
   display: grid;
-  gap: 1.25rem;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
-/* User Profile in Modal */
+.vehicle-card {
+  background: rgba(255, 255, 255, 0.8);
+  border: 2px solid rgba(102, 126, 234, 0.2);
+  border-radius: 16px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.vehicle-card:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: #667eea;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
+}
+
+.vehicle-card.selected {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  border-color: #667eea;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.vehicle-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.vehicle-info h4 {
+  color: #1a1a1a;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+}
+
+.vehicle-info p {
+  color: #666;
+  margin: 4px 0;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vehicle-info p i {
+  width: 16px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+/* User Details Modal */
 .user-profile {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  gap: 20px;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.user-avatar i {
-  font-size: 3.5rem;
-  color: #6366f1;
-  background-color: #eef2ff;
-  padding: 1rem;
+.user-avatar {
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 40px;
+  flex-shrink: 0;
 }
 
 .user-info h2 {
-  margin: 0;
-  font-size: 1.75rem;
+  color: #1a1a1a;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  font-size: 1.5rem;
 }
 
-/* Status Indicators */
+.details-section {
+  margin-bottom: 32px;
+}
+
+.details-section h3 {
+  color: #667eea;
+  font-weight: 600;
+  margin-bottom: 16px;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.contact-details,
+.additional-details {
+  display: grid;
+  gap: 12px;
+}
+
+.contact-property,
+.additional-property,
+.vehicle-property {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.property-label {
+  font-weight: 600;
+  color: #1a1a1a;
+  min-width: 120px;
+  flex-shrink: 0;
+}
+
+.contact-property span:last-child,
+.additional-property span:last-child,
+.vehicle-property span:last-child {
+  color: #666;
+  flex: 1;
+}
+
+/* Vehicle Details */
+.vehicle-details {
+  background: rgba(248, 249, 250, 0.5);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.vehicle-display {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.vehicle-photo-container {
+  width: 120px;
+  height: 120px;
+  border-radius: 16px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vehicle-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.no-photo {
+  text-align: center;
+  color: #ccc;
+}
+
+.no-photo p {
+  margin: 8px 0 0 0;
+  font-size: 0.8rem;
+}
+
+.vehicle-info {
+  flex: 1;
+}
+
+.vehicle-info h4 {
+  color: #1a1a1a;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  font-size: 1.2rem;
+}
+
+.vehicle-properties {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.view-details-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.view-details-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.no-vehicle {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.no-vehicle i {
+  font-size: 48px;
+  color: #ccc;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.no-vehicle p {
+  margin-bottom: 20px;
+  font-size: 1.1rem;
+}
+
+/* Status Classes */
 .status-available {
-  color: #059669;
+  color: #198754;
   font-weight: 600;
 }
 
 .status-unavailable {
-  color: #b91c1c;
+  color: #dc3545;
   font-weight: 600;
 }
 
-/* Fun Loading State */
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding: 2rem;
-  background-color: white;
-  border-radius: 16px;
+.status-active {
+  color: #198754;
+  font-weight: 600;
 }
 
-.loading-state .spinner {
-  width: 3rem;
-  height: 3rem;
-  border-width: 4px;
+.status-inactive {
+  color: #dc3545;
+  font-weight: 600;
 }
 
-.loading-state p {
-  font-size: 1.25rem;
-  color: #64748b;
-  font-weight: 500;
+/* Spinner for buttons */
+.spinner-button {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-left: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
 }
 
-/* Empty State with Animation */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding: 3rem;
-  background-color: white;
-  border-radius: 16px;
-  text-align: center;
-}
-
-.empty-icon {
-  font-size: 3rem;
-  animation: float 3s ease-in-out infinite;
-  color: #6366f1;
-}
-
-.empty-state p {
-  font-size: 1.25rem;
-  color: #64748b;
-  max-width: 400px;
-  margin: 0;
-}
-
-/* Responsive Adjustments */
-@media (max-width: 768px) {
-  .form-row {
-    flex-direction: column;
-    gap: 1rem;
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .delivery-management-container {
+    padding: 16px;
   }
   
+  .header-title {
+    font-size: 2rem;
+  }
+  
+  .modal-content {
+    width: 95vw;
+    max-width: 800px;
+  }
+}
+
+@media (max-width: 768px) {
   .management-header {
     flex-direction: column;
-    gap: 1rem;
+    gap: 16px;
     text-align: center;
+  }
+  
+  .responsive-table-container {
+    overflow-x: auto;
+  }
+  
+  .delivery-personnel-table {
+    min-width: 800px;
+  }
+  
+  .delivery-personnel-table td {
+    padding: 12px 8px;
+    font-size: 0.9rem;
+  }
+  
+  .form-row {
+    flex-direction: column;
   }
   
   .vehicle-grid {
     grid-template-columns: 1fr;
   }
+  
+  .vehicle-display {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .user-actions {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .action-button {
+    width: 100%;
+    justify-content: center;
+  }
 }
+
+@media (max-width: 480px) {
+  .header-title {
+    font-size: 1.75rem;
+  }
+  
+  .modal-body {
+    padding: 20px;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .primary-button,
+  .secondary-button {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .user-profile {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .contact-property,
+  .additional-property,
+  .vehicle-property {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .property-label {
+    color: rgba(255, 255, 255, 0.9) !important;
+  }
+  
+  .loading-state p,
+  .empty-state p,
+  .user-name,
+  .modal-title,
+  .user-info h2,
+  .details-section h3,
+  .vehicle-info h4 {
+    color: rgba(255, 255, 255, 0.9) !important;
+  }
+  
+  .user-email,
+  .user-phone,
+  .user-date,
+  .license-plate,
+  .no-vehicle,
+  .contact-property span:last-child,
+  .additional-property span:last-child,
+  .vehicle-property span:last-child {
+    color: rgba(255, 255, 255, 0.7) !important;
+  }
+  
+  .delivery-personnel-table thead th {
+    background: linear-gradient(90deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2)) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+  }
+  
+  .delivery-personnel-table tbody tr:hover {
+    background: linear-gradient(90deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)) !important;
+  }
+  
+  .form-group label {
+    color: rgba(255, 255, 255, 0.9) !important;
+  }
+  
+  .form-group input,
+  .form-group select {
+    background: rgba(26, 26, 46, 0.8) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+  }
+  
+  .form-group input:focus,
+  .form-group select:focus {
+    background: rgba(26, 26, 46, 0.9) !important;
+    color: white !important;
+  }
+  
+  .vehicle-card {
+    background: rgba(26, 26, 46, 0.8) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+  }
+  
+  .vehicle-card:hover {
+    background: rgba(26, 26, 46, 0.95) !important;
+    border-color: #667eea !important;
+  }
+  
+  .vehicle-details {
+    background: rgba(26, 26, 46, 0.5) !important;
+  }
+  
+  .vehicle-photo-container {
+    background: rgba(26, 26, 46, 0.8) !important;
+  }
+}
+
+/* Performance Optimizations */
+.delivery-management-container * {
+  box-sizing: border-box;
+}
+
+.responsive-table-container,
+.modal-content,
+.vehicle-card {
+  will-change: transform;
+}
+
+/* Print Styles */
+@media print {
+  .delivery-management-container {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .responsive-table-container,
+  .modal-content {
+    background: white !important;
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
+  
+  .primary-button,
+  .secondary-button,
+  .action-button {
+    display: none !important;
+  }
+  
+  .delivery-personnel-table {
+    font-size: 12px !important;
+  }
+  
+  .role-badge {
+    background: #f8f9fa !important;
+    color: #000 !important;
+    border: 1px solid #ddd !important;
+  }
+}
+
+/* Accessibility Improvements */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Focus States */
+.primary-button:focus,
+.secondary-button:focus,
+.action-button:focus,
+.form-group input:focus,
+.form-group select:focus,
+.vehicle-card:focus {
+  outline: 2px solid #667eea !important;
+  outline-offset: 2px !important;
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .delivery-management-container {
+    background: #000000 !important;
+    color: #ffffff !important;
+  }
+  
+  .responsive-table-container,
+  .modal-content {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 2px solid #000000 !important;
+  }
+  
+  .primary-button,
+  .secondary-button,
+  .action-button {
+    background: #000000 !important;
+    color: #ffffff !important;
+    border: 2px solid #ffffff !important;
+  }
+}
+
+/* Custom Scrollbar */
+.modal-body::-webkit-scrollbar,
+.responsive-table-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-track,
+.responsive-table-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb,
+.responsive-table-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #667eea, #764ba2);
+  border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover,
+.responsive-table-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #5a6fd8, #6a4190);
+}
+
+/* Enhanced Hover Effects */
+.delivery-personnel-table tbody tr {
+  position: relative;
+}
+
+.delivery-personnel-table tbody tr:hover::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, rgba(102, 126, 234, 0.02), rgba(118, 75, 162, 0.02));
+  pointer-events: none;
+}
+
+/* Loading Animation Enhancement */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.loading-state .spinner {
+  position: relative;
+}
+
+.loading-state .spinner::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Enhanced Button Group Animation */
+.user-actions .action-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.user-actions .action-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.user-actions .action-button:hover::before {
+  left: 100%;
+}
+
+/* Enhanced Modal Animation */
+@keyframes modalBackdrop {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(10px);
+  }
+}
+
+.modal-overlay {
+  animation: modalBackdrop 0.3s ease-out;
+}
+
+/* Enhanced Status Indicators */
+.status-available::before,
+.status-active::before {
+  content: '●';
+  color: #198754;
+  margin-right: 4px;
+  animation: pulse 2s infinite;
+}
+
+.status-unavailable::before,
+.status-inactive::before {
+  content: '●';
+  color: #dc3545;
+  margin-right: 4px;
+  animation: pulse 2s infinite;
+}
+
+/* Enhanced Form Validation */
+.form-group input.invalid {
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* Enhanced Vehicle Card Selection */
+.vehicle-card.selected::after {
+  content: '✓';
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #198754;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.vehicle-card {
+  position: relative;
+}
+
+/* Enhanced Typography */
+.header-title {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.delivery-personnel-table {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Enhanced Icon Styles */
+.fa-plus-circle,
+.fa-pencil-alt,
+.fa-info-circle,
+.fa-car,
+.fa-user-tie,
+.fa-user-clock {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+/* Enhanced Background Patterns */
+.delivery-management-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
+              radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+
+

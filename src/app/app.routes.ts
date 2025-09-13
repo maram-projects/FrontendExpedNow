@@ -1,3 +1,5 @@
+// Updated app.routes.ts - Add chat routes to your existing structure
+
 import { Routes } from '@angular/router';
 import { RegisterLandingComponent } from './components/registers/register-landing/register-landing.component';
 import { LoginComponent } from './components/login/login.component';
@@ -17,7 +19,6 @@ import { EnterpriseRegisterComponent } from './components/registers/enterprise-r
 import { TemporaryRegisterComponent } from './components/registers/temporary-register/temporary-register.component';
 import { HomeComponent } from './components/home/home/home.component';
 import { ProfessionalRegisterComponent } from './components/registers/professional-register/professional-register.component';
-
 import { homeGuard } from './guards/home.guard';
 import { AdminDashboardComponentComponent } from './components/admin-dashboard/admin-dashboard-component/admin-dashboard-component.component';
 import { ScheduleComponent } from './components/admin-dashboard/schedule/schedule.component';
@@ -27,8 +28,13 @@ import { ResetPasswordComponent } from './components/reset-password/reset-passwo
 import { UserDetailsComponent } from './components/profile/user-details/user-details.component';
 import { DeliveryScheduleComponent } from './components/delivery/delivery-schedule/delivery-schedule.component';
 import { DeliveryManagementComponent } from './components/admin-dashboard/delivery-management/delivery-management.component';
-// ADD THIS IMPORT
 import { EvaluationManagementComponent } from './components/admin-dashboard/evaluation-management/evaluation-management.component';
+import { MissionManagementComponent } from './components/admin-dashboard/mission-management/mission-management.component';
+import { ClientChatComponent } from './components/client/chat/client-chat/client-chat.component';
+import { DeliveryChatComponent } from './components/delivery/chat/delivery-chat-component/delivery-chat-component.component';
+
+// ADD THESE IMPORTS for chat components
+
 
 export const routes: Routes = [
   // Public routes
@@ -59,6 +65,32 @@ export const routes: Routes = [
   { 
     path: 'reset-password', 
     component: ResetPasswordComponent 
+  },
+
+  // CHAT ROUTES - Add these before the lazy-loaded routes
+  {
+    path: 'chat',
+    canActivate: [authGuard],
+    children: [
+      {
+        path: 'client/:deliveryId/:deliveryPersonId',
+        component: ClientChatComponent,
+        canActivate: [roleGuard],
+        data: { 
+          roles: ['CLIENT', 'INDIVIDUAL', 'ENTERPRISE'],
+          title: 'Chat with Delivery Person'
+        }
+      },
+      {
+        path: 'delivery/:deliveryId/:clientId',
+        component: DeliveryChatComponent,
+        canActivate: [roleGuard],
+        data: { 
+          roles: ['DELIVERY_PERSON', 'PROFESSIONAL', 'TEMPORARY'],
+          title: 'Chat with Client'
+        }
+      }
+    ]
   },
 
   // Client routes
@@ -96,7 +128,7 @@ export const routes: Routes = [
       { path: 'availability', component: ScheduleComponent },
       { path: 'DeliveryPersonnel', component: DeliveryPersonnelManagementComponent },
       { path: 'delivery-management', component: DeliveryManagementComponent },
-      // ADD THIS LINE - The missing route for evaluation management
+      { path: 'missions', component: MissionManagementComponent },
       { path: 'evaluations', component: EvaluationManagementComponent },
       { path: 'vehicles', component: VehicleListComponent },
       { path: 'vehicles/create', component: VehicleFormComponent },
@@ -138,7 +170,7 @@ export const routes: Routes = [
     { 
       path: '', 
       component: UserDetailsComponent,
-      data: { selfView: true } // Add this to indicate it's self-viewing mode
+      data: { selfView: true }
     },
     { 
       path: 'edit', 

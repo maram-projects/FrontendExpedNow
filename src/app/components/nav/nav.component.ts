@@ -7,6 +7,7 @@ import { NotificationService } from '../../services/notification.service';
 import { Subscription } from 'rxjs';
 import { WebSocketService } from '../../services/web-socket.service';
 import { AppNotification } from '../../models/notification.model';
+import { ChatService } from '../../services/chat.service'; // Add ChatService import
 
 interface Message {
   id: number;
@@ -66,6 +67,13 @@ interface Message {
                     <i class="fas fa-credit-card me-1"></i> Payments
                   </a>
                 </li>
+                <!-- Add Chat for Clients -->
+                <li class="nav-item">
+                  <a class="nav-link" routerLink="/client/chat" routerLinkActive="active">
+                    <i class="fas fa-comments me-1"></i> Chat
+                    <span *ngIf="unreadChatCount > 0" class="badge bg-danger ms-1">{{unreadChatCount}}</span>
+                  </a>
+                </li>
               </ng-container>
 
               <!-- Delivery Navigation -->
@@ -85,12 +93,59 @@ interface Message {
                     <i class="fas fa-tasks me-1"></i> Missions
                   </a>
                 </li>
+                <!-- Add Chat for Delivery Persons -->
+                <li class="nav-item">
+                  <a class="nav-link" routerLink="/delivery/chat" routerLinkActive="active">
+                    <i class="fas fa-comments me-1"></i> Chat
+                    <span *ngIf="unreadChatCount > 0" class="badge bg-danger ms-1">{{unreadChatCount}}</span>
+                  </a>
+                </li>
               </ng-container>
             </ng-container>
           </ul>
 
           <ul class="navbar-nav ms-auto">
             <ng-container *ngIf="currentUser; else loginRegister">
+              <!-- Chat Notifications (Quick Access) -->
+              <li class="nav-item dropdown chat-dropdown" ngbDropdown *ngIf="currentUser">
+                <a class="nav-link" 
+                   id="chatDropdown" 
+                   ngbDropdownToggle
+                   role="button"
+                   aria-haspopup="true"
+                   aria-expanded="false">
+                  <i class="fas fa-comment-dots"></i>
+                  <span *ngIf="unreadChatCount > 0" class="badge badge-pill chat-badge">{{ unreadChatCount }}</span>
+                </a>
+                <div class="dropdown-menu dropdown-menu-end chat-menu" ngbDropdownMenu>
+                  <div class="dropdown-header">
+                    <span>Recent Chats</span>
+                    <a [routerLink]="getChatRoute()" class="text-link" role="button">View all</a>
+                  </div>
+                  <div class="chat-list">
+                    <div *ngFor="let room of recentChatRooms; trackBy: trackByChatRoomId" 
+                         class="dropdown-item chat-item"
+                         [class.unread]="room.unreadCount > 0"
+                         (click)="navigateToChat(room.deliveryId)"
+                         role="button">
+                      <div class="chat-content">
+                        <div class="chat-header">
+                          <strong>{{ getChatRoomTitle(room) }}</strong>
+                          <small class="chat-time" *ngIf="room.lastMessageAt">
+                            {{ formatChatTime(room.lastMessageAt) }}
+                          </small>
+                        </div>
+                        <p class="chat-text">{{ room.lastMessage || 'No messages yet' }}</p>
+                        <span *ngIf="room.unreadCount > 0" class="unread-indicator">{{ room.unreadCount }}</span>
+                      </div>
+                    </div>
+                    <div *ngIf="recentChatRooms.length === 0" class="dropdown-item no-chats">
+                      <p class="text-muted text-center my-2">No recent chats</p>
+                    </div>
+                  </div>
+                </div>
+              </li>
+
               <!-- Notifications Dropdown -->
               <li class="nav-item dropdown notification-dropdown" ngbDropdown>
                 <a class="nav-link" 
@@ -220,6 +275,91 @@ interface Message {
         </div>
       </div>
     </nav>
+
+    <style>
+      /* Chat-specific styles */
+      .chat-dropdown .chat-badge {
+        background: #28a745;
+        color: white;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 10px;
+        min-width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        top: -5px;
+        right: -5px;
+      }
+
+      .chat-menu {
+        width: 320px;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+
+      .chat-item {
+        padding: 12px 16px;
+        border-bottom: 1px solid #f0f0f0;
+        cursor: pointer;
+        position: relative;
+      }
+
+      .chat-item:hover {
+        background-color: #f8f9fa;
+      }
+
+      .chat-item.unread {
+        background-color: #f0f8ff;
+        border-left: 3px solid #007bff;
+      }
+
+      .chat-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .chat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .chat-text {
+        font-size: 14px;
+        color: #666;
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .chat-time {
+        font-size: 12px;
+        color: #999;
+      }
+
+      .unread-indicator {
+        background: #dc3545;
+        color: white;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 10px;
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        min-width: 18px;
+        text-align: center;
+      }
+
+      .no-chats {
+        text-align: center;
+        padding: 20px;
+      }
+    </style>
   `,
   styleUrls: ['./nav.component.css']
 })
@@ -233,26 +373,31 @@ export class NavComponent implements OnInit, OnDestroy {
   userAvatar = '/assets/images/default-avatar.png';
   currentUser: any = null;
   
+  // Chat-related properties
+  unreadChatCount = 0;
+  recentChatRooms: any[] = [];
+  
   private notificationSubscription?: Subscription;
   private wsSubscription?: Subscription;
   private userSubscription?: Subscription;
+  private chatSubscription?: Subscription;
 
   constructor(
     public authService: AuthService,
     private notificationService: NotificationService,
     private webSocketService: WebSocketService,
+    private chatService: ChatService, // Add ChatService
     private router: Router
   ) {}
 
   ngOnInit(): void {
     try {
-      // Get current user and set up user subscription for reactivity
       this.updateCurrentUser();
       this.setupUserSubscription();
       
-      // Only proceed if user is authenticated
       if (this.currentUser) {
         this.initializeAuthenticatedFeatures();
+        this.initializeChatFeatures(); // Initialize chat features
       }
     } catch (error) {
       console.error('Error initializing nav component:', error);
@@ -268,15 +413,15 @@ export class NavComponent implements OnInit, OnDestroy {
   }
 
   private setupUserSubscription(): void {
-    // If AuthService has a user observable, subscribe to it
-    // This ensures the nav updates when user state changes
     if (this.authService.currentUser$) {
       this.userSubscription = this.authService.currentUser$.subscribe(user => {
         this.currentUser = user;
         if (user) {
           this.initializeAuthenticatedFeatures();
+          this.initializeChatFeatures();
         } else {
           this.cleanupAuthenticatedFeatures();
+          this.cleanupChatFeatures();
         }
       });
     }
@@ -293,6 +438,37 @@ export class NavComponent implements OnInit, OnDestroy {
     }
   }
 
+  private initializeChatFeatures(): void {
+    if (!this.currentUser) return;
+
+    // Connect to chat WebSocket
+    this.chatService.connectWebSocket().catch(error => {
+      console.error('Failed to connect to chat WebSocket:', error);
+    });
+
+    // Subscribe to chat updates
+    this.chatSubscription = this.chatService.unreadCount$.subscribe(count => {
+      this.unreadChatCount = count;
+    });
+
+    // Load recent chat rooms
+    this.chatService.loadChatRooms().subscribe({
+      next: (rooms) => {
+        this.recentChatRooms = rooms
+          .filter(room => room.unreadCount > 0 || room.lastMessage)
+          .sort((a, b) => {
+            const dateA = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+            const dateB = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+            return dateB - dateA;
+          })
+          .slice(0, 5); // Show only 5 most recent
+      },
+      error: (error) => {
+        console.error('Failed to load chat rooms:', error);
+      }
+    });
+  }
+
   private cleanupAuthenticatedFeatures(): void {
     this.notifications = [];
     this.messages = [];
@@ -300,6 +476,12 @@ export class NavComponent implements OnInit, OnDestroy {
     this.unreadNotificationsCount = 0;
     this.unreadMessages = 0;
     this.webSocketService.disconnect();
+  }
+
+  private cleanupChatFeatures(): void {
+    this.unreadChatCount = 0;
+    this.recentChatRooms = [];
+    this.chatService.disconnectWebSocket();
   }
 
   private setupWebSocket(token: string, userId: string): void {
@@ -374,7 +556,6 @@ export class NavComponent implements OnInit, OnDestroy {
   }
 
   private loadMessages(): void {
-    // Mock messages - replace with actual service call when available
     this.messages = [
       { 
         id: 1, 
@@ -408,9 +589,55 @@ export class NavComponent implements OnInit, OnDestroy {
     this.notificationSubscription?.unsubscribe();
     this.wsSubscription?.unsubscribe();
     this.userSubscription?.unsubscribe();
+    this.chatSubscription?.unsubscribe();
   }
 
-  // Template methods
+  // Chat-related methods
+  getChatRoute(): string {
+    if (this.currentUser?.userType === 'temporary' || this.currentUser?.userType === 'professional') {
+      return '/delivery/chat';
+    } else if (this.currentUser?.userType === 'individual' || this.currentUser?.userType === 'enterprise') {
+      return '/client/chat';
+    }
+    return '/chat';
+  }
+
+  getChatRoomTitle(room: any): string {
+    const isDeliveryPerson = this.currentUser?.userType === 'temporary' || this.currentUser?.userType === 'professional';
+    
+    if (isDeliveryPerson) {
+      return room.clientName || room.otherUserName || 'Client';
+    } else {
+      return room.deliveryPersonName || room.otherUserName || 'Delivery Person';
+    }
+  }
+
+  navigateToChat(deliveryId?: string): void {
+    const chatRoute = this.getChatRoute();
+    if (deliveryId) {
+      this.router.navigate([chatRoute], { queryParams: { deliveryId } });
+    } else {
+      this.router.navigate([chatRoute]);
+    }
+  }
+
+  formatChatTime(timestamp: Date): string {
+    if (!timestamp) return '';
+    
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    
+    if (diffInHours < 1) {
+      return 'Just now';
+    } else if (diffInHours < 24) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else {
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+  }
+
+  // Existing methods...
   handleImageError(event: Event): void {
     const img = event.target as HTMLImageElement;
     img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNFNUU3RUIiLz4KPHN2ZyB3aWR0aD0iMTQiIGhlaWdodD0iMTQiIHZpZXdCb3g9IjAgMCAxNCAxNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4PSI5IiB5PSI5Ij4KPHBhdGggZD0iTTcgMEMzLjEzNDAxIDAgMCAzLjEzNDAxIDAgN0MwIDEwLjg2NiAzLjEzNDAxIDE0IDcgMTRDMTAuODY2IDE0IDE0IDEwLjg2NiAxNCA3QzE0IDMuMTM0MDEgMTAuODY2IDAgNyAwWk03IDIuMzMzMzNDOC4zODA4IDIuMzMzMzMgOS41IDMuNDUyNTggOS41IDVDOS41IDYuNTQ3NDIgOC4zODA4IDcuNjY2NjcgNyA3LjY2NjY3QzUuNjE5MTcgNy42NjY2NyA0LjUgNi41NDc0MiA0LjUgNUM0LjUgMy40NTI1OCA1LjYxOTE3IDIuMzMzMzMgNyAyLjMzMzMzWk03IDEyLjgzMzNDNS4yNSAxMi44MzMzIDMuNzA4MzMgMTEuODc5MiAzIDEwLjU0MTdDMy4wNDE2NyA5LjE4NzUgNS44MzMzMyA4LjQ1ODMzIDcgOC40NTgzM0M4LjE2NjY3IDguNDU4MzMgMTAuOTU4MyA5LjE4NzUgMTEgMTAuNTQxN0MxMC4yOTE3IDExLjg3OTIgOC43NSAxMi44MzMzIDcgMTIuODMzM1oiIGZpbGw9IiM5Q0E0QUYiLz4KPC9zdmc+Cjwvc3ZnPgo=';
@@ -423,6 +650,7 @@ export class NavComponent implements OnInit, OnDestroy {
   logout(): void {
     try {
       this.cleanupAuthenticatedFeatures();
+      this.cleanupChatFeatures();
       this.authService.logout();
       this.router.navigate(['/']);
     } catch (error) {
@@ -468,5 +696,9 @@ export class NavComponent implements OnInit, OnDestroy {
 
   trackByMessageId(index: number, message: Message): number {
     return message.id;
+  }
+
+  trackByChatRoomId(index: number, room: any): string {
+    return room.deliveryId;
   }
 }

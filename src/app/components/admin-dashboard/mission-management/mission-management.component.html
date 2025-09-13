@@ -1,0 +1,640 @@
+<!-- mission-management.component.html (Enhanced with Debug Info) -->
+<div class="mission-management-container">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-tasks"></i> Mission Monitoring Dashboard</h2>
+    <div class="d-flex gap-2">
+     
+      <button class="btn btn-outline-primary" (click)="refreshData()">
+        <i class="fas fa-sync-alt"></i> Refresh Data
+      </button>
+      <button class="btn btn-outline-success" (click)="exportMissionsData()">
+        <i class="fas fa-download"></i> Export Data
+      </button>
+    </div>
+  </div>
+
+
+
+  <!-- Alert Messages -->
+  <div class="alert alert-success alert-dismissible fade show" *ngIf="successMessage" role="alert">
+    <i class="fas fa-check-circle"></i> {{ successMessage }}
+    <button type="button" class="btn-close" (click)="successMessage = ''"></button>
+  </div>
+
+  <div class="alert alert-danger alert-dismissible fade show" *ngIf="errorMessage" role="alert">
+    <i class="fas fa-exclamation-triangle"></i> {{ errorMessage }}
+    <button type="button" class="btn-close" (click)="errorMessage = ''"></button>
+  </div>
+
+  <!-- Connection Status -->
+  <div class="alert alert-warning" *ngIf="missions.length === 0 && !isLoading">
+    <i class="fas fa-exclamation-triangle"></i>
+    <strong>No missions found!</strong> This could indicate:
+    <ul class="mb-0 mt-2">
+      <li>The backend service is not running or not accessible</li>
+      <li>No missions have been created yet</li>
+      <li>The API endpoints are not properly configured</li>
+      <li>Database connection issues</li>
+    </ul>
+    <div class="mt-2">
+      <button class="btn btn-sm btn-warning" (click)="refreshData()">
+        <i class="fas fa-sync"></i> Retry Connection
+      </button>
+    </div>
+  </div>
+
+  <!-- Mission Statistics -->
+  <div class="row mb-4">
+    <div class="col-md-2">
+      <div class="stat-card total">
+        <i class="fas fa-tasks"></i>
+        <div class="stat-info">
+          <h3>{{ missionStats.total || 0 }}</h3>
+          <p>Total Missions</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="stat-card pending">
+        <i class="fas fa-clock"></i>
+        <div class="stat-info">
+          <h3>{{ missionStats.pending || 0 }}</h3>
+          <p>Pending</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="stat-card in-progress">
+        <i class="fas fa-truck"></i>
+        <div class="stat-info">
+          <h3>{{ missionStats.inProgress || 0 }}</h3>
+          <p>In Progress</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="stat-card completed">
+        <i class="fas fa-check-circle"></i>
+        <div class="stat-info">
+          <h3>{{ missionStats.completed || 0 }}</h3>
+          <p>Completed</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="stat-card cancelled">
+        <i class="fas fa-times-circle"></i>
+        <div class="stat-info">
+          <h3>{{ missionStats.cancelled || 0 }}</h3>
+          <p>Cancelled</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="stat-card duration">
+        <i class="fas fa-stopwatch"></i>
+        <div class="stat-info">
+          <h3>{{ formatDuration(missionStats.averageDuration || 0) }}</h3>
+          <p>Avg Duration</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-container mb-4">
+    <div class="row">
+      <div class="col-md-3">
+        <label class="form-label">Status Filter</label>
+        <select class="form-select" [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()">
+          <option value="all">All Statuses</option>
+          <option value="PENDING">Pending</option>
+          <option value="IN_PROGRESS">In Progress</option>
+          <option value="COMPLETED">Completed</option>
+          <option value="CANCELLED">Cancelled</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Delivery Person</label>
+        <select class="form-select" [(ngModel)]="deliveryPersonFilter" (ngModelChange)="applyFilters()">
+          <option value="all">All Personnel</option>
+          <option *ngFor="let person of deliveryPersonnel" [value]="person.id">
+            {{ person.firstName }} {{ person.lastName }}
+          </option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Search</label>
+        <input type="text" class="form-control" placeholder="Search missions..." 
+               [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Date Filter</label>
+        <input type="date" class="form-control" 
+               [(ngModel)]="dateFilter" (ngModelChange)="applyFilters()">
+      </div>
+    </div>
+    
+    <!-- Filter Results Summary -->
+    <div class="mt-2" *ngIf="filteredMissions.length !== missions.length">
+      <small class="text-muted">
+        Showing {{ filteredMissions.length }} of {{ missions.length }} missions
+        <button class="btn btn-link btn-sm p-0 ms-2" (click)="statusFilter='all'; deliveryPersonFilter='all'; searchTerm=''; dateFilter=''; applyFilters()">
+          Clear Filters
+        </button>
+      </small>
+    </div>
+  </div>
+
+  <!-- Loading Spinner -->
+  <div class="text-center py-5" *ngIf="isLoading">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2">Loading missions...</p>
+    <small class="text-muted">Trying multiple endpoints to fetch mission data...</small>
+  </div>
+
+  <!-- Missions Table -->
+  <div class="mission-table-container" *ngIf="!isLoading">
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>Mission ID</th>
+            <th>Client</th>
+            <th>Delivery Person</th>
+            <th>Package Description</th>
+            <th>Status</th>
+            <th>Assigned Date</th>
+            <th>Duration</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let mission of paginatedMissions; let i = index" 
+              [class.table-active]="selectedMission?.id === mission.id"
+              (click)="selectMission(mission)">
+            <td>
+              <strong>{{ mission.id.substring(0, 8) }}...</strong>
+              <small class="d-block text-muted">#{{ i + 1 + (currentPage - 1) * itemsPerPage }}</small>
+            </td>
+            <td>
+              <div class="d-flex align-items-center">
+                <i class="fas fa-user me-2"></i>
+                <div>
+                  <div>{{ getClientName(mission) }}</div>
+                  <small class="text-muted">{{ getClientEmail(mission) }}</small>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="d-flex align-items-center">
+                <i class="fas fa-user-circle me-2"></i>
+                <span>{{ getDeliveryPersonName(mission) }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="text-truncate" style="max-width: 200px; display: inline-block;" 
+                    [title]="mission.deliveryRequest?.packageDescription">
+                {{ mission.deliveryRequest?.packageDescription || 'N/A' }}
+              </span>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="getStatusClass(mission.status)">
+                <i [ngClass]="getStatusIcon(mission.status)"></i>
+                {{ mission.status }}
+              </span>
+            </td>
+            <td>
+              {{ mission.assignedAt | date:'short' }}
+            </td>
+            <td>
+              {{ getMissionDuration(mission) }}
+            </td>
+            <td>
+              <div class="btn-group" role="group">
+                <button class="btn btn-sm btn-outline-primary" 
+                        (click)="viewMissionDetails(mission); $event.stopPropagation()"
+                        data-bs-toggle="tooltip" title="View Details">
+                  <i class="fas fa-eye"></i> Details
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Empty State -->
+    <div class="text-center py-5" *ngIf="filteredMissions.length === 0 && missions.length > 0">
+      <i class="fas fa-search fa-3x text-muted mb-3"></i>
+      <h4>No missions match your filters</h4>
+      <p class="text-muted">Try adjusting your filters to view different missions.</p>
+      <button class="btn btn-outline-primary" (click)="statusFilter='all'; deliveryPersonFilter='all'; searchTerm=''; dateFilter=''; applyFilters()">
+        Clear All Filters
+      </button>
+    </div>
+
+    <!-- No Data State -->
+    <div class="text-center py-5" *ngIf="missions.length === 0">
+      <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+      <h4>No missions found in system</h4>
+      <p class="text-muted">This could mean:</p>
+      <ul class="list-unstyled text-muted">
+        <li><i class="fas fa-circle text-warning me-2"></i>Backend service is not running</li>
+        <li><i class="fas fa-circle text-info me-2"></i>No missions have been created yet</li>
+        <li><i class="fas fa-circle text-danger me-2"></i>Database connectivity issues</li>
+      </ul>
+      <div class="mt-3">
+        <button class="btn btn-primary me-2" (click)="refreshData()">
+          <i class="fas fa-sync"></i> Retry Loading
+        </button>
+        <button class="btn btn-info" (click)="showDebugInfo()">
+          <i class="fas fa-bug"></i> Show Debug Info
+        </button>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <nav *ngIf="totalPages > 1">
+      <ul class="pagination justify-content-center">
+        <li class="page-item" [class.disabled]="currentPage === 1">
+          <button class="page-link" (click)="previousPage()">Previous</button>
+        </li>
+        <li class="page-item" *ngFor="let page of [].constructor(Math.min(totalPages, 5)); let i = index" 
+            [class.active]="currentPage === i + 1">
+          <button class="page-link" (click)="goToPage(i + 1)">{{ i + 1 }}</button>
+        </li>
+        <li class="page-item" *ngIf="totalPages > 5 && currentPage < totalPages - 2">
+          <span class="page-link">...</span>
+        </li>
+        <li class="page-item" *ngIf="totalPages > 5 && currentPage < totalPages">
+          <button class="page-link" (click)="goToPage(totalPages)">{{ totalPages }}</button>
+        </li>
+        <li class="page-item" [class.disabled]="currentPage === totalPages">
+          <button class="page-link" (click)="nextPage()">Next</button>
+        </li>
+      </ul>
+      
+      <!-- Pagination Info -->
+      <div class="text-center mt-2">
+        <small class="text-muted">
+          Page {{ currentPage }} of {{ totalPages }} 
+          ({{ filteredMissions.length }} missions total)
+        </small>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Mission Details Panel (Sidebar) -->
+  <div class="mission-details-panel" *ngIf="selectedMission && !showDetailsModal">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5><i class="fas fa-info-circle"></i> Mission Overview</h5>
+        <button class="btn btn-sm btn-outline-secondary" (click)="clearSelection()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <p><strong>Mission ID:</strong> {{ selectedMission.id }}</p>
+            <p><strong>Status:</strong> 
+              <span class="badge" [ngClass]="getStatusClass(selectedMission.status)">
+                {{ selectedMission.status }}
+              </span>
+            </p>
+            <p><strong>Assigned Date:</strong> {{ selectedMission.assignedAt | date:'medium' }}</p>
+            <p><strong>Start Time:</strong> {{ getMissionStartDate(selectedMission) }}</p>
+            <p><strong>End Time:</strong> {{ getMissionEndDate(selectedMission) }}</p>
+            <p><strong>Duration:</strong> {{ getMissionDuration(selectedMission) }}</p>
+          </div>
+          <div class="col-md-6">
+            <p><strong>Client:</strong> {{ getClientName(selectedMission) }}</p>
+            <p><strong>Delivery Person:</strong> {{ getDeliveryPersonName(selectedMission) }}</p>
+            <p><strong>Package:</strong> {{ selectedMission.deliveryRequest?.packageDescription || 'N/A' }}</p>
+            <p><strong>Pickup Address:</strong> {{ selectedMission.deliveryRequest?.pickupAddress || 'N/A' }}</p>
+            <p><strong>Delivery Address:</strong> {{ selectedMission.deliveryRequest?.deliveryAddress || 'N/A' }}</p>
+          </div>
+        </div>
+        <div *ngIf="selectedMission.notes">
+          <p><strong>Notes:</strong></p>
+          <div class="alert alert-light">{{ selectedMission.notes }}</div>
+        </div>
+        
+        <div class="mt-3">
+          <button class="btn btn-primary" (click)="viewMissionDetails(selectedMission)">
+            <i class="fas fa-expand"></i> View Full Details
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Mission Details Modal -->
+<div class="modal fade" [class.show]="showDetailsModal" [style.display]="showDetailsModal ? 'block' : 'none'">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+<i class="fas fa-info-circle"></i> Mission Details - {{ getTruncatedMissionId(selectedMission) }}
+        </h5>
+        <button type="button" class="btn-close" (click)="closeDetailsModal()"></button>
+      </div>
+      <div class="modal-body" *ngIf="selectedMission">
+        <div class="row">
+          <!-- Mission Information -->
+          <div class="col-md-6">
+            <h6 class="fw-bold text-primary mb-3">
+              <i class="fas fa-tasks"></i> Mission Information
+            </h6>
+            <div class="mb-3">
+              <label class="fw-bold">Mission ID:</label>
+              <div class="text-muted font-monospace">{{ selectedMission.id }}</div>
+            </div>
+            <div class="mb-3">
+              <label class="fw-bold">Status:</label>
+              <div>
+                <span class="badge" [ngClass]="getStatusClass(selectedMission.status)">
+                  <i [ngClass]="getStatusIcon(selectedMission.status)"></i>
+                  {{ selectedMission.status }}
+                </span>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="fw-bold">Assigned Date:</label>
+              <div class="text-muted">{{ selectedMission.assignedAt | date:'full' }}</div>
+            </div>
+            <div class="mb-3">
+              <label class="fw-bold">Start Time:</label>
+              <div class="text-muted">{{ getMissionStartDate(selectedMission) }}</div>
+            </div>
+            <div class="mb-3">
+              <label class="fw-bold">End Time:</label>
+              <div class="text-muted">{{ getMissionEndDate(selectedMission) }}</div>
+            </div>
+            <div class="mb-3">
+              <label class="fw-bold">Duration:</label>
+              <div class="text-muted">{{ getMissionDuration(selectedMission) }}</div>
+            </div>
+          </div>
+          
+          <!-- Client Information -->
+          <div class="col-md-6">
+            <h6 class="fw-bold text-primary mb-3">
+              <i class="fas fa-user"></i> Client Information
+            </h6>
+            <div class="mb-3">
+              <label class="fw-bold">Client Name:</label>
+              <div class="text-muted">
+                <i class="fas fa-user text-primary me-2"></i>{{ getClientName(selectedMission) }}
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="fw-bold">Email:</label>
+              <div class="text-muted">
+                <i class="fas fa-envelope text-info me-2"></i>{{ getClientEmail(selectedMission) }}
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="fw-bold">Phone:</label>
+              <div class="text-muted">
+                <i class="fas fa-phone text-success me-2"></i>{{ getClientPhone(selectedMission) }}
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="fw-bold">Client ID:</label>
+              <div class="text-muted font-monospace">{{ getClientId(selectedMission) }}</div>
+            </div>
+          </div>
+          
+          <!-- Delivery Information -->
+          <div class="col-md-12 mt-3">
+            <h6 class="fw-bold text-primary mb-3">
+              <i class="fas fa-truck"></i> Delivery Information
+            </h6>
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label class="fw-bold">Delivery Person:</label>
+                  <div class="text-muted">
+                    <i class="fas fa-user me-2"></i>{{ getDeliveryPersonName(selectedMission) }}
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="fw-bold">Package Description:</label>
+                  <div class="text-muted">{{ selectedMission.deliveryRequest?.packageDescription || 'N/A' }}</div>
+                </div>
+                <div class="mb-3">
+                  <label class="fw-bold">Delivery Status:</label>
+                  <div class="text-muted">{{ selectedMission.deliveryRequest?.status || 'N/A' }}</div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label class="fw-bold">Pickup Address:</label>
+                  <div class="text-muted">
+                    <i class="fas fa-map-marker-alt text-success me-2"></i>
+                    {{ selectedMission.deliveryRequest?.pickupAddress || 'N/A' }}
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="fw-bold">Delivery Address:</label>
+                  <div class="text-muted">
+                    <i class="fas fa-map-marker-alt text-danger me-2"></i>
+                    {{ selectedMission.deliveryRequest?.deliveryAddress || 'N/A' }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Notes Section -->
+        <div *ngIf="selectedMission.notes" class="mt-4">
+          <h6 class="fw-bold text-primary mb-3">
+            <i class="fas fa-sticky-note"></i> Mission Notes
+          </h6>
+          <div class="alert alert-light">
+            <i class="fas fa-sticky-note me-2"></i>
+            {{ selectedMission.notes }}
+          </div>
+        </div>
+        
+        <!-- Timeline -->
+        <div class="mt-4">
+          <h6 class="fw-bold text-primary mb-3">
+            <i class="fas fa-clock"></i> Mission Timeline
+          </h6>
+          <div class="timeline">
+            <div class="timeline-item">
+              <i class="fas fa-plus-circle text-info"></i>
+              <span><strong>Created:</strong> {{ selectedMission.assignedAt | date:'medium' }}</span>
+            </div>
+            <div class="timeline-item" *ngIf="selectedMission.startTime">
+              <i class="fas fa-play-circle text-warning"></i>
+              <span><strong>Started:</strong> {{ getMissionStartDate(selectedMission) }}</span>
+            </div>
+            <div class="timeline-item" *ngIf="selectedMission.endTime">
+              <i class="fas fa-check-circle text-success"></i>
+              <span><strong>Completed:</strong> {{ getMissionEndDate(selectedMission) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeDetailsModal()">
+          <i class="fas fa-times"></i> Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Backdrop -->
+<div class="modal-backdrop fade show" *ngIf="showDetailsModal"></div>
+
+<style>
+/* Enhanced styles for the mission management */
+.mission-management-container {
+  padding: 20px;
+}
+
+.stat-card {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  transition: transform 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.stat-card i {
+  font-size: 2rem;
+}
+
+.stat-card.total { border-left: 4px solid #6c757d; }
+.stat-card.pending { border-left: 4px solid #ffc107; }
+.stat-card.in-progress { border-left: 4px solid #0d6efd; }
+.stat-card.completed { border-left: 4px solid #198754; }
+.stat-card.cancelled { border-left: 4px solid #dc3545; }
+.stat-card.duration { border-left: 4px solid #6f42c1; }
+
+.stat-info h3 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: bold;
+}
+
+.stat-info p {
+  margin: 0;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.filters-container {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.mission-table-container {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.table {
+  margin-bottom: 0;
+}
+
+.table thead th {
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  font-weight: 600;
+}
+
+.status-pending { background-color: #ffc107; color: #000; }
+.status-in-progress { background-color: #0d6efd; color: #fff; }
+.status-completed { background-color: #198754; color: #fff; }
+.status-cancelled { background-color: #dc3545; color: #fff; }
+.status-unknown { background-color: #6c757d; color: #fff; }
+
+.mission-details-panel {
+  position: fixed;
+  right: 20px;
+  top: 100px;
+  width: 400px;
+  z-index: 1000;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+
+.timeline {
+  position: relative;
+  padding-left: 30px;
+}
+
+.timeline-item {
+  position: relative;
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.timeline-item i {
+  font-size: 1.2rem;
+  width: 20px;
+  text-align: center;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #e9ecef;
+}
+
+.btn-group .btn {
+  margin-right: 5px;
+}
+
+.pagination {
+  margin-top: 20px;
+}
+
+.modal-xl {
+  max-width: 90%;
+}
+
+@media (max-width: 768px) {
+  .mission-details-panel {
+    position: static;
+    width: 100%;
+    margin-top: 20px;
+  }
+  
+  .stat-card {
+    text-align: center;
+  }
+  
+  .filters-container .row > div {
+    margin-bottom: 15px;
+  }
+}
+</style>

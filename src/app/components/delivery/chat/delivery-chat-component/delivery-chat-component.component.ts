@@ -1,4 +1,4 @@
-// delivery-chat-component.component.ts
+// delivery-chat-component.component.ts (Updated with sidebar functionality)
 import { 
   Component, 
   OnInit, 
@@ -13,7 +13,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Observable, Subscription, of, timer, Subject, BehaviorSubject, combineLatest } from 'rxjs';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { 
   debounceTime, 
   distinctUntilChanged, 
@@ -71,6 +71,11 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
   selectedRoom: ChatRoom | null = null;
   otherUser: User | null = null;
   
+  // Sidebar management
+  isSidebarCollapsed = false;
+  isMobile = false;
+  showMobileSidebar = false;
+  
   // Input and typing
   newMessage = '';
   private typingTimer: any;
@@ -108,16 +113,39 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
   public hasMoreMessages = true;
   public isLoadingMore = false;
 
+  // Quick messages for both client and delivery person
+  quickMessages: string[] = [
+    "On my way!",
+    "Almost there",
+    "Running a bit late",
+    "Thank you!",
+    "Delivered successfully"
+  ];
+
   constructor(
     private chatService: ChatService,
     private userService: UserService,
     private route: ActivatedRoute,
+    private router: Router,
     private authService: AuthService,
     private webSocketService: WebSocketService,
     private cdr: ChangeDetectorRef,
     private ngZone: NgZone
   ) {
     this.connectionStatus$ = this.webSocketService.getConnectionStatus();
+    this.checkIfMobile();
+  }
+
+  @HostListener('window:resize', ['$event'])
+  onResize(event: any): void {
+    this.checkIfMobile();
+  }
+
+  @HostListener('window:beforeunload', ['$event'])
+  beforeUnloadHandler(event: any): void {
+    if (this.newMessage.trim()) {
+      event.returnValue = 'You have an unsent message. Are you sure you want to leave?';
+    }
   }
 
   ngOnInit(): void {
@@ -136,14 +164,142 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
     this.cleanup();
   }
 
-  @HostListener('window:beforeunload', ['$event'])
-  beforeUnloadHandler(event: any): void {
-    if (this.newMessage.trim()) {
-      event.returnValue = 'You have an unsent message. Are you sure you want to leave?';
+  // ===== SIDEBAR MANAGEMENT =====
+  
+  private checkIfMobile(): void {
+    this.isMobile = window.innerWidth <= 768;
+    if (this.isMobile) {
+      this.isSidebarCollapsed = false;
+      this.showMobileSidebar = false;
     }
   }
 
-  // Component initialization
+  toggleSidebar(): void {
+    if (this.isMobile) {
+      this.showMobileSidebar = !this.showMobileSidebar;
+    } else {
+      this.isSidebarCollapsed = !this.isSidebarCollapsed;
+    }
+  }
+
+  showSidebar(): void {
+    if (this.isMobile) {
+      this.showMobileSidebar = true;
+    }
+  }
+
+  hideSidebar(): void {
+    if (this.isMobile) {
+      this.showMobileSidebar = false;
+    }
+  }
+
+  // ===== ROOM MANAGEMENT =====
+  
+  getRoomDisplayName(room: ChatRoom): string {
+    const currentUser = this.authService.getCurrentUser();
+    const isDeliveryPerson = currentUser?.userType === 'temporary' || currentUser?.userType === 'professional';
+    
+    if (isDeliveryPerson) {
+      return room.clientName || room.otherUserName || 'Client';
+    } else {
+      return room.deliveryPersonName || room.otherUserName || 'Delivery Person';
+    }
+  }
+
+  getOtherUserId(room: ChatRoom): string {
+    const currentUser = this.authService.getCurrentUser();
+    const isDeliveryPerson = currentUser?.userType === 'temporary' || currentUser?.userType === 'professional';
+    
+    if (isDeliveryPerson) {
+      return room.clientId || room.otherUserId || '';
+    } else {
+      return room.deliveryPersonId || room.otherUserId || '';
+    }
+  }
+
+  isUserOnline(userId: string): Observable<boolean> {
+    if (!userId) return of(false);
+    return this.chatService.isUserOnline(userId);
+  }
+
+  formatRoomTime(timestamp: Date | undefined): string {
+    if (!timestamp) return '';
+    
+    const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+    if (isNaN(date.getTime())) return '';
+    
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    const diffInDays = diffInHours / 24;
+    
+    if (diffInHours < 1) {
+      const diffInMinutes = Math.floor(diffInHours * 60);
+      return diffInMinutes <= 1 ? 'Just now' : `${diffInMinutes}m ago`;
+    } else if (diffInHours < 24) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (diffInDays < 7) {
+      return date.toLocaleDateString([], { weekday: 'short' });
+    } else {
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+  }
+
+  selectRoom(room: ChatRoom): void {
+    if (this.selectedRoom?.deliveryId === room.deliveryId) {
+      if (this.isMobile) {
+        this.hideSidebar();
+      }
+      return;
+    }
+
+    console.log('Selecting room:', {
+      deliveryId: room.deliveryId,
+      clientId: room.clientId,
+      deliveryPersonId: room.deliveryPersonId,
+      currentUserId: this.delivery.deliveryPersonId || this.delivery.clientId
+    });
+
+    this.selectedRoom = room;
+    this.currentPage = 0;
+    this.hasMoreMessages = true;
+    
+    this.chatService.setCurrentChatRoom(room.deliveryId);
+    
+    // Determine other user ID
+    const otherUserId = this.getOtherUserId(room);
+    
+    if (!otherUserId) {
+      console.error('No other user found for room:', room);
+      this.updateState({ error: 'Invalid chat room configuration - no other participant found' });
+      return;
+    }
+    
+    console.log('Will chat with user:', otherUserId);
+    
+    this.loadMessages(room.deliveryId, otherUserId);
+    this.loadOtherUser(otherUserId);
+    this.isOnline$ = this.chatService.isUserOnline(otherUserId);
+    this.typingUsers$ = this.chatService.getTypingUsers(room.deliveryId);
+    
+    this.markMessagesAsRead();
+    this.focusMessageInput();
+    
+    // Hide sidebar on mobile after selection
+    if (this.isMobile) {
+      this.hideSidebar();
+    }
+    
+    // Update URL with selected room
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { deliveryId: room.deliveryId },
+      queryParamsHandling: 'merge'
+    });
+  }
+
+  // ===== COMPONENT INITIALIZATION =====
+  
   private initializeComponent(): void {
     const currentUser = this.authService.getCurrentUser();
     
@@ -152,19 +308,28 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    this.delivery.deliveryPersonId = currentUser.userId;
+    // Determine if this is a delivery person or client
+    const isDeliveryPerson = currentUser.userType === 'temporary' || currentUser.userType === 'professional';
     
-    // Load route data
+    if (isDeliveryPerson) {
+      this.delivery.deliveryPersonId = currentUser.userId;
+    } else {
+      this.delivery.clientId = currentUser.userId;
+    }
+    
+    // Load route parameters
     this.subscriptions.add(
-      this.route.data.pipe(
-        takeUntil(this.destroy$)
-      ).subscribe(data => {
-        if (data['delivery']) {
-          this.delivery = { ...this.delivery, ...data['delivery'] };
+      this.route.queryParams.subscribe(params => {
+        if (params['deliveryId'] && this.rooms.length > 0) {
+          const targetRoom = this.rooms.find(r => r.deliveryId === params['deliveryId']);
+          if (targetRoom) {
+            this.selectRoom(targetRoom);
+          }
         }
-        this.loadInitialData();
       })
     );
+    
+    this.loadInitialData();
   }
 
   private setupTypingHandler(): void {
@@ -183,7 +348,7 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private setupSubscriptions(): void {
-    // Messages subscription - using the correct observable
+    // Messages subscription
     this.subscriptions.add(
       this.chatService.messages$.pipe(
         takeUntil(this.destroy$)
@@ -191,18 +356,23 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
         this.ngZone.run(() => {
           this.messages = this.sortMessagesByTime(messages);
           this.cdr.markForCheck();
-          this.scrollToBottom();
+          
+          // Only scroll if we're at the bottom or it's a new message
+          if (this.shouldScrollToBottom()) {
+            this.scrollToBottom();
+          }
         });
       })
     );
 
-    // Chat rooms subscription
+    // Chat rooms subscription with deduplication
     this.subscriptions.add(
       this.chatService.chatRooms$.pipe(
-        takeUntil(this.destroy$)
+        takeUntil(this.destroy$),
+        map(rooms => this.consolidateRoomsData(rooms)) // Add consolidation
       ).subscribe(rooms => {
         this.ngZone.run(() => {
-          this.rooms = rooms;
+          this.rooms = this.sortRoomsByActivity(rooms);
           this.handleRoomsUpdate(rooms);
           this.cdr.markForCheck();
         });
@@ -247,20 +417,63 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
         this.updateState({ isLoading });
       })
     );
+  }
 
-    // WebSocket max reconnect attempts
-    this.subscriptions.add(
-      this.webSocketService.getMaxReconnectAttemptsReached().pipe(
-        takeUntil(this.destroy$)
-      ).subscribe(maxReached => {
-        if (maxReached) {
-          this.updateState({ 
-            error: 'Unable to connect to chat server. Please refresh the page.',
-            isConnecting: false 
-          });
+  // Consolidate multiple rooms for the same user into one with combined data
+  private consolidateRoomsData(rooms: ChatRoom[]): ChatRoom[] {
+    const consolidatedMap = new Map<string, ChatRoom>();
+    
+    rooms.forEach(room => {
+      const otherUserId = this.getOtherUserId(room);
+      
+      if (otherUserId) {
+        if (consolidatedMap.has(otherUserId)) {
+          const existing = consolidatedMap.get(otherUserId)!;
+          
+          // Consolidate data from multiple rooms for the same user
+          const consolidated: ChatRoom = {
+            ...existing,
+            // Keep the most recent deliveryId if rooms are different deliveries
+            deliveryId: room.lastMessageAt && existing.lastMessageAt && 
+                       new Date(room.lastMessageAt) > new Date(existing.lastMessageAt) 
+                       ? room.deliveryId : existing.deliveryId,
+            // Sum up unread counts from all rooms with this user
+            unreadCount: existing.unreadCount + room.unreadCount,
+            // Keep the most recent message data
+            lastMessage: room.lastMessageAt && existing.lastMessageAt && 
+                        new Date(room.lastMessageAt) > new Date(existing.lastMessageAt)
+                        ? room.lastMessage : existing.lastMessage,
+            lastMessageAt: room.lastMessageAt && existing.lastMessageAt && 
+                          new Date(room.lastMessageAt) > new Date(existing.lastMessageAt)
+                          ? room.lastMessageAt : existing.lastMessageAt,
+            // Merge any other relevant data
+            deliveryAddress: room.deliveryAddress || existing.deliveryAddress,
+            deliveryStatus: room.deliveryStatus || existing.deliveryStatus,
+            estimatedDeliveryTime: room.estimatedDeliveryTime || existing.estimatedDeliveryTime
+          };
+          
+          consolidatedMap.set(otherUserId, consolidated);
+        } else {
+          consolidatedMap.set(otherUserId, { ...room });
         }
-      })
-    );
+      }
+    });
+    
+    return Array.from(consolidatedMap.values());
+  }
+
+  private sortRoomsByActivity(rooms: ChatRoom[]): ChatRoom[] {
+    return [...rooms].sort((a, b) => {
+      // First sort by unread count
+      if (a.unreadCount !== b.unreadCount) {
+        return b.unreadCount - a.unreadCount;
+      }
+      
+      // Then by last message time
+      const timeA = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+      const timeB = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+      return timeB - timeA;
+    });
   }
 
   private sortMessagesByTime(messages: Message[]): Message[] {
@@ -271,21 +484,32 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
+  private shouldScrollToBottom(): boolean {
+    if (!this.messagesContainer?.nativeElement) return false;
+    
+    const element = this.messagesContainer.nativeElement;
+    const threshold = 100; // pixels from bottom
+    
+    return (element.scrollHeight - element.scrollTop - element.clientHeight) < threshold;
+  }
+
   private async initializeWebSocket(): Promise<void> {
     const currentUser = this.authService.getCurrentUser();
     
     if (!currentUser?.token) {
-      this.updateState({ error: 'Authentication token missing' });
-      return;
+      console.error('❌ No authentication token available');
+      return Promise.reject('No authentication token available');
     }
 
+    console.log('🔌 Connecting WebSocket for user:', currentUser.userId);
     this.updateState({ isConnecting: true });
-
+    
     try {
       await this.chatService.connectWebSocket();
+      console.log('✅ WebSocket connected successfully');
       this.updateState({ isConnecting: false, error: null });
     } catch (error) {
-      console.error('WebSocket connection failed:', error);
+      console.error('❌ WebSocket connection failed:', error);
       this.updateState({ 
         isConnecting: false, 
         error: 'Failed to connect to chat server. Retrying...' 
@@ -321,15 +545,35 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
       })
     ).subscribe(rooms => {
       this.updateState({ isLoading: false });
-      if (rooms.length > 0) {
+      
+      // Check if there's a room specified in query params
+      const deliveryId = this.route.snapshot.queryParams['deliveryId'];
+      if (deliveryId && rooms.length > 0) {
+        const targetRoom = rooms.find(r => r.deliveryId === deliveryId);
+        if (targetRoom) {
+          this.selectRoom(targetRoom);
+          return;
+        }
+      }
+      
+      // Default to first room if available
+      if (rooms.length > 0 && !this.selectedRoom) {
         this.selectRoom(rooms[0]);
       }
     });
   }
 
   private handleRoomsUpdate(rooms: ChatRoom[]): void {
+    // Only auto-select first room if no room is currently selected
     if (rooms.length > 0 && !this.selectedRoom) {
-      this.selectRoom(rooms[0]);
+      const deliveryId = this.route.snapshot.queryParams['deliveryId'];
+      const targetRoom = deliveryId ? 
+        rooms.find(r => r.deliveryId === deliveryId) : 
+        rooms[0];
+      
+      if (targetRoom) {
+        this.selectRoom(targetRoom);
+      }
     }
   }
 
@@ -350,27 +594,6 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
     if (element.scrollTop === 0) {
       this.loadMoreMessages();
     }
-  }
-
-  // Room selection
-  selectRoom(room: ChatRoom): void {
-    if (this.selectedRoom?.deliveryId === room.deliveryId) return;
-
-    this.selectedRoom = room;
-    this.currentPage = 0;
-    this.hasMoreMessages = true;
-    
-    this.chatService.setCurrentChatRoom(room.deliveryId);
-    
-    if (room.clientId) {
-      this.loadMessages(room.deliveryId, room.clientId);
-      this.loadOtherUser(room.clientId);
-      this.isOnline$ = this.chatService.isUserOnline(room.clientId);
-      this.typingUsers$ = this.chatService.getTypingUsers(room.deliveryId);
-    }
-    
-    this.markMessagesAsRead();
-    this.focusMessageInput();
   }
 
   private loadMessages(deliveryId: string, otherUserId: string): void {
@@ -400,7 +623,8 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  // Message handling
+  // ===== MESSAGE HANDLING =====
+
   async sendMessage(): Promise<void> {
     if (!this.canSendMessage()) return;
 
@@ -408,7 +632,6 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
     if (!this.webSocketService.isConnected()) {
       try {
         await this.initializeWebSocket();
-        // Small delay to ensure connection is established
         await new Promise(resolve => setTimeout(resolve, 300));
       } catch (error) {
         this.updateState({ error: 'Unable to connect. Please try again.' });
@@ -417,12 +640,28 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     const messageContent = this.newMessage.trim();
+    
+    // Determine receiver ID based on selected room
+    let receiverId = this.getOtherUserId(this.selectedRoom!);
+    
+    if (!receiverId) {
+      this.updateState({ error: 'Cannot identify message recipient' });
+      return;
+    }
+    
     const messageRequest: ChatMessageRequest = {
-      receiverId: this.selectedRoom!.clientId,
+      receiverId: receiverId,
       deliveryId: this.selectedRoom!.deliveryId,
       content: messageContent,
       messageType: 'TEXT'
     };
+
+    console.log('Sending message:', {
+      senderId: this.delivery.deliveryPersonId || this.delivery.clientId,
+      receiverId,
+      deliveryId: this.selectedRoom!.deliveryId,
+      content: messageContent.substring(0, 50) + '...'
+    });
 
     // Clear input and update UI state
     this.newMessage = '';
@@ -434,12 +673,13 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
     this.chatService.sendMessage(messageRequest).pipe(
       takeUntil(this.destroy$)
     ).subscribe({
-      next: () => {
+      next: (response) => {
+        console.log('Message sent successfully:', response);
         this.updateState({ sendingMessage: false });
+        this.scrollToBottom();
       },
       error: (error) => {
         console.error('Error sending message:', error);
-        // Restore message on error
         this.newMessage = messageContent;
         this.updateState({ 
           error: 'Failed to send message. Please try again.',
@@ -459,7 +699,8 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
     );
   }
 
-  // Typing indicators
+  // ===== TYPING INDICATORS =====
+  
   onTyping(): void {
     this.typingSubject.next(this.newMessage);
     this.resizeTextarea();
@@ -468,11 +709,15 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
   private sendTypingIndicator(isTyping: boolean): void {
     if (!this.selectedRoom || !this.webSocketService.isConnected()) return;
 
-    this.chatService.sendTypingIndicator(
-      this.selectedRoom.clientId,
-      this.selectedRoom.deliveryId,
-      isTyping
-    );
+    const receiverId = this.getOtherUserId(this.selectedRoom);
+    
+    if (receiverId) {
+      this.chatService.sendTypingIndicator(
+        receiverId,
+        this.selectedRoom.deliveryId,
+        isTyping
+      );
+    }
   }
 
   private scheduleStopTyping(): void {
@@ -496,7 +741,8 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  // Input handling
+  // ===== INPUT HANDLING =====
+  
   onEnterKey(event: KeyboardEvent): void {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
@@ -524,22 +770,55 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
     }, 100);
   }
 
-  // Message management
-  private markMessagesAsRead(): void {
-    if (!this.selectedRoom) return;
-
-    this.chatService.markMessagesAsRead(
-      this.selectedRoom.deliveryId,
-      this.selectedRoom.clientId
-    ).pipe(
-      takeUntil(this.destroy$)
-    ).subscribe({
-      error: (error) => {
-        console.error('Error marking messages as read:', error);
-      }
+  public setQuickMessage(message: string): void {
+    this.ngZone.run(() => {
+      this.newMessage = message;
+      this.resizeTextarea();
+      this.focusMessageInput();
+      this.cdr.detectChanges();
     });
   }
 
+  // ===== MESSAGE STATUS =====
+  
+  private markMessagesAsRead(): void {
+    if (!this.selectedRoom) return;
+
+    const currentUser = this.authService.getCurrentUser();
+    const isDeliveryPerson = currentUser?.userType === 'temporary' || currentUser?.userType === 'professional';
+    
+    // Determine the sender ID (the other user whose messages we want to mark as read)
+    const senderId = isDeliveryPerson ? 
+      this.selectedRoom.clientId : 
+      this.selectedRoom.deliveryPersonId;
+    
+    // Fallback to otherUserId if role-specific ID is missing
+    const finalSenderId = senderId || this.selectedRoom.otherUserId;
+    
+    if (finalSenderId) {
+      this.chatService.markMessagesAsRead(
+        this.selectedRoom.deliveryId,
+        finalSenderId
+      ).pipe(
+        takeUntil(this.destroy$)
+      ).subscribe({
+        next: () => {
+          console.log('Messages marked as read from sender:', finalSenderId);
+        },
+        error: (error) => {
+          console.error('Error marking messages as read:', error);
+        }
+      });
+    }
+  }
+
+  private isDeliveryPersonComponent(): boolean {
+    const currentUser = this.authService.getCurrentUser();
+    return currentUser?.userType === 'temporary' || currentUser?.userType === 'professional';
+  }
+
+  // ===== SCROLLING =====
+  
   private scrollToBottom(smooth: boolean = true): void {
     this.ngZone.runOutsideAngular(() => {
       setTimeout(() => {
@@ -563,10 +842,11 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
 
     this.isLoadingMore = true;
     const nextPage = this.currentPage + 1;
+    const otherUserId = this.getOtherUserId(this.selectedRoom);
 
     this.chatService.getMessages(
       this.selectedRoom.deliveryId, 
-      this.selectedRoom.clientId, 
+      otherUserId, 
       nextPage, 
       this.pageSize
     ).pipe(
@@ -586,22 +866,8 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  // State management
-  private updateState(updates: Partial<ChatState>): void {
-    const currentState = this.state$.value;
-    this.state$.next({ 
-      ...currentState, 
-      ...updates, 
-      lastActivity: new Date() 
-    });
-    this.cdr.markForCheck();
-  }
-
-  private updateLastActivity(): void {
-    this.updateState({ lastActivity: new Date() });
-  }
-
-  // Template helper methods
+  // ===== TEMPLATE HELPER METHODS =====
+  
   trackByRoomId(index: number, room: ChatRoom): string {
     return room.deliveryId;
   }
@@ -611,7 +877,11 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   isOwnMessage(message: Message): boolean {
-    return message.senderId === this.delivery.deliveryPersonId;
+    const currentUser = this.authService.getCurrentUser();
+    const currentUserId = currentUser?.userId;
+    const isOwn = message.senderId === currentUserId;
+    
+    return isOwn;
   }
 
   formatMessageTime(timestamp: Date | undefined): string {
@@ -645,25 +915,31 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   getOtherUserDisplayName(): string {
-    if (!this.otherUser) return 'Client';
+    if (!this.otherUser) {
+      return this.selectedRoom ? this.getRoomDisplayName(this.selectedRoom) : 'User';
+    }
     
     const firstName = this.otherUser.firstName || '';
     const lastName = this.otherUser.lastName || '';
     
     return firstName && lastName 
       ? `${firstName} ${lastName}`
-      : firstName || lastName || 'Client';
+      : firstName || lastName || 'User';
   }
 
   getOtherUserFirstName(): string {
-    return this.otherUser?.firstName || 'Client';
+    if (!this.otherUser) {
+      return this.selectedRoom ? this.getRoomDisplayName(this.selectedRoom) : 'User';
+    }
+    return this.otherUser.firstName || 'User';
   }
 
   isOtherUserLoaded(): boolean {
     return this.otherUser !== null;
   }
 
-  // Connection management
+  // ===== CONNECTION MANAGEMENT =====
+  
   retryConnection(): void {
     this.updateState({ connectionRetries: 0, error: null });
     this.initializeWebSocket();
@@ -679,6 +955,22 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
         this.initializeWebSocket();
       }
     });
+  }
+
+  // ===== STATE MANAGEMENT =====
+  
+  private updateState(updates: Partial<ChatState>): void {
+    const currentState = this.state$.value;
+    this.state$.next({ 
+      ...currentState, 
+      ...updates, 
+      lastActivity: new Date() 
+    });
+    this.cdr.markForCheck();
+  }
+
+  private updateLastActivity(): void {
+    this.updateState({ lastActivity: new Date() });
   }
 
   // Component state getters
@@ -710,16 +1002,8 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
     return this.isLoading || this.isConnecting || this.state$.value.sendingMessage;
   }
 
-  setQuickMessage(message: string): void {
-    this.ngZone.run(() => {
-      this.newMessage = message;
-      this.resizeTextarea();
-      this.focusMessageInput();
-      this.cdr.detectChanges();
-    });
-  }
-
-  // Cleanup
+  // ===== CLEANUP =====
+  
   private cleanup(): void {
     this.destroy$.next();
     this.destroy$.complete();
@@ -737,14 +1021,4 @@ export class DeliveryChatComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.messagesContainer?.nativeElement) {
       this.messagesContainer.nativeElement.removeEventListener('scroll', this.onScroll);
     }
-  }
-
-  // Add this property to both components for quick messages functionality
-quickMessages: string[] = [
-  "On my way!",
-  "Almost there",
-  "Running a bit late",
-  "Thank you!",
-  "Delivered successfully"
-];
-}
+  }}

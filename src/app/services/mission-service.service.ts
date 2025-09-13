@@ -1,3 +1,5 @@
+// Updated mission.service.ts - Fix the getAllMissions method
+
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
@@ -95,13 +97,42 @@ export class MissionService {
   }
 
   /**
-   * Get all missions for admin dashboard
+   * Get ALL missions for admin dashboard - FIXED TO USE CORRECT ENDPOINT
    */
   getAllMissions(): Observable<Mission[]> {
-    return this.http.get<Mission[]>(`${this.apiUrl}/active`).pipe(
+    return this.http.get<Mission[]>(`${this.apiUrl}/all`).pipe(
+      tap(missions => {
+        console.log('Fetched all missions:', missions.length);
+      }),
       catchError(error => {
         console.error('Error fetching all missions:', error);
-        return throwError(() => new Error('Failed to fetch missions'));
+        // Fallback to active missions if /all endpoint is not available
+        return this.getActiveMissions();
+      })
+    );
+  }
+
+  /**
+   * Get only active missions (existing method)
+   */
+  getActiveMissions(): Observable<Mission[]> {
+    return this.http.get<Mission[]>(`${this.apiUrl}/active`).pipe(
+      catchError(error => {
+        console.error('Error fetching active missions:', error);
+        return throwError(() => new Error('Failed to fetch active missions'));
+      })
+    );
+  }
+
+  /**
+   * Get missions with complete client information
+   */
+  getAllMissionsWithClientInfo(): Observable<Mission[]> {
+    return this.http.get<Mission[]>(`${this.apiUrl}/with-client-info`).pipe(
+      catchError(error => {
+        console.error('Error fetching missions with client info:', error);
+        // Fallback to regular getAllMissions
+        return this.getAllMissions();
       })
     );
   }
@@ -168,10 +199,125 @@ export class MissionService {
     );
   }
 
-  // Convenience method to get all missions with parsed dates
+  // UPDATED: Get all missions with parsed dates
   getAllMissionsWithParsedDates(): Observable<MissionViewModel[]> {
     return this.getAllMissions().pipe(
       map(missions => this.convertToViewModels(missions))
+    );
+  }
+
+  /**
+   * Reassign mission to a different delivery person
+   */
+  reassignMission(missionId: string, newDeliveryPersonId: string): Observable<Mission> {
+    return this.http.patch<Mission>(
+      `${this.apiUrl}/${missionId}/reassign?deliveryPersonId=${newDeliveryPersonId}`, 
+      {}
+    ).pipe(
+      tap(() => {
+        console.log('Mission reassigned successfully');
+      }),
+      catchError(error => {
+        console.error('Error reassigning mission:', error);
+        return throwError(() => new Error('Failed to reassign mission'));
+      })
+    );
+  }
+
+  /**
+   * Delete a mission (hard delete)
+   */
+  deleteMission(missionId: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${missionId}`).pipe(
+      tap(() => {
+        console.log('Mission deleted successfully');
+      }),
+      catchError(error => {
+        console.error('Error deleting mission:', error);
+        return throwError(() => new Error('Failed to delete mission'));
+      })
+    );
+  }
+
+  /**
+   * Get missions by status
+   */
+  getMissionsByStatus(status: string): Observable<Mission[]> {
+    return this.http.get<Mission[]>(`${this.apiUrl}/status/${status}`).pipe(
+      catchError(error => {
+        console.error('Error fetching missions by status:', error);
+        return throwError(() => new Error(`Failed to fetch missions with status ${status}`));
+      })
+    );
+  }
+
+  /**
+   * Get mission statistics - UPDATED TO USE BETTER STATISTICS
+   */
+  getMissionStatistics(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/statistics`).pipe(
+      tap(stats => {
+        console.log('Mission statistics:', stats);
+      }),
+      catchError(error => {
+        console.error('Error fetching mission statistics:', error);
+        // Return fallback stats
+        return this.getAllMissions().pipe(
+          map(missions => this.calculateStatisticsFromMissions(missions))
+        );
+      })
+    );
+  }
+
+  /**
+   * Calculate statistics from missions array (fallback method)
+   */
+  private calculateStatisticsFromMissions(missions: Mission[]): any {
+    return {
+      total: missions.length,
+      pending: missions.filter(m => m.status === 'PENDING').length,
+      inProgress: missions.filter(m => m.status === 'IN_PROGRESS').length,
+      completed: missions.filter(m => m.status === 'COMPLETED').length,
+      cancelled: missions.filter(m => m.status === 'CANCELLED').length,
+      averageDuration: 0 // Would need more complex calculation
+    };
+  }
+
+  /**
+   * Update mission details
+   */
+  updateMission(missionId: string, updates: Partial<Mission>): Observable<Mission> {
+    return this.http.patch<Mission>(`${this.apiUrl}/${missionId}`, updates).pipe(
+      catchError(error => {
+        console.error('Error updating mission:', error);
+        return throwError(() => new Error('Failed to update mission'));
+      })
+    );
+  }
+
+  /**
+   * Get missions for a specific delivery person with date range
+   */
+  getDeliveryPersonMissionsInRange(
+    deliveryPersonId: string, 
+    startDate?: Date, 
+    endDate?: Date
+  ): Observable<Mission[]> {
+    let params = '';
+    if (startDate) {
+      params += `&startDate=${startDate.toISOString()}`;
+    }
+    if (endDate) {
+      params += `&endDate=${endDate.toISOString()}`;
+    }
+    
+    const url = `${this.apiUrl}/delivery-person/${deliveryPersonId}${params ? '?' + params.substring(1) : ''}`;
+    
+    return this.http.get<Mission[]>(url).pipe(
+      catchError(error => {
+        console.error('Error fetching delivery person missions in range:', error);
+        return throwError(() => new Error('Failed to fetch missions in date range'));
+      })
     );
   }
 }

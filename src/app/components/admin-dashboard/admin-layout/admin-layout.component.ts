@@ -37,10 +37,17 @@ import { RouterModule } from '@angular/router';
             <li class="nav-item">
               <a class="nav-link" routerLink="/admin/delivery-management" routerLinkActive="active">
                 <i class="fas fa-truck-moving"></i>
-                <span>Delivery Management</span>
+                <span>Delivery Request Management</span>
               </a>
             </li>
-            <!-- NEW: Evaluation Management Link -->
+            <!-- NEW: Mission Management Link -->
+            <li class="nav-item">
+              <a class="nav-link" routerLink="/admin/missions" routerLinkActive="active">
+                <i class="fas fa-tasks"></i>
+                <span>Mission Management</span>
+              </a>
+            </li>
+            <!-- Evaluation Management Link -->
             <li class="nav-item">
               <a class="nav-link" routerLink="/admin/evaluations" routerLinkActive="active">
                 <i class="fas fa-star-half-alt"></i>

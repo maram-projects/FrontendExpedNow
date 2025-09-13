@@ -39,6 +39,18 @@ export const CLIENT_ROUTES: Routes = [
      data: { title: 'تفاصيل الطلب' }
      // No resolver - handle data loading in component
   },
+  // Add general chat route (without specific delivery ID)
+  {
+    path: 'chat',
+    loadComponent: () => import('./chat/client-chat/client-chat.component')
+      .then(m => m.ClientChatComponent)
+  },
+  // Keep specific delivery chat route
+  {
+    path: 'deliveries/:id/chat',
+    loadComponent: () => import('./chat/client-chat/client-chat.component')
+      .then(m => m.ClientChatComponent)
+  },
   {
      path: '',
      redirectTo: 'dashboard',

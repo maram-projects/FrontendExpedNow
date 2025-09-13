@@ -43,19 +43,37 @@ export interface Message {
   replyToMessageId?: string;
 }
 
+// Fixed chat.models.ts - ChatRoom interface
+
 export interface ChatRoom {
+  // Core identifiers
   id: string;
   deliveryId: string;
   clientId: string;
   deliveryPersonId: string;
+  
+  // User information
   clientName: string;
   deliveryPersonName: string;
+  otherUserId?: string;      // ID of the user you're chatting with
+  otherUserName?: string;    // Name of the user you're chatting with
+  
+  // Participants array - ADDED THIS MISSING PROPERTY
+  participants?: string[];   // Array of participant IDs
+  
+  // Message information
   lastMessage?: string;
   lastMessageAt?: Date;
   unreadCount: number;
+  
+  // Room status
   status: 'ACTIVE' | 'ARCHIVED' | 'CLOSED';
+  isActive?: boolean;        // Alternative to status for backend compatibility
+  
+  // Timestamps
   createdAt: Date;
   updatedAt?: Date;
+  
   // Additional room metadata
   deliveryAddress?: string;
   estimatedDeliveryTime?: Date;
