@@ -1,658 +1,1371 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Bonuses Management</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .bonus-card {
-            transition: transform 0.2s;
-            border-left: 4px solid #007bff;
-        }
-        .bonus-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        .status-created { border-left-color: #17a2b8; }
-        .status-paid { border-left-color: #28a745; }
-        .status-rejected { border-left-color: #dc3545; }
-        
-        .stats-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 15px;
-        }
-        
-        .action-buttons .btn {
-            margin: 2px;
-            min-width: 80px;
-        }
-        
-        .bulk-actions {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .loading-spinner {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 200px;
-        }
-        
-        .search-filters {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        
-        .table-responsive {
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
-        }
-        
-        .pagination-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 20px;
-        }
-        
-        .modal-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        
-        .form-floating label {
-            color: #6c757d;
-        }
-        
-        .alert-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1050;
-            min-width: 300px;
-        }
-        
-        /* Improved dropdown styling */
-        .form-select {
-            padding-top: 1.625rem;
-            padding-bottom: 0.625rem;
-        }
-        .form-floating>.form-select {
-            padding-top: 1.625rem;
-            padding-bottom: 0.625rem;
-        }
-        
-        .sortable {
-            cursor: pointer;
-            user-select: none;
-        }
-        
-        .sortable:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-    </style>
-</head>
-<body class="bg-light">
-    <div class="container-fluid py-4">
-        <!-- Header Section -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="h3 mb-0">
-                <i class="fas fa-gift text-primary me-2"></i>
-                Bonus Management
-            </h1>
-            <div class="d-flex gap-2">
-                <button class="btn btn-outline-primary" (click)="refreshData()">
-                    <i class="fas fa-sync-alt me-1"></i>
-                    Refresh
-                </button>
-                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createBonusModal">
-                    <i class="fas fa-plus me-1"></i>
-                    Create Bonus
-                </button>
-                <button class="btn btn-info" (click)="exportBonuses()">
-                    <i class="fas fa-download me-1"></i>
-                    Export
-                </button>
-            </div>
-        </div>
-
-        <!-- Statistics Cards -->
-        <div class="row mb-4" *ngIf="bonusStats">
-            <div class="col-lg-3 col-md-6 mb-3">
-                <div class="card stats-card h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-gift fa-2x mb-2"></i>
-                        <h4 class="mb-1">{{ bonusStats.totalBonuses | number }}</h4>
-                        <p class="mb-0">Total Bonuses</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6 mb-3">
-                <div class="card bg-success text-white h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-dollar-sign fa-2x mb-2"></i>
-                        <h4 class="mb-1">${{ bonusStats.totalAmount | number:'1.2-2' }}</h4>
-                        <p class="mb-0">Total Amount</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6 mb-3">
-                <div class="card bg-info text-white h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-clock fa-2x mb-2"></i>
-                        <h4 class="mb-1">{{ getStatusBreakdownValue('CREATED') | number }}</h4>
-                        <p class="mb-0">Ready to Pay</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6 mb-3">
-                <div class="card bg-success text-white h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-check fa-2x mb-2"></i>
-                        <h4 class="mb-1">{{ getStatusBreakdownValue('PAID') | number }}</h4>
-                        <p class="mb-0">Paid</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Error Alert -->
-        <div class="alert alert-danger alert-dismissible fade show" *ngIf="error" role="alert">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            {{ error }}
-            <button type="button" class="btn-close" (click)="error = ''"></button>
-        </div>
-
-        <!-- Search and Filters -->
-        <div class="search-filters">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <div class="form-floating">
-                        <input 
-                            type="text" 
-                            class="form-control" 
-                            id="searchInput"
-                            [(ngModel)]="searchTerm" 
-                            (input)="onSearchChange()"
-                            placeholder="Search bonuses...">
-                        <label for="searchInput">
-                            <i class="fas fa-search me-1"></i>
-                            Search bonuses
-                        </label>
-                    </div>
-                </div>
-                <div class="col-md-2">
-                    <div class="form-floating">
-                        <select 
-                            class="form-select" 
-                            id="statusFilter"
-                            [(ngModel)]="selectedStatus" 
-                            (change)="onStatusFilterChange()">
-                            <option value="ALL">All Statuses</option>
-                            <option value="CREATED">Ready to Pay</option>
-                            <option value="PAID">Paid</option>
-                            <option value="REJECTED">Rejected</option>
-                        </select>
-                        <label for="statusFilter">Status Filter</label>
-                    </div>
-                </div>
-                <div class="col-md-2">
-                    <div class="form-floating">
-                        <select 
-                            class="form-select" 
-                            id="deliveryPersonFilter"
-                            [(ngModel)]="selectedDeliveryPerson" 
-                            (change)="onStatusFilterChange()">
-                            <option value="">All Delivery Persons</option>
-                            <option *ngFor="let person of deliveryPersons" [value]="person.id">
-                                {{ person.fullName || person.firstName || person.email }}
-                            </option>
-                        </select>
-                        <label for="deliveryPersonFilter">Delivery Person</label>
-                    </div>
-                </div>
-                <div class="col-md-2">
-                    <div class="form-floating">
-                        <input 
-                            type="date" 
-                            class="form-control" 
-                            id="startDate"
-                            [(ngModel)]="dateFilter.startDate" 
-                            (change)="onDateFilterChange()">
-                        <label for="startDate">Start Date</label>
-                    </div>
-                </div>
-                <div class="col-md-2">
-                    <div class="form-floating">
-                        <input 
-                            type="date" 
-                            class="form-control" 
-                            id="endDate"
-                            [(ngModel)]="dateFilter.endDate" 
-                            (change)="onDateFilterChange()">
-                        <label for="endDate">End Date</label>
-                    </div>
-                </div>
-                <div class="col-md-1">
-                    <button class="btn btn-outline-secondary h-100" (click)="clearFilters()" title="Clear Filters">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Page Size Selection (moved below main filters) -->
-            <div class="row g-3 mt-2">
-                <div class="col-md-2">
-                    <div class="form-floating">
-                        <select 
-                            class="form-select" 
-                            id="pageSizeSelect"
-                            [(ngModel)]="pageSize" 
-                            (change)="loadBonuses()">
-                            <option value="10">10 per page</option>
-                            <option value="25">25 per page</option>
-                            <option value="50">50 per page</option>
-                            <option value="100">100 per page</option>
-                        </select>
-                        <label for="pageSizeSelect">Page Size</label>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Bulk Actions -->
-        <div class="bulk-actions" *ngIf="showBulkActions">
-            <div class="d-flex justify-content-between align-items-center">
-                <span class="fw-bold">
-                    <i class="fas fa-check-square me-2"></i>
-                    {{ selectedBonuses.size }} bonuses selected
-                </span>
-                <div class="btn-group">
-                    <button class="btn btn-info btn-sm" (click)="bulkPay()">
-                        <i class="fas fa-dollar-sign me-1"></i>
-                        Bulk Pay
-                    </button>
-                    <button class="btn btn-danger btn-sm" (click)="bulkReject()">
-                        <i class="fas fa-times me-1"></i>
-                        Bulk Reject
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Loading Spinner -->
-        <div class="loading-spinner" *ngIf="loading">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-        </div>
-
-        <!-- Bonuses Table -->
-        <div class="table-responsive" *ngIf="!loading">
-            <table class="table table-hover table-striped mb-0">
-                <thead class="table-dark">
-                    <tr>
-                        <th>
-                            <input 
-                                type="checkbox" 
-                                class="form-check-input"
-                                [checked]="isAllSelected()"
-                                (change)="toggleAllBonuses()">
-                        </th>
-                        <th class="sortable" (click)="sortBonuses('id')">
-                            ID
-                            <i [class]="getSortIcon('id')"></i>
-                        </th>
-                        <th class="sortable" (click)="sortBonuses('deliveryPersonId')">
-                            Delivery Person
-                            <i [class]="getSortIcon('deliveryPersonId')"></i>
-                        </th>
-                        <th class="sortable" (click)="sortBonuses('amount')">
-                            Amount
-                            <i [class]="getSortIcon('amount')"></i>
-                        </th>
-                        <th>Type</th>
-                        <th class="sortable" (click)="sortBonuses('status')">
-                            Status
-                            <i [class]="getSortIcon('status')"></i>
-                        </th>
-                        <th class="sortable" (click)="sortBonuses('startDate')">
-                            Period
-                            <i [class]="getSortIcon('startDate')"></i>
-                        </th>
-                        <th class="sortable" (click)="sortBonuses('createdAt')">
-                            Created
-                            <i [class]="getSortIcon('createdAt')"></i>
-                        </th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr *ngFor="let bonus of filteredBonuses; trackBy: trackByBonusId" 
-                        [class]="'status-' + bonus.status.toLowerCase()">
-                        <td>
-                            <input 
-                                type="checkbox" 
-                                class="form-check-input"
-                                [checked]="isBonusSelected(bonus.id)"
-                                (change)="toggleBonusSelection(bonus.id)">
-                        </td>
-                        <td>
-                            <span class="badge bg-secondary">{{ bonus.id | slice:0:8 }}</span>
-                        </td>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-user-tie me-2 text-muted"></i>
-                                <span>{{ getDeliveryPersonName(bonus.deliveryPersonId) }}</span>
-                            </div>
-                        </td>
-                        <td>
-                            <span class="fw-bold text-success">${{ bonus.amount | number:'1.2-2' }}</span>
-                        </td>
-                        <td>
-                            <span class="badge bg-light text-dark">{{ bonus.type || 'N/A' }}</span>
-                        </td>
-                        <td>
-                            <span [class]="getStatusClass(bonus.status)">
-                                {{ getStatusText(bonus.status) }}
-                            </span>
-                        </td>
-                        <td>
-                            <small class="text-muted" *ngIf="bonus.startDate && bonus.endDate">
-                                {{ bonus.startDate | date:'short' }} - 
-                                {{ bonus.endDate | date:'short' }}
-                            </small>
-                            <small class="text-muted" *ngIf="!bonus.startDate || !bonus.endDate">
-                                N/A
-                            </small>
-                        </td>
-                        <td>
-                            <small class="text-muted">{{ bonus.createdAt | date:'short' }}</small>
-                        </td>
-                        <td>
-                            <div class="action-buttons">
-                                <button 
-                                    *ngIf="canPay(bonus)"
-                                    class="btn btn-info btn-sm"
-                                    (click)="payBonus(bonus.id)"
-                                    title="Mark as Paid">
-                                    <i class="fas fa-dollar-sign"></i>
-                                </button>
-                                <button 
-                                    *ngIf="canReject(bonus)"
-                                    class="btn btn-danger btn-sm"
-                                    (click)="rejectBonus(bonus.id)"
-                                    title="Reject Bonus">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                                <button 
-                                    *ngIf="canCancel(bonus)"
-                                    class="btn btn-warning btn-sm"
-                                    (click)="cancelBonus(bonus.id)"
-                                    title="Cancel Bonus">
-                                    <i class="fas fa-ban"></i>
-                                </button>
-                                <button 
-                                    class="btn btn-outline-primary btn-sm"
-                                    [routerLink]="['/admin/bonuses', bonus.id]"
-                                    title="View Details">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Empty State -->
-        <div class="text-center py-5" *ngIf="!loading && filteredBonuses.length === 0">
-            <i class="fas fa-gift fa-3x text-muted mb-3"></i>
-            <h4 class="text-muted">No bonuses found</h4>
-            <p class="text-muted">Try adjusting your filters or create a new bonus.</p>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createBonusModal">
-                <i class="fas fa-plus me-1"></i>
-                Create First Bonus
-            </button>
-        </div>
-
-        <!-- Pagination -->
-        <div class="pagination-container" *ngIf="totalPages > 1">
-            <div class="d-flex align-items-center">
-                <span class="text-muted me-3">
-                    Showing {{ (currentPage - 1) * pageSize + 1 }} to 
-                    {{ Math.min(currentPage * pageSize, totalElements) }} of 
-                    {{ totalElements }} entries
-                </span>
-            </div>
-            
-            <nav aria-label="Bonuses pagination">
-                <ul class="pagination mb-0">
-                    <li class="page-item" [class.disabled]="!hasPrevious">
-                        <button class="page-link" (click)="previousPage()" [disabled]="!hasPrevious">
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                    </li>
-                    
-                    <!-- Show first page -->
-                    <li class="page-item" [class.active]="currentPage === 1" *ngIf="shouldShowPage(1)">
-                        <button class="page-link" (click)="goToPage(1)">1</button>
-                    </li>
-                    
-                    <!-- Show ellipsis if needed -->
-                    <li class="page-item disabled" *ngIf="currentPage > 4">
-                        <span class="page-link">...</span>
-                    </li>
-                    
-                    <!-- Show pages around current page -->
-                    <ng-container *ngFor="let pageNum of [].constructor(totalPages); let i = index">
-                        <li class="page-item" 
-                            [class.active]="currentPage === (i + 1)"
-                            *ngIf="shouldShowPage(i + 1) && (i + 1) !== 1 && (i + 1) !== totalPages">
-                            <button class="page-link" (click)="goToPage(i + 1)">{{ i + 1 }}</button>
-                        </li>
-                    </ng-container>
-                    
-                    <!-- Show ellipsis if needed -->
-                    <li class="page-item disabled" *ngIf="currentPage < totalPages - 3">
-                        <span class="page-link">...</span>
-                    </li>
-                    
-                    <!-- Show last page -->
-                    <li class="page-item" [class.active]="currentPage === totalPages" *ngIf="shouldShowPage(totalPages) && totalPages > 1">
-                        <button class="page-link" (click)="goToPage(totalPages)">{{ totalPages }}</button>
-                    </li>
-                    
-                    <li class="page-item" [class.disabled]="!hasNext">
-                        <button class="page-link" (click)="nextPage()" [disabled]="!hasNext">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                    </li>
-                </ul>
-            </nav>
-        </div>
+<!-- This is the Angular template that should replace your current admin-bonuses.component.html -->
+<div class="bonus-management-container">
+  <!-- Header Section -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <i class="fas fa-gift"></i>
+        Bonus Management
+      </h1>
+      <p class="page-description">Manage delivery person bonuses with modern efficiency</p>
     </div>
-
-    <!-- Create Bonus Modal -->
-    <div class="modal fade" id="createBonusModal" tabindex="-1" aria-labelledby="createBonusModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="createBonusModalLabel">
-                        <i class="fas fa-plus me-2"></i>
-                        Create New Bonus
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form #createBonusForm="ngForm">
-                        <div class="row g-3">
-                            <!-- Delivery Person Dropdown -->
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <select 
-                                        class="form-select" 
-                                        id="deliveryPersonId"
-                                        name="deliveryPersonId"
-                                        #deliveryPersonId="ngModel"
-                                        [(ngModel)]="newBonus.deliveryPersonId"
-                                        required>
-                                        <option value="">Select Delivery Person</option>
-                                        <option *ngFor="let person of deliveryPersons" [value]="person.id">
-                                            {{ person.fullName || person.firstName || person.email }} ({{ person.id | slice:0:8 }})
-                                        </option>
-                                    </select>
-                                    <label for="deliveryPersonId">Delivery Person *</label>
-                                </div>
-                                <div class="invalid-feedback" [style.display]="deliveryPersonId.invalid && deliveryPersonId.touched ? 'block' : 'none'">
-                                    Delivery Person is required
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input 
-                                        type="number" 
-                                        class="form-control" 
-                                        id="bonusAmount"
-                                        name="amount"
-                                        #amount="ngModel"
-                                        [(ngModel)]="newBonus.amount"
-                                        required
-                                        min="0"
-                                        step="0.01"
-                                        placeholder="Bonus Amount">
-                                    <label for="bonusAmount">Bonus Amount ($) *</label>
-                                </div>
-                                <div class="invalid-feedback" [style.display]="amount.invalid && amount.touched ? 'block' : 'none'">
-                                    Valid bonus amount is required
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input 
-                                        type="date" 
-                                        class="form-control" 
-                                        id="startDate"
-                                        name="startDate"
-                                        [(ngModel)]="newBonus.startDate"
-                                        placeholder="Start Date">
-                                    <label for="startDate">Start Date</label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <input 
-                                        type="date" 
-                                        class="form-control" 
-                                        id="endDate"
-                                        name="endDate"
-                                        [(ngModel)]="newBonus.endDate"
-                                        placeholder="End Date">
-                                    <label for="endDate">End Date</label>
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <div class="form-floating">
-                                    <select 
-                                        class="form-select" 
-                                        id="bonusType"
-                                        name="type"
-                                        [(ngModel)]="newBonus.type">
-                                        <option value="PERFORMANCE">Performance Bonus</option>
-                                        <option value="DELIVERY_COUNT">Delivery Count Bonus</option>
-                                        <option value="CUSTOMER_RATING">Customer Rating Bonus</option>
-                                        <option value="SPECIAL">Special Bonus</option>
-                                    </select>
-                                    <label for="bonusType">Bonus Type</label>
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <div class="form-floating">
-                                    <textarea 
-                                        class="form-control" 
-                                        id="description"
-                                        name="description"
-                                        [(ngModel)]="newBonus.description"
-                                        style="height: 100px"
-                                        placeholder="Bonus description..."></textarea>
-                                    <label for="description">Description</label>
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <div class="form-floating">
-                                    <textarea 
-                                        class="form-control" 
-                                        id="criteria"
-                                        name="criteria"
-                                        [(ngModel)]="newBonus.criteria"
-                                        style="height: 80px"
-                                        placeholder="Bonus criteria..."></textarea>
-                                    <label for="criteria">Criteria</label>
-                                </div>
-                            </div>
-
-                            <div class="col-12">
-                                <div class="form-floating">
-                                    <input 
-                                        type="text" 
-                                        class="form-control" 
-                                        id="reason"
-                                        name="reason"
-                                        #reason="ngModel"
-                                        [(ngModel)]="newBonus.reason"
-                                        required
-                                        placeholder="Reason for bonus">
-                                    <label for="reason">Reason *</label>
-                                </div>
-                                <div class="invalid-feedback" [style.display]="reason.invalid && reason.touched ? 'block' : 'none'">
-                                    Reason is required
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-1"></i>
-                        Cancel
-                    </button>
-                    <button 
-                        type="button" 
-                        class="btn btn-success"
-                        [disabled]="createBonusForm.invalid || creatingBonus"
-                        (click)="createBonus()">
-                        <i class="fas fa-spinner fa-spin me-1" *ngIf="creatingBonus"></i>
-                        <i class="fas fa-plus me-1" *ngIf="!creatingBonus"></i>
-                        {{ creatingBonus ? 'Creating...' : 'Create Bonus' }}
-                    </button>
-                </div>
-            </div>
-        </div>
+    <div class="header-actions">
+      <button class="btn btn-outline-primary" (click)="refreshData()" [disabled]="loading">
+        <i class="fas fa-sync-alt me-1" [class.fa-spin]="loading"></i>
+        Refresh
+      </button>
+      <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createBonusModal">
+        <i class="fas fa-plus me-1"></i>
+        Create Bonus
+      </button>
+      <button class="btn btn-info" (click)="exportBonuses()">
+        <i class="fas fa-download me-1"></i>
+        Export
+      </button>
+      <!-- Debug button - remove in production -->
+      <button class="btn btn-warning" (click)="testLoadDeliveryPersons()">
+        <i class="fas fa-bug me-1"></i>
+        Test Load
+      </button>
     </div>
+  </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+  <!-- Statistics Cards -->
+  <div class="stats-grid" *ngIf="bonusStats">
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon bonus-icon">
+          <i class="fas fa-gift"></i>
+        </div>
+        <div class="stat-info">
+          <h4>{{ bonusStats.totalBonuses || 0 }}</h4>
+          <p>Total Bonuses</p>
+        </div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon amount-icon">
+          <i class="fas fa-dollar-sign"></i>
+        </div>
+        <div class="stat-info">
+          <h4>${{ (bonusStats.totalAmount || 0) | number:'1.2-2' }}</h4>
+          <p>Total Amount</p>
+        </div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon pending-icon">
+          <i class="fas fa-clock"></i>
+        </div>
+        <div class="stat-info">
+          <h4>{{ getStatusBreakdownValue(BonusStatus.CREATED) }}</h4>
+          <p>Ready to Pay</p>
+        </div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon paid-icon">
+          <i class="fas fa-check"></i>
+        </div>
+        <div class="stat-info">
+          <h4>{{ getStatusBreakdownValue(BonusStatus.PAID) }}</h4>
+          <p>Paid</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Alert -->
+  <div class="alert alert-danger alert-dismissible fade show" role="alert" *ngIf="error">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    {{ error }}
+    <button type="button" class="btn-close" (click)="error = ''" aria-label="Close"></button>
+  </div>
+
+  <!-- Search and Filters -->
+  <div class="search-filters">
+    <div class="row g-3">
+      <div class="col-md-3">
+        <div class="form-floating">
+          <input 
+            type="text" 
+            class="form-control" 
+            id="searchInput" 
+            placeholder="Search bonuses..."
+            [(ngModel)]="searchTerm"
+            (input)="onSearchChange()">
+          <label for="searchInput">
+            <i class="fas fa-search me-1"></i>
+            Search bonuses
+          </label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="form-floating">
+          <select 
+            class="form-select" 
+            id="statusFilter"
+            [(ngModel)]="selectedStatus"
+            (change)="onStatusFilterChange()">
+            <option value="ALL">All Statuses</option>
+            <option value="CREATED">Ready to Pay</option>
+            <option value="PAID">Paid</option>
+            <option value="REJECTED">Rejected</option>
+          </select>
+          <label for="statusFilter">Status Filter</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="form-floating">
+          <select 
+            class="form-select" 
+            id="deliveryPersonFilter"
+            [(ngModel)]="selectedDeliveryPerson"
+            (change)="onStatusFilterChange()">
+            <option value="">All Delivery Persons</option>
+            <option *ngFor="let person of deliveryPersons" [value]="person.id">
+              {{ getDeliveryPersonName(person.id) }}
+            </option>
+          </select>
+          <label for="deliveryPersonFilter">Delivery Person</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="form-floating">
+          <input 
+            type="date" 
+            class="form-control" 
+            id="startDate"
+            [(ngModel)]="dateFilter.startDate"
+            (change)="onDateFilterChange()">
+          <label for="startDate">Start Date</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="form-floating">
+          <input 
+            type="date" 
+            class="form-control" 
+            id="endDate"
+            [(ngModel)]="dateFilter.endDate"
+            (change)="onDateFilterChange()">
+          <label for="endDate">End Date</label>
+        </div>
+      </div>
+      <div class="col-md-1">
+        <button class="btn btn-outline-secondary h-100" (click)="clearFilters()" title="Clear Filters">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
     
-    <script>
-        // Add some interactivity for demo purposes
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize tooltips
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
-        });
-    </script>
-</body>
-</html>
+    <!-- Page Size Selection -->
+    <div class="row g-3 mt-2">
+      <div class="col-md-2">
+        <div class="form-floating">
+          <select 
+            class="form-select" 
+            id="pageSizeSelect"
+            [(ngModel)]="pageSize"
+            (change)="loadBonuses()">
+            <option value="10">10 per page</option>
+            <option value="25">25 per page</option>
+            <option value="50">50 per page</option>
+            <option value="100">100 per page</option>
+          </select>
+          <label for="pageSizeSelect">Page Size</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bulk Actions -->
+  <div class="bulk-actions" *ngIf="showBulkActions">
+    <div class="d-flex justify-content-between align-items-center">
+      <span class="fw-bold">
+        <i class="fas fa-check-square me-2"></i>
+        {{ selectedBonuses.size }} bonuses selected
+      </span>
+      <div class="btn-group">
+        <button class="btn btn-info btn-sm" (click)="bulkPay()">
+          <i class="fas fa-dollar-sign me-1"></i>
+          Bulk Pay
+        </button>
+        <button class="btn btn-danger btn-sm" (click)="bulkReject()">
+          <i class="fas fa-times me-1"></i>
+          Bulk Reject
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Spinner -->
+  <div class="loading-spinner" *ngIf="loading">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
+
+  <!-- Bonuses Table -->
+  <div class="table-responsive" *ngIf="!loading && filteredBonuses.length > 0">
+    <table class="table table-hover table-striped mb-0">
+      <thead class="table-dark">
+        <tr>
+          <th>
+            <input 
+              type="checkbox" 
+              class="form-check-input"
+              [checked]="isAllSelected()"
+              [indeterminate]="selectedBonuses.size > 0 && !isAllSelected()"
+              (change)="toggleAllBonuses()">
+          </th>
+          <th class="sortable" (click)="sortBonuses('id')">
+            ID
+            <i [class]="getSortIcon('id')"></i>
+          </th>
+          <th class="sortable" (click)="sortBonuses('deliveryPersonId')">
+            Delivery Person
+            <i [class]="getSortIcon('deliveryPersonId')"></i>
+          </th>
+          <th class="sortable" (click)="sortBonuses('amount')">
+            Amount
+            <i [class]="getSortIcon('amount')"></i>
+          </th>
+          <th>Type</th>
+          <th class="sortable" (click)="sortBonuses('status')">
+            Status
+            <i [class]="getSortIcon('status')"></i>
+          </th>
+          <th class="sortable" (click)="sortBonuses('startDate')">
+            Period
+            <i [class]="getSortIcon('startDate')"></i>
+          </th>
+          <th class="sortable" (click)="sortBonuses('createdAt')">
+            Created
+            <i [class]="getSortIcon('createdAt')"></i>
+          </th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr 
+          *ngFor="let bonus of filteredBonuses; trackBy: trackByBonusId" 
+          [class]="'status-' + bonus.status.toLowerCase()">
+          <td>
+            <input 
+              type="checkbox" 
+              class="form-check-input"
+              [checked]="isBonusSelected(bonus.id)"
+              (change)="toggleBonusSelection(bonus.id)">
+          </td>
+          <td>
+            <span class="badge bg-secondary id-display">
+              {{ bonus.id.length > 10 ? (bonus.id | slice:0:10) + '...' : bonus.id }}
+            </span>
+          </td>
+          <td>
+            <div class="person-info">
+              <i class="fas fa-user-tie me-2"></i>
+              <span>{{ getDeliveryPersonName(bonus.deliveryPersonId) }}</span>
+            </div>
+          </td>
+          <td>
+            <span class="amount-display">${{ bonus.amount | number:'1.2-2' }}</span>
+          </td>
+          <td>
+            <span class="badge bg-light text-dark">{{ bonus.type || 'N/A' }}</span>
+          </td>
+          <td>
+            <span [class]="getStatusClass(bonus.status)">{{ getStatusText(bonus.status) }}</span>
+          </td>
+          <td>
+            <small class="date-display" *ngIf="bonus.startDate || bonus.endDate">
+              {{ bonus.startDate ? (bonus.startDate | date:'MMM d, y') : 'N/A' }}
+              <span *ngIf="bonus.startDate && bonus.endDate"> - </span>
+              {{ bonus.endDate ? (bonus.endDate | date:'MMM d, y') : '' }}
+            </small>
+            <small class="date-display" *ngIf="!bonus.startDate && !bonus.endDate">N/A</small>
+          </td>
+          <td>
+            <small class="date-display">
+              {{ bonus.createdAt ? (bonus.createdAt | date:'MMM d, y h:mm a') : 'N/A' }}
+            </small>
+          </td>
+          <td>
+            <div class="action-buttons">
+              <button 
+                *ngIf="canPay(bonus)"
+                class="btn btn-info btn-sm" 
+                (click)="payBonus(bonus.id)"
+                title="Mark as Paid">
+                <i class="fas fa-dollar-sign"></i>
+              </button>
+              <button 
+                *ngIf="canReject(bonus)"
+                class="btn btn-danger btn-sm" 
+                (click)="rejectBonus(bonus.id)"
+                title="Reject Bonus">
+                <i class="fas fa-times"></i>
+              </button>
+              <button 
+                *ngIf="canCancel(bonus)"
+                class="btn btn-warning btn-sm" 
+                (click)="cancelBonus(bonus.id)"
+                title="Cancel Bonus">
+                <i class="fas fa-ban"></i>
+              </button>
+              <button 
+                class="btn btn-outline-primary btn-sm" 
+                title="View Details"
+                [routerLink]="['/admin/bonuses', bonus.id]">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!loading && filteredBonuses.length === 0">
+    <i class="fas fa-search-minus"></i>
+    <h4>No bonuses found</h4>
+    <p>No bonuses match your current filter criteria. Try adjusting your filters or create a new bonus.</p>
+    <button class="btn btn-primary" (click)="clearFilters()">
+      <i class="fas fa-filter me-1"></i>
+      Clear Filters
+    </button>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination-container" *ngIf="!loading && filteredBonuses.length > 0">
+    <div class="d-flex align-items-center">
+      <span class="text-muted me-3">
+        Showing {{ ((currentPage - 1) * pageSize) + 1 }} to 
+        {{ Math.min(currentPage * pageSize, totalElements) }} of 
+        {{ totalElements }} entries
+      </span>
+    </div>
+    
+    <nav aria-label="Bonuses pagination">
+      <ul class="pagination mb-0">
+        <li class="page-item" [class.disabled]="!hasPrevious">
+          <button class="page-link" (click)="previousPage()" [disabled]="!hasPrevious">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+        </li>
+        <ng-container *ngFor="let page of [].constructor(totalPages); let i = index">
+          <li class="page-item" 
+              [class.active]="(i + 1) === currentPage"
+              *ngIf="shouldShowPage(i + 1)">
+            <button class="page-link" (click)="goToPage(i + 1)">{{ i + 1 }}</button>
+          </li>
+        </ng-container>
+        <li class="page-item" *ngIf="totalPages > 5 && currentPage < totalPages - 2">
+          <span class="page-link">...</span>
+        </li>
+        <li class="page-item" [class.disabled]="!hasNext">
+          <button class="page-link" (click)="nextPage()" [disabled]="!hasNext">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</div>
+
+<!-- Create Bonus Modal -->
+<div class="modal fade" id="createBonusModal" tabindex="-1" aria-labelledby="createBonusModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="createBonusModalLabel">
+          <i class="fas fa-plus me-2"></i>
+          Create New Bonus
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form #bonusForm="ngForm">
+          <div class="row g-3">
+            <!-- Delivery Person Dropdown -->
+            <div class="col-md-6">
+              <div class="form-floating">
+                <select 
+                  class="form-select" 
+                  id="deliveryPersonId" 
+                  name="deliveryPersonId"
+                  [(ngModel)]="newBonus.deliveryPersonId"
+                  #deliveryPersonId="ngModel"
+                  required>
+                  <option value="">Select Delivery Person</option>
+                  <option *ngFor="let person of deliveryPersons" [value]="person.id">
+                    {{ getDeliveryPersonName(person.id) }} ({{ person.id.slice(0, 8) }})
+                  </option>
+                </select>
+                <label for="deliveryPersonId">Delivery Person *</label>
+                <div class="invalid-feedback" *ngIf="deliveryPersonId.invalid && deliveryPersonId.touched">
+                  Please select a delivery person.
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-md-6">
+              <div class="form-floating">
+                <input 
+                  type="number" 
+                  class="form-control" 
+                  id="bonusAmount" 
+                  name="amount"
+                  [(ngModel)]="newBonus.amount"
+                  #amount="ngModel"
+                  required 
+                  min="0" 
+                  step="0.01" 
+                  placeholder="Bonus Amount">
+                <label for="bonusAmount">Bonus Amount ($) *</label>
+                <div class="invalid-feedback" *ngIf="amount.invalid && amount.touched">
+                  Please enter a valid amount.
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-floating">
+                <input 
+                  type="date" 
+                  class="form-control" 
+                  id="startDate" 
+                  name="startDate"
+                  [(ngModel)]="newBonus.startDate"
+                  placeholder="Start Date">
+                <label for="startDate">Start Date</label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-floating">
+                <input 
+                  type="date" 
+                  class="form-control" 
+                  id="endDate" 
+                  name="endDate"
+                  [(ngModel)]="newBonus.endDate"
+                  placeholder="End Date">
+                <label for="endDate">End Date</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-floating">
+                <select 
+                  class="form-select" 
+                  id="bonusType"
+                  name="type"
+                  [(ngModel)]="newBonus.type">
+                  <option value="PERFORMANCE">Performance Bonus</option>
+                  <option value="DELIVERY_COUNT">Delivery Count Bonus</option>
+                  <option value="CUSTOMER_RATING">Customer Rating Bonus</option>
+                  <option value="SPECIAL">Special Bonus</option>
+                </select>
+                <label for="bonusType">Bonus Type</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-floating">
+                <textarea 
+                  class="form-control" 
+                  id="description" 
+                  name="description"
+                  [(ngModel)]="newBonus.description"
+                  style="height: 100px" 
+                  placeholder="Bonus description..."></textarea>
+                <label for="description">Description</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-floating">
+                <textarea 
+                  class="form-control" 
+                  id="criteria" 
+                  name="criteria"
+                  [(ngModel)]="newBonus.criteria"
+                  style="height: 80px" 
+                  placeholder="Bonus criteria..."></textarea>
+                <label for="criteria">Criteria</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-floating">
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  id="reason" 
+                  name="reason"
+                  [(ngModel)]="newBonus.reason"
+                  #reason="ngModel"
+                  required 
+                  placeholder="Reason for bonus">
+                <label for="reason">Reason *</label>
+                <div class="invalid-feedback" *ngIf="reason.invalid && reason.touched">
+                  Please enter a reason for this bonus.
+                </div>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="fas fa-times me-1"></i>
+          Cancel
+        </button>
+        <button 
+          type="button" 
+          class="btn btn-success" 
+          (click)="createBonus()"
+          [disabled]="creatingBonus || bonusForm.invalid">
+          <i class="fas fa-spinner fa-spin me-1" *ngIf="creatingBonus"></i>
+          <i class="fas fa-plus me-1" *ngIf="!creatingBonus"></i>
+          {{ creatingBonus ? 'Creating...' : 'Create Bonus' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Include all the CSS from the previous HTML file */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.bonus-management-container {
+    padding: 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+}
+
+.bonus-management-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+    pointer-events: none;
+}
+
+/* Header Styles */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 32px;
+    position: relative;
+    z-index: 1;
+    animation: slideInDown 0.8s ease-out;
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.header-content {
+    flex: 1;
+}
+
+.page-title {
+    color: #ffffff;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+    from {
+        text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 255, 255, 0.1);
+    }
+    to {
+        text-shadow: 0 2px 30px rgba(0, 0, 0, 0.4), 0 0 30px rgba(255, 255, 255, 0.2);
+    }
+}
+
+.page-title i {
+    font-size: 2.2rem;
+    color: #ffd700;
+    animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-5px);
+    }
+}
+
+.page-description {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1.1rem;
+    margin: 0;
+    font-weight: 300;
+}
+
+.header-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.header-actions button {
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: white !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    backdrop-filter: blur(10px);
+    border-radius: 12px !important;
+    padding: 12px 24px;
+    font-weight: 600;
+    text-transform: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.header-actions button:hover {
+    background: rgba(255, 255, 255, 0.25) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.header-actions button:disabled {
+    opacity: 0.6;
+    transform: none;
+    cursor: not-allowed;
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 32px;
+    animation: fadeInUp 1s ease-out 0.2s both;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(20px);
+    position: relative;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.stat-card:hover::before {
+    opacity: 1;
+}
+
+.stat-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    background: rgba(255, 255, 255, 1);
+}
+
+.stat-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px 24px 16px 24px;
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover .stat-icon {
+    transform: scale(1.1) rotate(5deg);
+}
+
+.bonus-icon {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(102, 126, 234, 0);
+    }
+}
+
+.amount-icon {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+}
+
+.pending-icon {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+}
+
+.paid-icon {
+    background: linear-gradient(135deg, #28a745, #1e7e34);
+}
+
+.stat-info h4 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin: 0;
+    color: #1a1a1a;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-info p {
+    font-size: 0.95rem;
+    color: #666;
+    margin: 4px 0 0 0;
+    font-weight: 500;
+}
+
+/* Search and Filters */
+.search-filters {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    padding: 24px;
+    margin-bottom: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    animation: fadeInUp 1s ease-out 0.4s both;
+}
+
+.search-filters:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.form-floating {
+    position: relative;
+    animation: slideInUp 0.4s ease-out;
+}
+
+.form-control, .form-select {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+}
+
+.form-control:focus, .form-select:focus {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25), 0 4px 15px rgba(102, 126, 234, 0.1);
+}
+
+.form-floating label {
+    color: #667eea;
+    font-weight: 500;
+}
+
+.btn-outline-secondary {
+    background: rgba(108, 117, 125, 0.1) !important;
+    border: 1px solid rgba(108, 117, 125, 0.3) !important;
+    color: #6c757d !important;
+    border-radius: 12px !important;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-secondary:hover {
+    background: rgba(108, 117, 125, 0.2) !important;
+    transform: scale(1.05);
+}
+
+/* Bulk Actions */
+.bulk-actions {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    animation: slideInLeft 0.6s ease-out;
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.btn-group .btn {
+    border-radius: 8px !important;
+    margin: 0 2px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #17a2b8, #138496) !important;
+    border: none !important;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #dc3545, #c82333) !important;
+    border: none !important;
+}
+
+.btn-info:hover, .btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Table */
+.table-responsive {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    animation: fadeInUp 1s ease-out 0.6s both;
+}
+
+.table-dark {
+    background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    color: white;
+}
+
+.table-dark th {
+    border-bottom-color: rgba(255, 255, 255, 0.2);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.85rem;
+}
+
+.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.3s ease;
+    padding: 12px 8px;
+}
+
+.sortable:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: scale(1.02);
+}
+
+.table-hover tbody tr {
+    transition: all 0.3s ease;
+    animation: fadeIn 0.6s ease-out;
+}
+
+.table-hover tbody tr:hover {
+    background: linear-gradient(90deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05)) !important;
+    transform: translateX(4px);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.status-created {
+    border-left: 4px solid #17a2b8;
+}
+
+.status-paid {
+    border-left: 4px solid #28a745;
+}
+
+.status-rejected {
+    border-left: 4px solid #dc3545;
+}
+
+.badge {
+    border-radius: 12px !important;
+    padding: 6px 12px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+.bg-info {
+    background: linear-gradient(135deg, #17a2b8, #138496) !important;
+}
+
+.bg-success {
+    background: linear-gradient(135deg, #28a745, #1e7e34) !important;
+}
+
+.bg-danger {
+    background: linear-gradient(135deg, #dc3545, #c82333) !important;
+}
+
+.bg-secondary {
+    background: linear-gradient(135deg, #6c757d, #545b62) !important;
+}
+
+.bg-light {
+    background: rgba(248, 249, 250, 0.8) !important;
+    color: #495057 !important;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Action Buttons */
+.action-buttons .btn {
+    margin: 2px;
+    min-width: 35px;
+    border-radius: 8px !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(5px);
+}
+
+.action-buttons .btn:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #ffc107, #e0a800) !important;
+    border: none;
+    color: #212529 !important;
+}
+
+.btn-outline-primary {
+    background: rgba(0, 123, 255, 0.1) !important;
+    border-color: rgba(0, 123, 255, 0.3) !important;
+    color: #007bff !important;
+}
+
+.btn-outline-primary:hover {
+    background: rgba(0, 123, 255, 0.2) !important;
+    border-color: #007bff !important;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.3em;
+    animation: spin 1s linear infinite, pulse 2s ease-in-out infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    animation: fadeInUp 1s ease-out;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: #ddd;
+    margin-bottom: 16px;
+    display: block;
+    animation: bounce 2s ease-in-out infinite;
+}
+
+.empty-state h4 {
+    color: #667eea;
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.empty-state p {
+    font-size: 1rem;
+    margin-bottom: 24px;
+}
+
+.empty-state .btn {
+    background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 24px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.empty-state .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+/* Pagination */
+.pagination-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 24px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.pagination .page-link {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    color: #667eea;
+    border-radius: 8px !important;
+    margin: 0 2px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+}
+
+.pagination .page-link:hover {
+    background: rgba(102, 126, 234, 0.1);
+    border-color: #667eea;
+    transform: translateY(-1px);
+}
+
+.pagination .page-item.active .page-link {
+    background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    border-color: #667eea;
+}
+
+.pagination .page-item.disabled .page-link {
+    opacity: 0.5;
+}
+
+/* Modal */
+.modal-content {
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border-radius: 20px 20px 0 0;
+    border-bottom: none;
+    padding: 20px 24px;
+}
+
+.modal-title {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-footer {
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 20px 24px;
+}
+
+.modal-footer .btn {
+    border-radius: 12px !important;
+    padding: 12px 24px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary {
+    background: rgba(108, 117, 125, 0.1) !important;
+    border: 1px solid rgba(108, 117, 125, 0.3) !important;
+    color: #6c757d !important;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #28a745, #1e7e34) !important;
+    border: none;
+}
+
+.btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+}
+
+/* Alert */
+.alert {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 12px;
+    border: 1px solid rgba(220, 53, 69, 0.2);
+    animation: slideInDown 0.5s ease-out;
+}
+
+.alert-danger {
+    border-left: 4px solid #dc3545;
+}
+
+/* Person Info */
+.person-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.person-info i {
+    color: #667eea;
+    transition: transform 0.3s ease;
+}
+
+.person-info:hover i {
+    transform: scale(1.2);
+}
+
+/* Amount Display */
+.amount-display {
+    font-weight: 700;
+    font-size: 1.1rem;
+    background: linear-gradient(135deg, #28a745, #1e7e34);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ID Display */
+.id-display {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.8rem;
+    color: #667eea;
+    border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+/* Date Display */
+.date-display {
+    color: #666;
+    font-size: 0.85rem;
+}
+
+/* Checkbox */
+.form-check-input:checked {
+    background-color: #667eea;
+    border-color: #667eea;
+}
+
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Form Validation */
+.invalid-feedback {
+    display: block;
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.form-control.ng-invalid.ng-touched,
+.form-select.ng-invalid.ng-touched {
+    border-color: #dc3545;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .bonus-management-container {
+        padding: 16px;
+    }
+    
+    .page-header {
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .page-title {
+        font-size: 2rem;
+    }
+    
+    .table-responsive {
+        font-size: 0.85rem;
+    }
+
+    .search-filters .row {
+        margin: 0;
+    }
+
+    .search-filters .col-md-1,
+    .search-filters .col-md-2,
+    .search-filters .col-md-3 {
+        margin-bottom: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .header-actions button {
+        width: 100%;
+    }
+
+    .action-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .pagination-container {
+        flex-direction: column;
+        gap: 16px;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .bonus-management-container {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    }
+    
+    .stat-card,
+    .search-filters,
+    .bulk-actions,
+    .table-responsive,
+    .pagination-container,
+    .empty-state {
+        background: rgba(26, 26, 46, 0.95);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    .stat-info h4,
+    .empty-state h4 {
+        color: #ffffff;
+    }
+    
+    .stat-info p,
+    .date-display {
+        color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .form-control,
+    .form-select {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+        color: #ffffff;
+    }
+    
+    .form-floating label {
+        color: rgba(255, 255, 255, 0.8);
+    }
+}
+
+/* Additional animations */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.form-floating:nth-child(1) { animation-delay: 0.1s; }
+.form-floating:nth-child(2) { animation-delay: 0.2s; }
+.form-floating:nth-child(3) { animation-delay: 0.3s; }
+.form-floating:nth-child(4) { animation-delay: 0.4s; }
+.form-floating:nth-child(5) { animation-delay: 0.5s; }
+.form-floating:nth-child(6) { animation-delay: 0.6s; }
+</style>

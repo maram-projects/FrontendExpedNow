@@ -16,7 +16,7 @@ import { UserService } from '../../../services/user.service';
   templateUrl: './admin-discount.component.html',
   styleUrls: ['./admin-discount.component.css']
 })
-export class AdminDiscountComponent implements OnInit, OnDestroy {
+ export class AdminDiscountComponent implements OnInit, OnDestroy {
   clients: User[] = [];
   loadingClients = false;
   selectedClientId: string | undefined;
