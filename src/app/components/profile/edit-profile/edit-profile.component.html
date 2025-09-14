@@ -25,18 +25,22 @@
     <!-- Header -->
     <div class="profile-header animate-in">
       <div class="header-background"></div>
-      <div class="header-content">
-        <div class="profile-avatar">
-          <img [src]="profilePhotoUrl" alt="Profile Photo" class="avatar-img">
-          <button class="avatar-edit-btn" type="button">
-            <i class="fas fa-camera"></i>
-          </button>
-        </div>
-        <div class="profile-info">
-          <h1 class="profile-title">Edit Your Profile</h1>
-          <p class="profile-subtitle">Update your information and preferences</p>
-        </div>
-      </div>
+  <div class="header-content">
+    <div class="profile-avatar">
+      <img [src]="profilePhotoUrl" alt="Profile Photo" class="avatar-img">
+      <button class="avatar-edit-btn" type="button">
+        <i class="fas fa-camera"></i>
+      </button>
+    </div>
+    <div class="profile-info">
+      <h1 class="profile-title">{{ getPageTitle() }}</h1>
+      <p class="profile-subtitle" *ngIf="!isAdminEdit">Update your information and preferences</p>
+      <p class="profile-subtitle" *ngIf="isAdminEdit">Update delivery person information and settings</p>
+      <nav class="breadcrumb" *ngIf="isAdminEdit">
+        <span>{{ getBreadcrumbText() }}</span>
+      </nav>
+    </div>
+  </div>
     </div>
 
     <!-- Progress Indicator -->

@@ -2,11 +2,12 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 import { User, USER_TYPES, VEHICLE_TYPES, BUSINESS_TYPES } from '../../../models/user.model';
 import { AuthService } from '../../../services/auth.service';
 import { UserService } from '../../../services/user.service';
+import { Observable } from 'rxjs/internal/Observable';
 
 @Component({
   selector: 'app-edit-profile',
@@ -583,6 +584,13 @@ import { UserService } from '../../../services/user.service';
   styleUrls: ['./edit-profile.component.css']
 })
 export class EditProfileComponent implements OnInit {
+
+  // Add these properties
+  isAdminEdit = false;
+  editingUserId: string | null = null;
+
+
+
   profileForm: FormGroup;
   currentUser: User | null = null;
   userType: string = '';
@@ -614,14 +622,55 @@ export class EditProfileComponent implements OnInit {
     private fb: FormBuilder,
     private authService: AuthService,
     private userService: UserService,
-    private router: Router
+    private router: Router,
+     private route: ActivatedRoute
   ) {
     this.profileForm = this.createForm();
   }
 
-  ngOnInit(): void {
-    this.loadUserProfile();
+ngOnInit(): void {
+    // Check route parameters to determine if this is admin edit mode
+    this.route.params.subscribe(params => {
+      if (params['userId']) {
+        // Admin is editing another user
+        this.isAdminEdit = true;
+        this.editingUserId = params['userId'];
+        this.loadUserForEdit(params['userId']);
+      } else if (params['id']) {
+        // Alternative parameter name (from /admin/users/edit/:id)
+        this.isAdminEdit = true;
+        this.editingUserId = params['id'];
+        this.loadUserForEdit(params['id']);
+      } else {
+        // User is editing their own profile
+        this.isAdminEdit = false;
+        this.loadUserProfile();
+      }
+    });
+    
     this.setRandomProfilePhoto();
+  }
+private loadUserForEdit(userId: string): void {
+    this.isLoading = true;
+    this.clearMessages();
+    
+    this.userService.getUserById(userId).subscribe({
+      next: (user) => {
+        console.log('User data for admin edit:', user);
+        this.currentUser = user;
+        this.userType = this.determineUserType(user);
+        this.populateForm(user);
+        this.setValidators();
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading user for admin edit:', error);
+        this.showErrorMessage('Error loading user data: ' + error.message);
+        this.isLoading = false;
+        // Navigate back to admin panel on error
+        this.router.navigate(['/admin/DeliveryPersonnel']);
+      }
+    });
   }
 
   private createForm(): FormGroup {
@@ -825,7 +874,7 @@ private determineUserType(user: User): string {
     return this.steps[index]?.label || '';
   }
 
-  onSubmit(): void {
+onSubmit(): void {
     if (this.profileForm.valid && this.currentUser) {
       this.isSaving = true;
       this.clearMessages();
@@ -836,14 +885,28 @@ private determineUserType(user: User): string {
         ...formData
       };
 
-      this.userService.updateProfile(updatedUser).subscribe({
+      let updateObservable: Observable<any>;
+      
+      if (this.isAdminEdit && this.editingUserId) {
+        // Admin editing another user - use the comprehensive updateUser method
+        updateObservable = this.userService.updateUser(this.editingUserId, updatedUser);
+      } else {
+        // User editing their own profile
+        updateObservable = this.userService.updateProfile(updatedUser);
+      }
+
+      updateObservable.subscribe({
         next: (response) => {
           this.showSuccessMessage('Profile saved successfully!');
           this.isSaving = false;
           
           // Navigate back after 2 seconds
           setTimeout(() => {
-            this.router.navigate(['/profile']);
+            if (this.isAdminEdit) {
+              this.router.navigate(['/admin/DeliveryPersonnel']);
+            } else {
+              this.router.navigate(['/profile']);
+            }
           }, 2000);
         },
         error: (error) => {
@@ -858,9 +921,26 @@ private determineUserType(user: User): string {
   }
 
   onCancel(): void {
-    this.router.navigate(['/profile']);
+    if (this.isAdminEdit) {
+      this.router.navigate(['/admin/DeliveryPersonnel']);
+    } else {
+      this.router.navigate(['/profile']);
+    }
+  }
+  getPageTitle(): string {
+    if (this.isAdminEdit && this.currentUser) {
+      return `Edit ${this.currentUser.firstName} ${this.currentUser.lastName}'s Profile`;
+    }
+    return 'Edit Your Profile';
   }
 
+  // Add method to get breadcrumb text
+  getBreadcrumbText(): string {
+    if (this.isAdminEdit) {
+      return 'Admin > Delivery Personnel > Edit Profile';
+    }
+    return 'My Profile > Edit';
+  }
   getErrorMessage(fieldName: string): string {
     const field = this.profileForm.get(fieldName);
     if (!field || !field.touched || field.valid) {

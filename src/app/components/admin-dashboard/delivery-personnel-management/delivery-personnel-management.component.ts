@@ -104,36 +104,67 @@ constructor(
     this.destroy$.complete();
   }
 
+  // Add method for editing from user details modal
+editUserFromDetails(user: DeliveryPersonnel): void {
+  this.closeDetailsDialog();
+  this.showEditUserForm(user);
+}
+
+// Add method for enabling users
+enableUser(userId: string): void {
+  const user = this.users.find(u => u.id === userId);
+  const userName = user ? `${user.firstName} ${user.lastName}` : 'this delivery person';
+  
+  if (confirm(`Are you sure you want to enable ${userName}?`)) {
+    this.adminService.updateUserStatus(userId, 'ACTIVE')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.showSuccessMessage('Delivery person enabled successfully!');
+          this.loadDeliveryPersonnel();
+        },
+        error: (err) => {
+          this.handleError('Failed to enable delivery person', err);
+        }
+      });
+  }
+}
+
+// Add method for unassigning vehicles
+unassignVehicleFromUser(userId: string): void {
+  const user = this.users.find(u => u.id === userId);
+  const userName = user ? `${user.firstName} ${user.lastName}` : 'this delivery person';
+  
+  if (confirm(`Are you sure you want to unassign the vehicle from ${userName}?`)) {
+    this.userService.unassignVehicleFromUser(userId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.showSuccessMessage('Vehicle unassigned successfully!');
+          this.loadDeliveryPersonnel();
+          this.closeDetailsDialog();
+        },
+        error: (err) => {
+          this.handleError('Failed to unassign vehicle', err);
+        }
+      });
+  }
+}
+
+// Add method for navigating to vehicle management
+navigateToVehicleManagement(): void {
+  this.router.navigate(['/admin/vehicles']);
+}
+
   private initializeComponent(): void {
     this.vehicleService.clearCache();
     this.loadDeliveryPersonnel();
   }
 
-  showEditUserForm(user: DeliveryPersonnel): void {
-  this.formMode = 'edit';
-  this.selectedUserId = user.id!;
-  
-  // Set up the form with user data
-  this.userForm = this.fb.group({
-    firstName: [user.firstName, Validators.required],
-    lastName: [user.lastName, Validators.required],
-    email: [user.email, [Validators.required, Validators.email]],
-    phone: [user.phone, Validators.required],
-    address: [user.address, Validators.required],
-    userType: [this.getUserType(user.roles || []), Validators.required],
-    vehicleType: [user.vehicleType || 'MOTORCYCLE', Validators.required],
-    driverLicenseNumber: [user.driverLicenseNumber || '', Validators.required],
-    driverLicenseCategory: [user.driverLicenseCategory || '', Validators.required]
-  });
-
-  // If user has an assigned vehicle, set it
-  if (user.assignedVehicleId) {
-    this.selectedVehicleId = user.assignedVehicleId;
-  }
-
-  this.loadAvailableVehicles();
+showEditUserForm(user: DeliveryPersonnel): void {
+  // Navigate to the enhanced edit profile component with user ID
+  this.router.navigate(['/admin/delivery-personnel/edit', user.id]);
 }
-
 
   // Professional Registration Dialog
   openProfessionalRegisterDialog(): void {

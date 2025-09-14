@@ -115,52 +115,60 @@ export const routes: Routes = [
       },
 
   // Admin routes
-  {
-    path: 'admin',
-    canActivate: [authGuard, adminGuard],
-    component: AdminLayoutComponent,
-    children: [
-      { path: 'dashboard', component: AdminDashboardComponentComponent },
-      { path: 'users', component: UserManagementComponent },
-      { path: 'roles', component: RoleManagementComponent },
-      { path: 'settings', component: SettingsComponent },
-      { path: 'users/edit/:id', component: EditProfileComponent },
-      { path: 'availability', component: ScheduleComponent },
-      { path: 'DeliveryPersonnel', component: DeliveryPersonnelManagementComponent },
-      { path: 'delivery-management', component: DeliveryManagementComponent },
-      { path: 'missions', component: MissionManagementComponent },
-      { path: 'evaluations', component: EvaluationManagementComponent },
-      { path: 'vehicles', component: VehicleListComponent },
-      { path: 'vehicles/create', component: VehicleFormComponent },
-      { path: 'vehicles/edit/:id', component: VehicleFormComponent },
-      { path: 'vehicles/:id', component: VehicleDetailComponent },
-      { path: 'users/view/:id', component: UserDetailsComponent },
-      
-      { 
-        path: 'payments', 
-        loadComponent: () => import('./components/admin-dashboard/admin-payment/admin-payment.component').then(m => m.AdminPaymentComponent) 
-      },
-      { 
-        path: 'payments/:id', 
-        loadComponent: () => import('./components/admin-dashboard/payment-details/payment-details.component').then(m => m.PaymentDetailsComponent) 
-      },
-      
-      { 
-        path: 'discounts', 
-        loadComponent: () => import('./components/admin-dashboard/admin-discount/admin-discount.component').then(m => m.AdminDiscountComponent) 
-      },
-      { 
-        path: 'delivery-personnel/register', 
-        component: ProfessionalRegisterComponent,
-        data: { adminMode: true }
-      },
-      { 
-        path: 'bonuses', 
-        loadComponent: () => import('./components/admin-dashboard/admin-bonuses/admin-bonuses.component').then(m => m.AdminBonusesComponent) 
-      },
-      { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
-    ]
-  },
+ {
+  path: 'admin',
+  canActivate: [authGuard, adminGuard],
+  component: AdminLayoutComponent,
+  children: [
+    { path: 'dashboard', component: AdminDashboardComponentComponent },
+    { path: 'users', component: UserManagementComponent },
+    { path: 'roles', component: RoleManagementComponent },
+    { path: 'settings', component: SettingsComponent },
+    { path: 'users/edit/:id', component: EditProfileComponent },
+    { path: 'availability', component: ScheduleComponent },
+    
+    // Delivery Personnel Routes - Add these specific routes
+    { path: 'DeliveryPersonnel', component: DeliveryPersonnelManagementComponent },
+    { 
+      path: 'delivery-personnel/edit/:userId', 
+      component: EditProfileComponent,
+      data: { adminEdit: true, title: 'Edit Delivery Person' }
+    },
+    { 
+      path: 'delivery-personnel/register', 
+      component: ProfessionalRegisterComponent,
+      data: { adminMode: true }
+    },
+    
+    // Other admin routes
+    { path: 'delivery-management', component: DeliveryManagementComponent },
+    { path: 'missions', component: MissionManagementComponent },
+    { path: 'evaluations', component: EvaluationManagementComponent },
+    { path: 'vehicles', component: VehicleListComponent },
+    { path: 'vehicles/create', component: VehicleFormComponent },
+    { path: 'vehicles/edit/:id', component: VehicleFormComponent },
+    { path: 'vehicles/:id', component: VehicleDetailComponent },
+    { path: 'users/view/:id', component: UserDetailsComponent },
+    
+    { 
+      path: 'payments', 
+      loadComponent: () => import('./components/admin-dashboard/admin-payment/admin-payment.component').then(m => m.AdminPaymentComponent) 
+    },
+    { 
+      path: 'payments/:id', 
+      loadComponent: () => import('./components/admin-dashboard/payment-details/payment-details.component').then(m => m.PaymentDetailsComponent) 
+    },
+    { 
+      path: 'discounts', 
+      loadComponent: () => import('./components/admin-dashboard/admin-discount/admin-discount.component').then(m => m.AdminDiscountComponent) 
+    },
+    { 
+      path: 'bonuses', 
+      loadComponent: () => import('./components/admin-dashboard/admin-bonuses/admin-bonuses.component').then(m => m.AdminBonusesComponent) 
+    },
+    { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
+  ]
+},
 
   // Profile routes
  {

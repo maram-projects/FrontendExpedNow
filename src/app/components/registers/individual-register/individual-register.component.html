@@ -1,647 +1,657 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Individual Client Registration</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        /* Enhanced CSS with glassmorphism design */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
-        :root {
-          --primary: #667eea;
-          --primary-dark: #5a67d8;
-          --secondary: #764ba2;
-          --accent: #f093fb;
-          --success: #48bb78;
-          --warning: #ed8936;
-          --danger: #f56565;
-          --info: #38b2ac;
-          --white: #ffffff;
-          --gray-50: #f7fafc;
-          --gray-100: #edf2f7;
-          --gray-200: #e2e8f0;
-          --gray-300: #cbd5e0;
-          --gray-400: #a0aec0;
-          --gray-500: #718096;
-          --gray-600: #4a5568;
-          --gray-700: #2d3748;
-          --gray-800: #1a202c;
-          --gray-900: #171923;
-          
-          --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-          --gradient-success: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
-          --gradient-bg: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-          
-          --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
-          --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-          --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-          --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
-          --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.25);
-          
-          --border-radius: 16px;
-          --border-radius-sm: 8px;
-          --border-radius-lg: 20px;
-          --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        * {
-          box-sizing: border-box;
-          margin: 0;
-          padding: 0;
-        }
-
-        body {
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-          background: var(--gradient-bg);
-          background-size: 400% 400%;
-          animation: gradientAnimation 15s ease infinite;
-          min-height: 100vh;
-          color: var(--gray-700);
-          line-height: 1.6;
-          overflow-x: hidden;
-        }
-
-        body::before {
-          content: '';
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: 
-              radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.4) 0%, transparent 50%),
-              radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.4) 0%, transparent 50%),
-              radial-gradient(circle at 40% 40%, rgba(229, 14, 222, 0.4)0%, transparent 50%);
-          z-index: -1;
-          animation: floatAnimation 20s ease-in-out infinite;
-        }
-
-        @keyframes gradientAnimation {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-
-        @keyframes floatAnimation {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          33% { transform: translateY(-30px) rotate(2deg); }
-          66% { transform: translateY(20px) rotate(-2deg); }
-        }
-
-        /* Container Styles */
-        .er-container {
-          max-width: 1000px;
-          margin: 0 auto;
-          padding: 2rem 1rem;
-          position: relative;
-          z-index: 1;
-        }
-
-        .er-mt-5 { margin-top: 3rem; }
-        .er-mb-3 { margin-bottom: 1.5rem; }
-        .er-mb-4 { margin-bottom: 2rem; }
-        .er-mt-3 { margin-top: 1rem; }
-
-        .er-row {
-          display: flex;
-          flex-wrap: wrap;
-          margin: 0 -0.75rem;
-        }
-
-        .er-justify-content-center { justify-content: center; }
-
-        .er-col-md-10 {
-          flex: 0 0 auto;
-          width: 83.33333333%;
-          padding: 0 0.75rem;
-        }
-
-        .er-col-md-6 {
-          flex: 0 0 auto;
-          width: 50%;
-          padding: 0 1rem;
-        }
-
-        /* Card Styles */
-        .er-card {
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: var(--border-radius-lg);
-          box-shadow: var(--shadow-2xl);
-          overflow: hidden;
-          animation: cardEntrance 1s ease-out;
-          transition: var(--transition);
-        }
-
-        @keyframes cardEntrance {
-          0% { opacity: 0; transform: translateY(40px) scale(0.9); }
-          100% { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        .er-card:hover {
-          transform: translateY(-8px);
-          box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
-        }
-
-        .er-card-header {
-          background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.1) 100%);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-          padding: 2rem;
-        }
-
-        .er-card-header h2 {
-          color: var(--white);
-          font-size: 2rem;
-          font-weight: 700;
-          text-shadow: 0 2px 15px rgba(0, 0, 0, 0.3);
-          letter-spacing: -0.02em;
-          margin: 0;
-        }
-
-        .er-card-body {
-          padding: 3rem;
-          background: rgba(255, 255, 255, 0.05);
-        }
-
-        /* Section Titles */
-        .er-section-title {
-          display: flex;
-          align-items: center;
-          margin-bottom: 2.5rem;
-          position: relative;
-        }
-
-        .er-section-title::after {
-          content: '';
-          position: absolute;
-          bottom: -15px;
-          left: 0;
-          width: 80px;
-          height: 4px;
-          background: var(--gradient-primary);
-          border-radius: 2px;
-          animation: underlineGrow 1s ease-out 0.5s both;
-        }
-
-        @keyframes underlineGrow {
-          0% { width: 0; opacity: 0; }
-          100% { width: 80px; opacity: 1; }
-        }
-
-        .er-section-icon {
-          width: 52px;
-          height: 52px;
-          background: var(--gradient-primary);
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin-right: 1rem;
-          box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-          animation: iconFloat 3s ease-in-out infinite;
-        }
-
-        @keyframes iconFloat {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-6px); }
-        }
-
-        .er-section-icon i {
-          color: var(--white);
-          font-size: 1.4rem;
-        }
-
-        .er-section-title h3 {
-          color: var(--white);
-          font-size: 1.4rem;
-          font-weight: 600;
-          margin: 0;
-          text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-        }
-
-        /* Form Elements */
-        .er-form-label {
-          display: block;
-          margin-bottom: 0.75rem;
-          color: var(--white);
-          font-weight: 500;
-          font-size: 0.95rem;
-          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-        }
-
-        .er-form-control {
-          width: 100%;
-          padding: 1rem 1.25rem;
-          border: 2px solid rgba(255, 255, 255, 0.2);
-          border-radius: var(--border-radius-sm);
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(10px);
-          color: var(--white);
-          font-size: 1rem;
-          transition: var(--transition);
-          outline: none;
-          font-family: inherit;
-        }
-
-        .er-form-control::placeholder {
-          color: rgba(255, 255, 255, 0.6);
-        }
-
-        .er-form-control:focus {
-          border-color: rgba(102, 126, 234, 0.8);
-          background: rgba(255, 255, 255, 0.15);
-          box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
-          transform: translateY(-2px);
-        }
-
-        .er-form-control:hover:not(:focus) {
-          border-color: rgba(255, 255, 255, 0.4);
-          background: rgba(255, 255, 255, 0.12);
-        }
-
-        /* Input Groups */
-        .er-input-group {
-          display: flex;
-          width: 100%;
-          border-radius: var(--border-radius-sm);
-          overflow: hidden;
-        }
-
-        .er-input-group-text {
-          display: flex;
-          align-items: center;
-          padding: 1rem 1.25rem;
-          background: rgba(255, 255, 255, 0.15);
-          border: 2px solid rgba(255, 255, 255, 0.2);
-          border-right: none;
-          color: rgba(255, 255, 255, 0.8);
-          font-size: 1rem;
-        }
-
-        .er-input-group .er-form-control {
-          border-left: none;
-          border-radius: 0;
-        }
-
-        .er-input-group .er-btn {
-          border-left: none;
-          border-radius: 0;
-          background: rgba(255, 255, 255, 0.15);
-          border: 2px solid rgba(255, 255, 255, 0.2);
-          color: rgba(255, 255, 255, 0.8);
-          padding: 1rem 1.25rem;
-          cursor: pointer;
-        }
-
-        .er-input-group .er-btn:hover {
-          background: rgba(255, 255, 255, 0.25);
-          color: var(--white);
-        }
-
-        /* Password Strength */
-        .er-password-strength {
-          margin-top: 0.75rem;
-          animation: slideInUp 0.4s ease-out;
-        }
-
-        @keyframes slideInUp {
-          0% { opacity: 0; transform: translateY(15px); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-
-        .er-progress {
-          height: 8px;
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 4px;
-          overflow: hidden;
-          margin-bottom: 0.5rem;
-        }
-
-        .er-progress-bar {
-          height: 100%;
-          background: var(--gradient-success);
-          border-radius: 4px;
-          transition: var(--transition);
-        }
-
-        .er-bg-danger {
-          background: linear-gradient(135deg, var(--danger) 0%, #e53e3e 100%) !important;
-        }
-
-        .er-bg-warning {
-          background: linear-gradient(135deg, var(--warning) 0%, #dd6b20 100%) !important;
-        }
-
-        .er-bg-success {
-          background: var(--gradient-success) !important;
-        }
-
-        .er-text-danger { color: #ff8a95 !important; }
-        .er-text-warning { color: #fbb03b !important; }
-        .er-text-success { color: #68d391 !important; }
-
-        /* Checkboxes */
-        .er-form-check {
-          display: flex;
-          align-items: flex-start;
-          margin-bottom: 1.5rem;
-        }
-
-        .er-form-check-input {
-          width: 1.5rem;
-          height: 1.5rem;
-          margin-right: 0.75rem;
-          margin-top: 0.125rem;
-          background: rgba(255, 255, 255, 0.1);
-          border: 2px solid rgba(255, 255, 255, 0.3);
-          border-radius: 6px;
-          transition: var(--transition);
-          cursor: pointer;
-          position: relative;
-          appearance: none;
-          -webkit-appearance: none;
-        }
-
-        .er-form-check-input:checked {
-          background: var(--gradient-primary);
-          border-color: transparent;
-        }
-
-        .er-form-check-input:checked::after {
-          content: '✓';
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          color: var(--white);
-          font-size: 0.9rem;
-          font-weight: bold;
-        }
-
-        .er-form-check-input:focus {
-          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-        }
-
-        .er-form-check-label {
-          color: var(--white);
-          font-size: 0.95rem;
-          line-height: 1.5;
-          cursor: pointer;
-          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-        }
-
-        .er-form-check-label a {
-          color: rgba(255, 255, 255, 0.9);
-          text-decoration: none;
-          font-weight: 500;
-          position: relative;
-        }
-
-        .er-form-check-label a:hover {
-          color: var(--white);
-        }
-
-        .er-form-check-label a::after {
-          content: '';
-          position: absolute;
-          width: 0;
-          height: 2px;
-          bottom: -2px;
-          left: 0;
-          background: var(--gradient-primary);
-          transition: var(--transition);
-        }
-
-        .er-form-check-label a:hover::after {
-          width: 100%;
-        }
-
-        /* Error States */
-        .er-is-invalid {
-          border-color: var(--danger) !important;
-          background: rgba(245, 101, 101, 0.1) !important;
-          animation: shakeError 0.6s ease-in-out;
-        }
-
-        @keyframes shakeError {
-          0%, 100% { transform: translateX(0); }
-          10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
-          20%, 40%, 60%, 80% { transform: translateX(8px); }
-        }
-
-        .er-invalid-feedback {
-          display: block;
-          color: #ff8a95;
-          font-size: 0.875rem;
-          margin-top: 0.5rem;
-          font-weight: 500;
-          animation: fadeInError 0.3s ease-out;
-        }
-
-        @keyframes fadeInError {
-          0% { opacity: 0; transform: translateY(-5px); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Alert */
-        .er-alert {
-          padding: 1.25rem;
-          margin-bottom: 2rem;
-          border: 1px solid transparent;
-          border-radius: var(--border-radius-sm);
-          animation: alertSlide 0.5s ease-out;
-        }
-
-        @keyframes alertSlide {
-          0% { opacity: 0; transform: translateY(-15px); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-
-        .er-alert-danger {
-          background: rgba(245, 101, 101, 0.15);
-          border-color: rgba(245, 101, 101, 0.3);
-          color: #ff8a95;
-        }
-
-        /* Buttons */
-        .er-btn {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          padding: 0.75rem 1.5rem;
-          border: none;
-          border-radius: var(--border-radius-sm);
-          font-weight: 500;
-          text-decoration: none;
-          transition: var(--transition);
-          cursor: pointer;
-          font-family: inherit;
-          font-size: 0.875rem;
-          line-height: 1;
-        }
-
-        .er-btn:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .er-btn-primary {
-          background: var(--gradient-primary);
-          border: none;
-          color: var(--white);
-          font-weight: 600;
-          font-size: 1.1rem;
-          padding: 1.25rem 2rem;
-          border-radius: var(--border-radius-sm);
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .er-btn-primary::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-          transition: var(--transition);
-        }
-
-        .er-btn-primary:hover:not(:disabled) {
-          transform: translateY(-3px);
-          box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
-        }
-
-        .er-btn-primary:hover::before {
-          left: 100%;
-        }
-
-        .er-btn-outline-secondary {
-          background: rgba(255, 255, 255, 0.15);
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          color: var(--white);
-        }
-
-        .er-btn-outline-secondary:hover {
-          background: rgba(255, 255, 255, 0.25);
-          transform: translateX(-4px);
-        }
-
-        .er-btn-sm {
-          padding: 0.5rem 1rem;
-          font-size: 0.8rem;
-        }
-
-        .er-btn-lg {
-          padding: 1.25rem 2rem;
-          font-size: 1.1rem;
-        }
-
-        /* Loading Spinner */
-        .er-spinner-border {
-          display: inline-block;
-          width: 1.5rem;
-          height: 1.5rem;
-          border: 0.25em solid currentColor;
-          border-right-color: transparent;
-          border-radius: 50%;
-          animation: spin 0.75s linear infinite;
-        }
-
-        .er-spinner-border-sm {
-          width: 1rem;
-          height: 1rem;
-          border-width: 0.2em;
-        }
-
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-
-        /* Utility Classes */
-        .er-d-flex { display: flex; }
-        .er-align-items-center { align-items: center; }
-        .er-me-2 { margin-right: 0.5rem; }
-        .er-me-3 { margin-right: 1rem; }
-        .er-text-center { text-align: center; }
-        .er-text-muted { color: rgba(255, 255, 255, 0.7) !important; }
-        .er-fw-bold { font-weight: 700; }
-        .er-d-grid { display: grid; }
-        .er-gap-2 { gap: 1rem; }
-        .er-small { font-size: 0.875rem; }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-          .er-col-md-6 { width: 100%; margin-bottom: 2rem; }
-          .er-col-md-10 { width: 100%; }
-          .er-card-body { padding: 2rem 1.5rem; }
-          .er-card-header { padding: 1.5rem; }
-          .er-card-header h2 { font-size: 1.5rem; }
-        }
-
-        @media (max-width: 576px) {
-          .er-container { padding: 1rem 0.5rem; }
-          .er-card { margin: 0.5rem; border-radius: var(--border-radius); }
-          .er-card-body { padding: 1.5rem 1rem; }
-          .er-card-header { padding: 1rem; }
-          .er-btn-primary { font-size: 1rem; padding: 1rem 1.5rem; }
-        }
-
-        /* Form text helper */
-        .er-form-text {
-          color: rgba(255, 255, 255, 0.7);
-          font-size: 0.875rem;
-          margin-top: 0.25rem;
-        }
-
-        /* Text primary for links */
-        .er-text-primary {
-          color: rgba(255, 255, 255, 0.9) !important;
-          text-decoration: none;
-          position: relative;
-        }
-
-        .er-text-primary:hover {
-          color: var(--white) !important;
-        }
-
-        .er-text-primary::after {
-          content: '';
-          position: absolute;
-          width: 0;
-          height: 2px;
-          bottom: -2px;
-          left: 0;
-          background: var(--gradient-primary);
-          transition: var(--transition);
-        }
-
-        .er-text-primary:hover::after {
-          width: 100%;
-        }
-
-        /* Background white for card header */
-        .er-bg-white {
-          background: transparent !important;
-        }
-    </style>
-</head>
-<body>
+<!-- individual-register.component.html -->
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --primary: #667eea;
+  --primary-dark: #5a67d8;
+  --secondary: #764ba2;
+  --accent: #f093fb;
+  --success: #48bb78;
+  --warning: #ed8936;
+  --danger: #f56565;
+  --info: #38b2ac;
+  --white: #ffffff;
+  --gray-50: #f7fafc;
+  --gray-100: #edf2f7;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e0;
+  --gray-400: #a0aec0;
+  --gray-500: #718096;
+  --gray-600: #4a5568;
+  --gray-700: #2d3748;
+  --gray-800: #1a202c;
+  --gray-900: #171923;
+  
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --gradient-success: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  --gradient-bg: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+  --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.25);
+  
+  --border-radius: 16px;
+  --border-radius-sm: 8px;
+  --border-radius-lg: 20px;
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Full screen background */
+.individual-register-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--gradient-bg);
+  background-size: 400% 400%;
+  animation: gradientAnimation 15s ease infinite;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  color: var(--gray-700);
+  line-height: 1.6;
+  overflow-x: hidden;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.individual-register-wrapper::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+      radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.4) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.4) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, rgba(229, 14, 222, 0.4)0%, transparent 50%);
+  z-index: -1;
+  animation: floatAnimation 20s ease-in-out infinite;
+}
+
+@keyframes gradientAnimation {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes floatAnimation {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33% { transform: translateY(-30px) rotate(2deg); }
+  66% { transform: translateY(20px) rotate(-2deg); }
+}
+
+/* Container Styles */
+.er-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.er-mt-5 { margin-top: 3rem; }
+.er-mb-3 { margin-bottom: 1.5rem; }
+.er-mb-4 { margin-bottom: 2rem; }
+.er-mt-3 { margin-top: 1rem; }
+
+.er-row {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 -0.75rem;
+}
+
+.er-justify-content-center { justify-content: center; }
+
+.er-col-md-10 {
+  flex: 0 0 auto;
+  width: 83.33333333%;
+  padding: 0 0.75rem;
+}
+
+.er-col-md-6 {
+  flex: 0 0 auto;
+  width: 50%;
+  padding: 0 1rem;
+}
+
+/* Card Styles */
+.er-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-2xl);
+  overflow: hidden;
+  animation: cardEntrance 1s ease-out;
+  transition: var(--transition);
+}
+
+@keyframes cardEntrance {
+  0% { opacity: 0; transform: translateY(40px) scale(0.9); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.er-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+}
+
+.er-card-header {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.1) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 2rem;
+}
+
+.er-card-header h2 {
+  color: var(--white);
+  font-size: 2rem;
+  font-weight: 700;
+  text-shadow: 0 2px 15px rgba(0, 0, 0, 0.3);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.er-card-body {
+  padding: 3rem;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Section Titles */
+.er-section-title {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2.5rem;
+  position: relative;
+}
+
+.er-section-title::after {
+  content: '';
+  position: absolute;
+  bottom: -15px;
+  left: 0;
+  width: 80px;
+  height: 4px;
+  background: var(--gradient-primary);
+  border-radius: 2px;
+  animation: underlineGrow 1s ease-out 0.5s both;
+}
+
+@keyframes underlineGrow {
+  0% { width: 0; opacity: 0; }
+  100% { width: 80px; opacity: 1; }
+}
+
+.er-section-icon {
+  width: 52px;
+  height: 52px;
+  background: var(--gradient-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1rem;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+  animation: iconFloat 3s ease-in-out infinite;
+}
+
+@keyframes iconFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+.er-section-icon i {
+  color: var(--white);
+  font-size: 1.4rem;
+}
+
+.er-section-title h3 {
+  color: var(--white);
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 0;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Form Elements */
+.er-form-label {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: var(--white);
+  font-weight: 500;
+  font-size: 0.95rem;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.er-form-label.required::after {
+  content: ' *';
+  color: #ff8a95;
+}
+
+.er-form-control {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--border-radius-sm);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  color: var(--white);
+  font-size: 1rem;
+  transition: var(--transition);
+  outline: none;
+  font-family: inherit;
+}
+
+.er-form-control::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.er-form-control:focus {
+  border-color: rgba(102, 126, 234, 0.8);
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+  transform: translateY(-2px);
+}
+
+.er-form-control:hover:not(:focus) {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Input Groups */
+.er-input-group {
+  display: flex;
+  width: 100%;
+  border-radius: var(--border-radius-sm);
+  overflow: hidden;
+}
+
+.er-input-group-text {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-right: none;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1rem;
+}
+
+.er-input-group .er-form-control {
+  border-left: none;
+  border-radius: 0;
+}
+
+.er-input-group .er-btn {
+  border-left: none;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+}
+
+.er-input-group .er-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  color: var(--white);
+}
+
+/* Password Strength */
+.er-password-strength {
+  margin-top: 0.75rem;
+  animation: slideInUp 0.4s ease-out;
+}
+
+@keyframes slideInUp {
+  0% { opacity: 0; transform: translateY(15px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.er-progress {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.er-progress-bar {
+  height: 100%;
+  background: var(--gradient-success);
+  border-radius: 4px;
+  transition: var(--transition);
+}
+
+.er-bg-danger {
+  background: linear-gradient(135deg, var(--danger) 0%, #e53e3e 100%) !important;
+}
+
+.er-bg-warning {
+  background: linear-gradient(135deg, var(--warning) 0%, #dd6b20 100%) !important;
+}
+
+.er-bg-success {
+  background: var(--gradient-success) !important;
+}
+
+.er-text-danger { color: #ff8a95 !important; }
+.er-text-warning { color: #fbb03b !important; }
+.er-text-success { color: #68d391 !important; }
+
+/* Checkboxes */
+.er-form-check {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.er-form-check-input {
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-right: 0.75rem;
+  margin-top: 0.125rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  transition: var(--transition);
+  cursor: pointer;
+  position: relative;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.er-form-check-input:checked {
+  background: var(--gradient-primary);
+  border-color: transparent;
+}
+
+.er-form-check-input:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--white);
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.er-form-check-input:focus {
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+.er-form-check-label {
+  color: var(--white);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  cursor: pointer;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.er-form-check-label a {
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+  font-weight: 500;
+  position: relative;
+}
+
+.er-form-check-label a:hover {
+  color: var(--white);
+}
+
+.er-form-check-label a::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -2px;
+  left: 0;
+  background: var(--gradient-primary);
+  transition: var(--transition);
+}
+
+.er-form-check-label a:hover::after {
+  width: 100%;
+}
+
+/* Error States */
+.er-is-invalid {
+  border-color: var(--danger) !important;
+  background: rgba(245, 101, 101, 0.1) !important;
+  animation: shakeError 0.6s ease-in-out;
+}
+
+@keyframes shakeError {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+  20%, 40%, 60%, 80% { transform: translateX(8px); }
+}
+
+.er-invalid-feedback {
+  display: block;
+  color: #ff8a95;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  font-weight: 500;
+  animation: fadeInError 0.3s ease-out;
+}
+
+@keyframes fadeInError {
+  0% { opacity: 0; transform: translateY(-5px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Alert */
+.er-alert {
+  padding: 1.25rem;
+  margin-bottom: 2rem;
+  border: 1px solid transparent;
+  border-radius: var(--border-radius-sm);
+  animation: alertSlide 0.5s ease-out;
+}
+
+@keyframes alertSlide {
+  0% { opacity: 0; transform: translateY(-15px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.er-alert-danger {
+  background: rgba(245, 101, 101, 0.15);
+  border-color: rgba(245, 101, 101, 0.3);
+  color: #ff8a95;
+}
+
+/* Buttons */
+.er-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  font-weight: 500;
+  text-decoration: none;
+  transition: var(--transition);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.er-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.er-btn-primary {
+  background: var(--gradient-primary);
+  border: none;
+  color: var(--white);
+  font-weight: 600;
+  font-size: 1.1rem;
+  padding: 1.25rem 2rem;
+  border-radius: var(--border-radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+}
+
+.er-btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: var(--transition);
+}
+
+.er-btn-primary:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+}
+
+.er-btn-primary:hover::before {
+  left: 100%;
+}
+
+.er-btn-outline-secondary {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: var(--white);
+}
+
+.er-btn-outline-secondary:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateX(-4px);
+}
+
+.er-btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+}
+
+.er-btn-lg {
+  padding: 1.25rem 2rem;
+  font-size: 1.1rem;
+}
+
+/* Loading Spinner */
+.er-spinner-border {
+  display: inline-block;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 0.25em solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+.er-spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+  border-width: 0.2em;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Utility Classes */
+.er-d-flex { display: flex; }
+.er-align-items-center { align-items: center; }
+.er-me-2 { margin-right: 0.5rem; }
+.er-me-3 { margin-right: 1rem; }
+.er-text-center { text-align: center; }
+.er-text-muted { color: rgba(255, 255, 255, 0.7) !important; }
+.er-fw-bold { font-weight: 700; }
+.er-d-grid { display: grid; }
+.er-gap-2 { gap: 1rem; }
+.er-small { font-size: 0.875rem; }
+
+/* Form text helper */
+.er-form-text {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+/* Text primary for links */
+.er-text-primary {
+  color: rgba(255, 255, 255, 0.9) !important;
+  text-decoration: none;
+  position: relative;
+}
+
+.er-text-primary:hover {
+  color: var(--white) !important;
+}
+
+.er-text-primary::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -2px;
+  left: 0;
+  background: var(--gradient-primary);
+  transition: var(--transition);
+}
+
+.er-text-primary:hover::after {
+  width: 100%;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .er-col-md-6 { width: 100%; margin-bottom: 2rem; }
+  .er-col-md-10 { width: 100%; }
+  .er-card-body { padding: 2rem 1.5rem; }
+  .er-card-header { padding: 1.5rem; }
+  .er-card-header h2 { font-size: 1.5rem; }
+}
+
+@media (max-width: 576px) {
+  .er-container { padding: 1rem 0.5rem; }
+  .er-card { margin: 0.5rem; border-radius: var(--border-radius); }
+  .er-card-body { padding: 1.5rem 1rem; }
+  .er-card-header { padding: 1rem; }
+  .er-btn-primary { font-size: 1rem; padding: 1rem 1.5rem; }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.er-btn:focus-visible,
+.er-form-control:focus-visible,
+.er-form-check-input:focus-visible {
+  outline: 2px solid var(--white);
+  outline-offset: 2px;
+}
+</style>
+
+<div class="individual-register-wrapper">
     <div class="er-container er-mt-5">
         <div class="er-row er-justify-content-center">
             <div class="er-col-md-10">
                 <div class="er-card">
-                    <div class="er-card-header er-bg-white">
+                    <div class="er-card-header">
                         <div class="er-d-flex er-align-items-center">
-                            <a href="/register" class="er-btn er-btn-sm er-btn-outline-secondary er-me-3">
+                            <a routerLink="/register" class="er-btn er-btn-sm er-btn-outline-secondary er-me-3">
                                 <i class="fas fa-arrow-left"></i>
                             </a>
                             <h2>Individual Client Registration</h2>
@@ -649,12 +659,13 @@
                     </div>
                     <div class="er-card-body">
                         <!-- Error Alert -->
-                        <div class="er-alert er-alert-danger" id="error-alert" style="display: none;">
+                        <div class="er-alert er-alert-danger" *ngIf="error">
                             <i class="fas fa-exclamation-circle er-me-2"></i>
-                            <span id="error-message"></span>
+                            <span>{{ error }}</span>
                         </div>
 
-                        <form id="individualForm" novalidate>
+                        <!-- Angular Reactive Form -->
+                        <form [formGroup]="individualForm" (ngSubmit)="onSubmit()" novalidate>
                             
                             <!-- Personal Information Section -->
                             <div class="er-section-title">
@@ -667,28 +678,32 @@
                             <div class="er-row">
                                 <div class="er-col-md-6">
                                     <div class="er-mb-3">
-                                        <label for="firstName" class="er-form-label">First Name *</label>
+                                        <label for="firstName" class="er-form-label required">First Name</label>
                                         <input 
                                             type="text" 
                                             id="firstName"
-                                            name="firstName"
+                                            formControlName="firstName"
                                             class="er-form-control"
-                                            placeholder="Enter your first name"
-                                            required>
-                                        <div class="er-invalid-feedback" id="firstName-error"></div>
+                                            [class.er-is-invalid]="hasFieldError('firstName')"
+                                            placeholder="Enter your first name">
+                                        <div class="er-invalid-feedback" *ngIf="hasFieldError('firstName')">
+                                            {{ getFieldError('firstName') }}
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="er-col-md-6">
                                     <div class="er-mb-3">
-                                        <label for="lastName" class="er-form-label">Last Name *</label>
+                                        <label for="lastName" class="er-form-label required">Last Name</label>
                                         <input 
                                             type="text" 
                                             id="lastName"
-                                            name="lastName"
+                                            formControlName="lastName"
                                             class="er-form-control"
-                                            placeholder="Enter your last name"
-                                            required>
-                                        <div class="er-invalid-feedback" id="lastName-error"></div>
+                                            [class.er-is-invalid]="hasFieldError('lastName')"
+                                            placeholder="Enter your last name">
+                                        <div class="er-invalid-feedback" *ngIf="hasFieldError('lastName')">
+                                            {{ getFieldError('lastName') }}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -696,35 +711,38 @@
                             <div class="er-row">
                                 <div class="er-col-md-6">
                                     <div class="er-mb-3">
-                                        <label for="email" class="er-form-label">Email Address *</label>
+                                        <label for="email" class="er-form-label required">Email Address</label>
                                         <div class="er-input-group">
                                             <span class="er-input-group-text"><i class="fas fa-envelope"></i></span>
                                             <input 
                                                 type="email" 
                                                 id="email"
-                                                name="email"
+                                                formControlName="email"
                                                 class="er-form-control"
-                                                placeholder="Enter your email address"
-                                                required>
+                                                [class.er-is-invalid]="hasFieldError('email')"
+                                                placeholder="Enter your email address">
                                         </div>
-                                        <div class="er-invalid-feedback" id="email-error"></div>
+                                        <div class="er-invalid-feedback" *ngIf="hasFieldError('email')">
+                                            {{ getFieldError('email') }}
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="er-col-md-6">
                                     <div class="er-mb-3">
-                                        <label for="phone" class="er-form-label">Phone Number *</label>
+                                        <label for="phone" class="er-form-label required">Phone Number</label>
                                         <div class="er-input-group">
                                             <span class="er-input-group-text"><i class="fas fa-phone"></i></span>
                                             <input 
                                                 type="tel" 
                                                 id="phone"
-                                                name="phone"
+                                                formControlName="phone"
                                                 class="er-form-control"
-                                                placeholder="Enter your phone number"
-                                                pattern="[0-9]{8,15}"
-                                                required>
+                                                [class.er-is-invalid]="hasFieldError('phone')"
+                                                placeholder="Enter your phone number">
                                         </div>
-                                        <div class="er-invalid-feedback" id="phone-error"></div>
+                                        <div class="er-invalid-feedback" *ngIf="hasFieldError('phone')">
+                                            {{ getFieldError('phone') }}
+                                        </div>
                                         <small class="er-form-text">Phone number should be 8-15 digits</small>
                                     </div>
                                 </div>
@@ -739,15 +757,17 @@
                             </div>
                             
                             <div class="er-mb-4">
-                                <label for="address" class="er-form-label">Full Address *</label>
+                                <label for="address" class="er-form-label required">Full Address</label>
                                 <input 
                                     type="text" 
                                     id="address"
-                                    name="address"
+                                    formControlName="address"
                                     class="er-form-control"
-                                    placeholder="Enter your full address"
-                                    required>
-                                <div class="er-invalid-feedback" id="address-error"></div>
+                                    [class.er-is-invalid]="hasFieldError('address')"
+                                    placeholder="Enter your full address">
+                                <div class="er-invalid-feedback" *ngIf="hasFieldError('address')">
+                                    {{ getFieldError('address') }}
+                                </div>
                             </div>
                             
                             <!-- Account Security Section -->
@@ -761,32 +781,41 @@
                             <div class="er-row">
                                 <div class="er-col-md-6">
                                     <div class="er-mb-3">
-                                        <label for="password" class="er-form-label">Password *</label>
+                                        <label for="password" class="er-form-label required">Password</label>
                                         <div class="er-input-group">
                                             <input 
-                                                type="password"
+                                                [type]="showPassword ? 'text' : 'password'"
                                                 id="password"
-                                                name="password"
+                                                formControlName="password"
                                                 class="er-form-control"
+                                                [class.er-is-invalid]="hasFieldError('password')"
                                                 placeholder="Create a password"
-                                                minlength="6"
-                                                required
-                                                oninput="calculatePasswordStrength(event)">
+                                                (input)="calculatePasswordStrength($event)">
                                             <button 
                                                 class="er-btn" 
                                                 type="button" 
-                                                onclick="togglePasswordVisibility('password')">
-                                                <i class="fas fa-eye" id="password-toggle-icon"></i>
+                                                (click)="togglePasswordVisibility()">
+                                                <i class="fas" [class.fa-eye]="!showPassword" [class.fa-eye-slash]="showPassword"></i>
                                             </button>
                                         </div>
                                         <!-- Password Strength Indicator -->
-                                        <div class="er-password-strength" id="password-strength" style="display: none;">
+                                        <div class="er-password-strength" *ngIf="passwordStrength > 0">
                                             <div class="er-progress">
-                                                <div class="er-progress-bar" id="password-progress" style="width: 0%;"></div>
+                                                <div class="er-progress-bar" 
+                                                     [style.width.%]="passwordStrength"
+                                                     [class.er-bg-danger]="passwordStrength < 40"
+                                                     [class.er-bg-warning]="passwordStrength >= 40 && passwordStrength < 80"
+                                                     [class.er-bg-success]="passwordStrength >= 80"></div>
                                             </div>
-                                            <small id="password-strength-text" class="er-text-muted">Password strength: Weak</small>
+                                            <small [class.er-text-danger]="passwordStrength < 40"
+                                                   [class.er-text-warning]="passwordStrength >= 40 && passwordStrength < 80"
+                                                   [class.er-text-success]="passwordStrength >= 80">
+                                                Password strength: {{ getPasswordStrengthText() }}
+                                            </small>
                                         </div>
-                                        <div class="er-invalid-feedback" id="password-error"></div>
+                                        <div class="er-invalid-feedback" *ngIf="hasFieldError('password')">
+                                            {{ getFieldError('password') }}
+                                        </div>
                                         <small class="er-form-text">
                                             Password should be at least 6 characters long
                                         </small>
@@ -794,23 +823,25 @@
                                 </div>
                                 <div class="er-col-md-6">
                                     <div class="er-mb-3">
-                                        <label for="confirmPassword" class="er-form-label">Confirm Password *</label>
+                                        <label for="confirmPassword" class="er-form-label required">Confirm Password</label>
                                         <div class="er-input-group">
                                             <input 
-                                                type="password"
+                                                [type]="showConfirmPassword ? 'text' : 'password'"
                                                 id="confirmPassword"
-                                                name="confirmPassword"
+                                                formControlName="confirmPassword"
                                                 class="er-form-control"
-                                                placeholder="Confirm your password"
-                                                required>
+                                                [class.er-is-invalid]="hasFieldError('confirmPassword') || individualForm.hasError('mustMatch')"
+                                                placeholder="Confirm your password">
                                             <button 
                                                 class="er-btn" 
                                                 type="button" 
-                                                onclick="togglePasswordVisibility('confirmPassword')">
-                                                <i class="fas fa-eye" id="confirmPassword-toggle-icon"></i>
+                                                (click)="toggleConfirmPasswordVisibility()">
+                                                <i class="fas" [class.fa-eye]="!showConfirmPassword" [class.fa-eye-slash]="showConfirmPassword"></i>
                                             </button>
                                         </div>
-                                        <div class="er-invalid-feedback" id="confirmPassword-error"></div>
+                                        <div class="er-invalid-feedback" *ngIf="hasFieldError('confirmPassword') || individualForm.hasError('mustMatch')">
+                                            {{ getFieldError('confirmPassword') }}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -828,23 +859,24 @@
                                     class="er-form-check-input" 
                                     type="checkbox" 
                                     id="termsAccepted" 
-                                    name="termsAccepted"
-                                    required>
+                                    formControlName="termsAccepted">
                                 <label class="er-form-check-label" for="termsAccepted">
                                     I agree to the <a href="#" class="er-text-primary">Terms of Service</a> and 
                                     <a href="#" class="er-text-primary">Privacy Policy</a>
                                 </label>
                             </div>
-                            <div class="er-invalid-feedback" id="termsAccepted-error"></div>
+                            <div class="er-invalid-feedback" *ngIf="hasFieldError('termsAccepted')">
+                                {{ getFieldError('termsAccepted') }}
+                            </div>
 
                             <!-- Submit Button -->
                             <div class="er-d-grid er-gap-2 er-mt-4">
                                 <button 
                                     class="er-btn er-btn-primary er-btn-lg" 
                                     type="submit" 
-                                    id="submit-btn">
-                                    <span id="submit-text">Create Account</span>
-                                    <span class="er-spinner-border er-spinner-border-sm er-me-2" id="loading-spinner" style="display: none;"></span>
+                                    [disabled]="loading">
+                                    <span class="er-spinner-border er-spinner-border-sm er-me-2" *ngIf="loading"></span>
+                                    {{ loading ? 'Creating Account...' : 'Create Account' }}
                                 </button>
                             </div>
 
@@ -852,7 +884,7 @@
                             <div class="er-text-center er-mt-3">
                                 <p class="er-text-muted">
                                     Already have an account? 
-                                    <a href="/login" class="er-text-primary er-fw-bold">Sign In</a>
+                                    <a routerLink="/login" class="er-text-primary er-fw-bold">Sign In</a>
                                 </p>
                             </div>
                         </form>
@@ -861,280 +893,4 @@
             </div>
         </div>
     </div>
-
-    <script>
-        // Form validation and functionality
-        let passwordStrength = 0;
-        
-        // Password visibility toggle
-        function togglePasswordVisibility(fieldId) {
-            const field = document.getElementById(fieldId);
-            const icon = document.getElementById(fieldId + '-toggle-icon');
-            
-            if (field.type === 'password') {
-                field.type = 'text';
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
-            } else {
-                field.type = 'password';
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
-            }
-        }
-
-        // Calculate password strength
-        function calculatePasswordStrength(event) {
-            const password = event.target.value;
-            const strengthContainer = document.getElementById('password-strength');
-            const progressBar = document.getElementById('password-progress');
-            const strengthText = document.getElementById('password-strength-text');
-            
-            if (password.length === 0) {
-                strengthContainer.style.display = 'none';
-                return;
-            }
-            
-            strengthContainer.style.display = 'block';
-            
-            let strength = 0;
-            strength += Math.min(50, (password.length / 12) * 50);
-
-            if (/[a-z]/.test(password)) strength += 10;
-            if (/[A-Z]/.test(password)) strength += 10;
-            if (/\d/.test(password)) strength += 15;
-            if (/[^a-zA-Z0-9]/.test(password)) strength += 15;
-
-            passwordStrength = Math.max(0, Math.min(100, strength));
-            
-            // Update progress bar
-            progressBar.style.width = passwordStrength + '%';
-            
-            // Update colors and text
-            progressBar.classList.remove('er-bg-danger', 'er-bg-warning', 'er-bg-success');
-            strengthText.classList.remove('er-text-danger', 'er-text-warning', 'er-text-success');
-            
-            if (passwordStrength < 40) {
-                progressBar.classList.add('er-bg-danger');
-                strengthText.classList.add('er-text-danger');
-                strengthText.textContent = 'Password strength: Weak';
-            } else if (passwordStrength < 80) {
-                progressBar.classList.add('er-bg-warning');
-                strengthText.classList.add('er-text-warning');
-                strengthText.textContent = 'Password strength: Medium';
-            } else {
-                progressBar.classList.add('er-bg-success');
-                strengthText.classList.add('er-text-success');
-                strengthText.textContent = 'Password strength: Strong';
-            }
-        }
-
-        // Form validation
-        function validateField(field, errorElementId, validationRules) {
-            const errorElement = document.getElementById(errorElementId);
-            let isValid = true;
-            let errorMessage = '';
-
-            // Check required
-            if (validationRules.required && !field.value.trim()) {
-                isValid = false;
-                errorMessage = `${field.previousElementSibling.textContent.replace('*', '')} is required.`;
-            }
-            
-            // Check email
-            else if (validationRules.email && field.value.trim()) {
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailRegex.test(field.value.trim())) {
-                    isValid = false;
-                    errorMessage = 'Please enter a valid email address.';
-                }
-            }
-            
-            // Check phone
-            else if (validationRules.phone && field.value.trim()) {
-                const phoneRegex = /^[0-9]{8,15}$/;
-                if (!phoneRegex.test(field.value.trim())) {
-                    isValid = false;
-                    errorMessage = 'Phone number must be 8-15 digits only.';
-                }
-            }
-            
-            // Check minLength
-            else if (validationRules.minLength && field.value.trim() && field.value.trim().length < validationRules.minLength) {
-                isValid = false;
-                errorMessage = `Minimum ${validationRules.minLength} characters required.`;
-            }
-
-            // Update UI
-            if (isValid) {
-                field.classList.remove('er-is-invalid');
-                errorElement.textContent = '';
-                errorElement.style.display = 'none';
-            } else {
-                field.classList.add('er-is-invalid');
-                errorElement.textContent = errorMessage;
-                errorElement.style.display = 'block';
-            }
-
-            return isValid;
-        }
-
-        // Check password match
-        function validatePasswordMatch() {
-            const password = document.getElementById('password');
-            const confirmPassword = document.getElementById('confirmPassword');
-            const errorElement = document.getElementById('confirmPassword-error');
-            
-            if (confirmPassword.value.trim() && password.value !== confirmPassword.value) {
-                confirmPassword.classList.add('er-is-invalid');
-                errorElement.textContent = 'Passwords do not match.';
-                errorElement.style.display = 'block';
-                return false;
-            } else {
-                confirmPassword.classList.remove('er-is-invalid');
-                errorElement.textContent = '';
-                errorElement.style.display = 'none';
-                return true;
-            }
-        }
-
-        // Show error alert
-        function showError(message) {
-            const errorAlert = document.getElementById('error-alert');
-            const errorMessage = document.getElementById('error-message');
-            
-            errorMessage.textContent = message;
-            errorAlert.style.display = 'block';
-            errorAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-
-        // Hide error alert
-        function hideError() {
-            const errorAlert = document.getElementById('error-alert');
-            errorAlert.style.display = 'none';
-        }
-
-        // Set loading state
-        function setLoading(loading) {
-            const submitBtn = document.getElementById('submit-btn');
-            const submitText = document.getElementById('submit-text');
-            const loadingSpinner = document.getElementById('loading-spinner');
-            
-            if (loading) {
-                submitBtn.disabled = true;
-                submitText.textContent = 'Creating Account...';
-                loadingSpinner.style.display = 'inline-block';
-            } else {
-                submitBtn.disabled = false;
-                submitText.textContent = 'Create Account';
-                loadingSpinner.style.display = 'none';
-            }
-        }
-
-        // Form submission
-        document.getElementById('individualForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            hideError();
-            
-            // Get form elements
-            const firstName = document.getElementById('firstName');
-            const lastName = document.getElementById('lastName');
-            const email = document.getElementById('email');
-            const phone = document.getElementById('phone');
-            const address = document.getElementById('address');
-            const password = document.getElementById('password');
-            const confirmPassword = document.getElementById('confirmPassword');
-            const termsAccepted = document.getElementById('termsAccepted');
-            
-            // Validate all fields
-            let isFormValid = true;
-            
-            isFormValid &= validateField(firstName, 'firstName-error', { required: true });
-            isFormValid &= validateField(lastName, 'lastName-error', { required: true });
-            isFormValid &= validateField(email, 'email-error', { required: true, email: true });
-            isFormValid &= validateField(phone, 'phone-error', { required: true, phone: true });
-            isFormValid &= validateField(address, 'address-error', { required: true });
-            isFormValid &= validateField(password, 'password-error', { required: true, minLength: 6 });
-            isFormValid &= validateField(confirmPassword, 'confirmPassword-error', { required: true });
-            
-            // Check password match
-            isFormValid &= validatePasswordMatch();
-            
-            // Check terms acceptance
-            const termsError = document.getElementById('termsAccepted-error');
-            if (!termsAccepted.checked) {
-                termsError.textContent = 'You must accept the terms and conditions.';
-                termsError.style.display = 'block';
-                isFormValid = false;
-            } else {
-                termsError.style.display = 'none';
-            }
-            
-            if (!isFormValid) {
-                showError('Please correct the errors below and try again.');
-                return;
-            }
-            
-            // If validation passes, simulate form submission
-            setLoading(true);
-            
-            // Simulate API call
-            setTimeout(() => {
-                setLoading(false);
-                
-                // Simulate success/error randomly for demo
-                const isSuccess = Math.random() > 0.3;
-                
-                if (isSuccess) {
-                    alert('Registration successful! Redirecting to login...');
-                    // In real implementation: window.location.href = '/login';
-                } else {
-                    showError('Registration failed. Please try again.');
-                }
-            }, 2000);
-        });
-
-        // Real-time validation
-        document.getElementById('firstName').addEventListener('blur', function() {
-            validateField(this, 'firstName-error', { required: true });
-        });
-
-        document.getElementById('lastName').addEventListener('blur', function() {
-            validateField(this, 'lastName-error', { required: true });
-        });
-
-        document.getElementById('email').addEventListener('blur', function() {
-            validateField(this, 'email-error', { required: true, email: true });
-        });
-
-        document.getElementById('phone').addEventListener('blur', function() {
-            validateField(this, 'phone-error', { required: true, phone: true });
-        });
-
-        document.getElementById('address').addEventListener('blur', function() {
-            validateField(this, 'address-error', { required: true });
-        });
-
-        document.getElementById('password').addEventListener('blur', function() {
-            validateField(this, 'password-error', { required: true, minLength: 6 });
-        });
-
-        document.getElementById('confirmPassword').addEventListener('blur', function() {
-            validateField(this, 'confirmPassword-error', { required: true });
-            validatePasswordMatch();
-        });
-
-        document.getElementById('confirmPassword').addEventListener('input', function() {
-            if (this.value.length > 0) {
-                validatePasswordMatch();
-            }
-        });
-
-        document.getElementById('termsAccepted').addEventListener('change', function() {
-            const termsError = document.getElementById('termsAccepted-error');
-            if (this.checked) {
-                termsError.style.display = 'none';
-            }
-        });
-    </script>
-</body>
-</html>
+</div>
