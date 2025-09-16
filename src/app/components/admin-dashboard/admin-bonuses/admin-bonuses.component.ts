@@ -334,52 +334,93 @@ export class AdminBonusesComponent implements OnInit, OnDestroy {
   // =============================================================================
   // BONUS CREATION
   // =============================================================================
+createBonus(): void {
+  if (this.creatingBonus) return;
 
-  createBonus(): void {
-    if (this.creatingBonus) return;
-    this.creatingBonus = true;
-    this.error = '';
-
-    // Validate required fields
-    if (!this.newBonus.deliveryPersonId || !this.newBonus.amount || 
-        !this.newBonus.reason) {
-        this.error = 'Please fill all required fields';
-        this.creatingBonus = false;
-        return;
-    }
-
-    // Prepare payload with correct types
-    const payload: CreateBonusRequest = {
-      deliveryPersonId: this.newBonus.deliveryPersonId,
-      amount: this.newBonus.amount,
-      reason: this.newBonus.reason,
-      startDate: this.newBonus.startDate ? new Date(this.newBonus.startDate).toISOString() : undefined,
-      endDate: this.newBonus.endDate ? new Date(this.newBonus.endDate).toISOString() : undefined,
-      type: this.newBonus.type,
-      description: this.newBonus.description,
-      criteria: this.newBonus.criteria
-    };
-
-    this.bonusService.createBonus(payload).subscribe({
-      next: (createdBonus) => {
-        this.creatingBonus = false;
-        this.resetCreateBonusForm();
-        this.loadBonuses();
-        
-        // Close modal safely
-        const modalElement = document.getElementById('createBonusModal');
-        if (modalElement) {
-          const modal = Modal.getInstance(modalElement);
-          modal?.hide();
-        }
-      },
-      error: (err) => {
-        console.error('Error creating bonus:', err);
-        this.error = err.message || 'Failed to create bonus';
-        this.creatingBonus = false;
-      }
-    });
+  // Validate form before proceeding
+  const validationError = this.validateBonusForm();
+  if (validationError) {
+    this.error = validationError;
+    return;
   }
+
+  this.creatingBonus = true;
+  this.error = '';
+
+  // Prepare payload
+  const payload: CreateBonusRequest = {
+    deliveryPersonId: this.newBonus.deliveryPersonId,
+    amount: Number(this.newBonus.amount),
+    reason: this.newBonus.reason.trim(),
+    startDate: this.newBonus.startDate || undefined,
+    endDate: this.newBonus.endDate || undefined,
+    type: this.newBonus.type,
+    description: this.newBonus.description?.trim() || undefined,
+    criteria: this.newBonus.criteria?.trim() || undefined
+  };
+
+  this.bonusService.createBonus(payload).subscribe({
+    next: (createdBonus: Bonus) => {
+      this.creatingBonus = false;
+      this.resetCreateBonusForm();
+      this.loadBonuses();
+      this.loadBonusStats(); // Refresh stats
+      
+      // Close modal safely
+      this.closeCreateBonusModal();
+      
+      console.log('Bonus created successfully:', createdBonus);
+    },
+    error: (error: Error) => {
+      this.creatingBonus = false;
+      this.handleComponentError(error, 'Creating bonus');
+    }
+  });
+}
+private closeCreateBonusModal(): void {
+  const modalElement = document.getElementById('createBonusModal');
+  if (modalElement) {
+    const modal = Modal.getInstance(modalElement);
+    if (modal) {
+      modal.hide();
+    } else {
+      // Fallback: manually trigger modal close
+      const closeButton = modalElement.querySelector('[data-bs-dismiss="modal"]') as HTMLButtonElement;
+      closeButton?.click();
+    }
+  }
+}
+
+
+
+// Form validation helper
+private validateBonusForm(): string | null {
+  if (!this.newBonus.deliveryPersonId) {
+    return 'Please select a delivery person';
+  }
+  
+  if (!this.newBonus.amount || this.newBonus.amount <= 0) {
+    return 'Please enter a valid amount greater than 0';
+  }
+  
+  if (!this.newBonus.reason || !this.newBonus.reason.trim()) {
+    return 'Please enter a reason for this bonus';
+  }
+  
+  // Validate date range if both dates are provided
+  if (this.newBonus.startDate && this.newBonus.endDate) {
+    const startDate = new Date(this.newBonus.startDate);
+    const endDate = new Date(this.newBonus.endDate);
+    
+    if (startDate >= endDate) {
+      return 'End date must be after start date';
+    }
+  }
+  
+  return null;
+}
+
+
 
   resetCreateBonusForm(): void {
     this.newBonus = {
@@ -397,39 +438,42 @@ export class AdminBonusesComponent implements OnInit, OnDestroy {
   // =============================================================================
   // BONUS STATUS OPERATIONS - UPDATED FOR NEW ENUM
   // =============================================================================
-
-  rejectBonus(bonusId: string): void {
-    const reason = prompt('Please enter the rejection reason:');
-    if (reason && reason.trim()) {
-      this.bonusService.rejectBonus(bonusId, reason.trim()).subscribe({
-        next: (updatedBonus) => {
-          this.updateBonusInList(updatedBonus);
-          this.loadBonusStats(); // Refresh stats
-        },
-        error: (err) => {
-          console.error('Error rejecting bonus:', err);
-          this.error = err.message || 'Failed to reject bonus';
-        }
-      });
-    }
+rejectBonus(bonusId: string): void {
+  const reason = prompt('Please enter the rejection reason:');
+  if (!reason || !reason.trim()) {
+    this.error = 'Rejection reason is required';
+    return;
   }
 
-  payBonus(bonusId: string): void {
-    const confirmPay = confirm('Are you sure you want to mark this bonus as paid?');
-    if (confirmPay) {
-      this.bonusService.payBonus(bonusId).subscribe({
-        next: (updatedBonus) => {
-          this.updateBonusInList(updatedBonus);
-          this.loadBonusStats(); // Refresh stats
-        },
-        error: (err) => {
-          console.error('Error paying bonus:', err);
-          this.error = err.message || 'Failed to pay bonus';
-        }
-      });
+  this.bonusService.rejectBonus(bonusId, reason.trim()).subscribe({
+    next: (updatedBonus: Bonus) => {
+      this.updateBonusInList(updatedBonus);
+      this.loadBonusStats();
+      this.error = ''; // Clear any previous errors
+      console.log('Bonus rejected successfully');
+    },
+    error: (error: Error) => {
+      this.handleComponentError(error, 'Rejecting bonus');
     }
-  }
+  });
+}
 
+ payBonus(bonusId: string): void {
+  const confirmPay = confirm('Are you sure you want to mark this bonus as paid?');
+  if (!confirmPay) return;
+
+  this.bonusService.payBonus(bonusId).subscribe({
+    next: (updatedBonus: Bonus) => {
+      this.updateBonusInList(updatedBonus);
+      this.loadBonusStats();
+      this.error = ''; // Clear any previous errors
+      console.log('Bonus paid successfully');
+    },
+    error: (error: Error) => {
+      this.handleComponentError(error, 'Paying bonus');
+    }
+  });
+}
   cancelBonus(bonusId: string): void {
     const confirmCancel = confirm('Are you sure you want to cancel this bonus?');
     if (confirmCancel) {
@@ -470,28 +514,52 @@ export class AdminBonusesComponent implements OnInit, OnDestroy {
   }
 
   // REMOVED: bulkApprove() method since APPROVED status doesn't exist
-
-  bulkPay(): void {
-    const bonusIds = Array.from(this.selectedBonuses);
-    if (bonusIds.length === 0) return;
-
-    const confirmPay = confirm(`Are you sure you want to pay ${bonusIds.length} bonuses?`);
-    if (confirmPay) {
-      this.bonusService.bulkPayBonuses(bonusIds).subscribe({
-        next: (response) => {
-          console.log(`Bulk pay completed: ${response.processedCount} bonuses processed`);
-          this.selectedBonuses.clear();
-          this.showBulkActions = false;
-          this.loadBonuses();
-          this.loadBonusStats();
-        },
-        error: (err) => {
-          console.error('Error in bulk pay:', err);
-          this.error = err.message || 'Failed to bulk pay bonuses';
-        }
-      });
-    }
+bulkPay(): void {
+  const bonusIds = Array.from(this.selectedBonuses);
+  if (bonusIds.length === 0) {
+    this.error = 'No bonuses selected for bulk payment';
+    return;
   }
+
+  const confirmPay = confirm(`Are you sure you want to pay ${bonusIds.length} bonuses?`);
+  if (!confirmPay) return;
+
+  this.loading = true;
+  this.error = '';
+
+  this.bonusService.bulkPayBonuses(bonusIds).subscribe({
+    next: (response: any) => {
+      console.log(`Bulk pay completed: ${response.processedCount} bonuses processed`);
+      this.selectedBonuses.clear();
+      this.showBulkActions = false;
+      this.loadBonuses();
+      this.loadBonusStats();
+      this.loading = false;
+      
+      // Show success message
+      this.showSuccessMessage(`Successfully paid ${response.processedCount} bonuses`);
+    },
+    error: (error: Error) => {
+      this.loading = false;
+      this.handleComponentError(error, 'Bulk paying bonuses');
+    }
+  });
+}
+
+private showSuccessMessage(message: string): void {
+  // You could implement a toast notification system here
+  console.log('Success:', message);
+  
+  // Temporary success indication (you might want to implement proper toast notifications)
+  const originalError = this.error;
+  this.error = `✓ ${message}`;
+  
+  setTimeout(() => {
+    if (this.error === `✓ ${message}`) {
+      this.error = originalError;
+    }
+  }, 3000);
+}
 
   bulkReject(): void {
     const bonusIds = Array.from(this.selectedBonuses);
@@ -623,9 +691,25 @@ export class AdminBonusesComponent implements OnInit, OnDestroy {
   // EXPORT AND REFRESH METHODS
   // =============================================================================
 
-  refreshData(): void {
-    this.loadInitialData();
-  }
+ refreshData(): void {
+  this.loading = true;
+  this.error = '';
+  
+  // Load all data in parallel
+  Promise.all([
+    this.loadBonuses(),
+    this.loadBonusStats(),
+    this.loadBonusSummary(),
+    this.loadDeliveryPersons()
+  ]).then(() => {
+    this.loading = false;
+    console.log('All data refreshed successfully');
+  }).catch((error) => {
+    this.loading = false;
+    this.handleComponentError(error, 'Refreshing data');
+  });
+}
+
 
   exportBonuses(): void {
     // Implementation for exporting bonuses data
@@ -668,41 +752,86 @@ export class AdminBonusesComponent implements OnInit, OnDestroy {
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
   }
-
-  loadDeliveryPersons(): void {
-    console.log('Component: Starting to load delivery persons...');
-    
-    this.bonusService.getDeliveryPersons().subscribe({
-      next: (persons) => {
-        console.log('Component: Delivery persons received:', persons);
-        this.deliveryPersons = persons;
-      },
-      error: (err) => {
-        console.error('Component: Error loading delivery persons:', err);
-        // Show a user-friendly error message
-        this.error = 'Failed to load delivery persons. Please try again later.';
+loadDeliveryPersons(): void {
+  console.log('Component: Starting to load delivery persons...');
+  
+  this.bonusService.getDeliveryPersons().subscribe({
+    next: (persons: any[]) => {
+      console.log('Component: Delivery persons received:', persons);
+      
+      // Ensure we have a valid array
+      if (Array.isArray(persons)) {
+        this.deliveryPersons = persons.map(person => ({
+          ...person,
+          displayName: this.formatPersonDisplayName(person)
+        }));
+        console.log('Component: Processed delivery persons:', this.deliveryPersons);
+      } else {
+        console.warn('Component: Invalid delivery persons data received');
+        this.deliveryPersons = [];
       }
-    });
-  }
+    },
+    error: (error: Error) => {
+      console.error('Component: Error loading delivery persons:', error);
+      this.error = 'Failed to load delivery persons. Please try again later.';
+      this.deliveryPersons = []; // Ensure empty array on error
+    }
+  });
+}
 
+// Helper method to format person display name consistently
+private formatPersonDisplayName(person: any): string {
+  if (!person) return 'Unknown';
+  
+  // Priority order: fullName > firstName + lastName > email > id
+  if (person.fullName) return person.fullName;
+  if (person.firstName && person.lastName) return `${person.firstName} ${person.lastName}`;
+  if (person.firstName) return person.firstName;
+  if (person.email) return person.email;
+  if (person.id) return person.id.length > 8 ? person.id.substring(0, 8) + '...' : person.id;
+  
+  return 'Unknown';
+}
   testLoadDeliveryPersons(): void {
     console.log('=== MANUAL TEST START ===');
     console.log('Current delivery persons:', this.deliveryPersons);
     this.loadDeliveryPersons();
     console.log('=== MANUAL TEST END ===');
   }
-
-  getDeliveryPersonName(deliveryPersonId: string): string {
-    if (!deliveryPersonId) return 'Unknown';
-    
-    const person = this.deliveryPersons.find(p => p.id === deliveryPersonId);
-    
-    if (person) {
-      return person.fullName || person.firstName || person.email || person.id;
-    }
-    
-    // Return shortened ID if person not found
-    return deliveryPersonId.length > 8 ? 
-      deliveryPersonId.substring(0, 8) + '...' : deliveryPersonId;
+getDeliveryPersonName(deliveryPersonId: string): string {
+  if (!deliveryPersonId) return 'Unknown';
+  
+  const person = this.deliveryPersons.find(p => p.id === deliveryPersonId);
+  
+  if (person) {
+    return person.displayName || this.formatPersonDisplayName(person);
   }
+  
+  // Return shortened ID if person not found
+  return deliveryPersonId.length > 8 ? 
+    deliveryPersonId.substring(0, 8) + '...' : deliveryPersonId;
+}
+
+private handleComponentError(error: any, operation: string): void {
+  console.error(`Error during ${operation}:`, error);
+  
+  // Extract meaningful error message
+  let errorMessage = 'An unexpected error occurred';
+  
+  if (error?.message) {
+    errorMessage = error.message;
+  } else if (typeof error === 'string') {
+    errorMessage = error;
+  }
+  
+  this.error = `${operation}: ${errorMessage}`;
+  
+  // Auto-hide error after 5 seconds
+  setTimeout(() => {
+    if (this.error === `${operation}: ${errorMessage}`) {
+      this.error = '';
+    }
+  }, 5000);
+}
+
 }

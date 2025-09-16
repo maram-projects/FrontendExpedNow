@@ -215,28 +215,7 @@
 
             <!-- Vehicle Selection (Optional) -->
             <div class="row mb-3" *ngIf="vehicles.length > 0">
-              <div class="col-md-6 form-group">
-                <label for="vehicleId" class="form-label">🚚 Vehicle (Optional)</label>
-                <select 
-                  id="vehicleId" 
-                  formControlName="vehicleId" 
-                  class="form-select"
-                  [disabled]="isLoadingVehicles"
-                >
-                  <option value="">-- Auto-assign vehicle --</option>
-                  <option *ngFor="let vehicle of vehicles" [value]="vehicle.id">
-                    {{ vehicle.make }} {{ vehicle.model }} - Max Load: {{ vehicle.maxLoad }}kg
-                  </option>
-                </select>
-                <small class="text-muted">
-                  <span *ngIf="isLoadingVehicles">
-                    <i class="fas fa-spinner fa-spin me-1"></i>Loading vehicles...
-                  </span>
-                  <span *ngIf="!isLoadingVehicles">
-                    Leave empty to auto-assign the best vehicle
-                  </span>
-                </small>
-              </div>
+             
               
               <div class="col-md-6 form-group">
                 <label for="priority" class="form-label">⚡ Priority</label>

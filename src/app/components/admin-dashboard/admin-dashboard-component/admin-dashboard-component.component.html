@@ -4,14 +4,12 @@
     <h1 class="h2">Admin Dashboard</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
       <div class="btn-group me-2">
-        <button type="button" class="btn btn-sm btn-outline-secondary">Export</button>
         <!-- Chat Toggle Button -->
         <button type="button" 
                 class="btn btn-sm btn-primary admin-chat-toggle"
                 (click)="toggleChat()"
                 title="المساعد الذكي">
           <i class="fas fa-robot"></i>
-          <span class="d-none d-md-inline ms-1">المساعد الذكي</span>
           @if (showChat) {
             <i class="fas fa-times ms-1"></i>
           }
