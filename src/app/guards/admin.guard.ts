@@ -6,6 +6,8 @@ export const adminGuard: CanActivateFn = () => {
   const router = inject(Router);
   const authService = inject(AuthService);
 
+  
+
   const user = authService.getCurrentUser();
   console.log('Admin guard check:', user);
 
