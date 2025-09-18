@@ -20,14 +20,15 @@
               "zone.js"
             ],
             "tsConfig": "tsconfig.json",
-            "assets": [
-              {
-                "glob": "**/*",
-                "input": "src/assets",
-                "output": "/assets/"
-              },
-              "src/favicon.ico"
-            ],
+"assets": [
+  {
+    "glob": "**/*",
+    "input": "src/assets",
+    "output": "/assets/"
+  },
+  "src/favicon.ico",
+  "src/_redirects"
+],
             "styles": [
               "@angular/material/prebuilt-themes/rose-red.css",
               "node_modules/bootstrap/dist/css/bootstrap.min.css",

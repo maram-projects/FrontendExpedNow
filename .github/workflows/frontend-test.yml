@@ -22,21 +22,42 @@ jobs:
       run: npm install
       
     - name: Build project
-      run: npm run build
+      run: npm run build --prod
       
-    - name: Create _redirects file
-      run: echo "/*    /index.html   200" > dist/_redirects
+    - name: Debug - List all files
+      run: |
+        echo "Root directory:"
+        ls -la
+        echo "Dist directory:"
+        ls -la dist/ || echo "No dist folder found"
+        find . -name "index.html" -type f
+        
+    - name: Create netlify.toml
+      run: |
+        cat > netlify.toml << EOF
+        [build]
+          publish = "dist/expednow"
+          command = "npm run build --prod"
+        
+        [[redirects]]
+          from = "/*"
+          to = "/index.html"
+          status = 200
+        EOF
+        
+    - name: Install Netlify CLI
+      run: npm install -g netlify-cli
       
     - name: Deploy to Netlify
-      uses: nwtgck/actions-netlify@v3.0
-      with:
-        publish-dir: './dist'
-        production-branch: main
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        deploy-message: "Deploy from GitHub Actions"
-        enable-pull-request-comment: false
-        enable-commit-comment: true
-        overwrites-pull-request-comment: true
+      run: |
+        if [ -d "dist/expednow" ]; then
+          netlify deploy --prod --dir=dist/expednow
+        elif [ -d "dist" ]; then
+          netlify deploy --prod --dir=dist
+        else
+          echo "No valid dist directory found"
+          exit 1
+        fi
       env:
         NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
