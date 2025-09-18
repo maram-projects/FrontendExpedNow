@@ -24,43 +24,67 @@ jobs:
     - name: Build project
       run: npm run build --prod
       
-    - name: Debug - List all files
+    - name: Debug - Find build output
       run: |
         echo "Root directory:"
         ls -la
-        echo "Dist directory:"
-        ls -la dist/ || echo "No dist folder found"
-        find . -name "index.html" -type f
+        echo "Dist directory contents:"
+        if [ -d "dist" ]; then
+          find dist -type f -name "index.html" | head -5
+          ls -la dist/
+        else
+          echo "No dist folder found"
+        fi
+        
+    - name: Determine build output directory
+      id: build-dir
+      run: |
+        if [ -d "dist/expednow" ]; then
+          echo "BUILD_DIR=dist/expednow" >> $GITHUB_OUTPUT
+          echo "Found dist/expednow"
+        elif [ -d "dist" ] && [ -f "dist/index.html" ]; then
+          echo "BUILD_DIR=dist" >> $GITHUB_OUTPUT
+          echo "Found dist with index.html"
+        else
+          # Find the first directory in dist that contains index.html
+          BUILD_PATH=$(find dist -name "index.html" -type f | head -1 | xargs dirname)
+          if [ ! -z "$BUILD_PATH" ]; then
+            echo "BUILD_DIR=$BUILD_PATH" >> $GITHUB_OUTPUT
+            echo "Found build directory: $BUILD_PATH"
+          else
+            echo "No valid build directory found"
+            exit 1
+          fi
+        fi
         
     - name: Create netlify.toml
       run: |
         cat > netlify.toml << EOF
         [build]
-          publish = "dist/expednow"
+          publish = "${{ steps.build-dir.outputs.BUILD_DIR }}"
           command = "npm run build --prod"
         
         [[redirects]]
           from = "/*"
           to = "/index.html"
           status = 200
+          
+        [[headers]]
+          for = "/assets/*"
+          [headers.values]
+            Cache-Control = "public, max-age=31536000, immutable"
         EOF
         
     - name: Install Netlify CLI
       run: npm install -g netlify-cli
       
     - name: Deploy to Netlify
-      run: |
-        if [ -d "dist/expednow" ]; then
-          netlify deploy --prod --dir=dist/expednow
-        elif [ -d "dist" ]; then
-          netlify deploy --prod --dir=dist
-        else
-          echo "No valid dist directory found"
-          exit 1
-        fi
+      run: netlify deploy --prod --dir=${{ steps.build-dir.outputs.BUILD_DIR }}
       env:
         NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
         
     - name: Deployment Status
-      run: echo "🚀 Frontend deployed successfully!"
+      run: |
+        echo "🚀 Frontend deployed successfully!"
+        echo "Build directory used: ${{ steps.build-dir.outputs.BUILD_DIR }}"
