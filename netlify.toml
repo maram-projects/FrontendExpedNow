@@ -1,6 +1,6 @@
 [build]
-  publish = "dist/expednow"
-  command = "npm run build --configuration production"
+  publish = "dist/expednow/browser"
+  command = "npm run build:prod"
 
 [[redirects]]
   from = "/*"
